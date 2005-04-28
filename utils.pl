@@ -232,6 +232,10 @@ load_theorems:-
 	expand_file_name("/home/urban/tmp-miz/mml/*.the2",K),
 	consult(K).
 
+load_clusters:-
+	expand_file_name("/home/urban/tmp-miz/mml/*.dcl2",K),
+	consult(K).
+
 fraenkel_ths(S):-
 	findall(A,(fof(A,theorem,D,_,_),collect_symbols_top(D,L),
 		   member(all,L)),S),
