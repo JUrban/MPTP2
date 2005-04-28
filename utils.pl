@@ -74,18 +74,12 @@ d2ls([],[]).
 d2ls([H|T],[H1|T1]):- d2l(H,H1), d2ls(T,T1).
 
 declare_mptp_predicates:-
- abolish(definition/4),
- abolish(theorem/4),
- multifile(definition/4),
- multifile(theorem/4).
+ abolish(fof/4),
+ abolish(fof/5),
+ multifile(fof/4),
+ multifile(fof/5).
 
-declare_mptp_predicates1:-
- abolish(definition/5),
- abolish(theorem/5),
- multifile(definition/5),
- multifile(theorem/5).
-
-% collect nonvar symbols from term
+%% collect nonvar symbols from term
 collect_symbols_top(X,L):-
 	collect_symbols(X,L1),!,
 	flatten(L1,L2),
@@ -239,13 +233,13 @@ load_theorems:-
 	consult(K).
 
 fraenkel_ths(S):-
-	findall(A,(theorem(A,_,_,D),collect_symbols_top(D,L),
+	findall(A,(fof(A,theorem,D,_,_),collect_symbols_top(D,L),
 		   member(all,L)),S),
 	length(S,N),write(N).
 
 fraenkel_info(S1):-
 	fraenkel_ths(S),
-	findall([Out,Info],(member(A,S),theorem(A,_,_,In),
+	findall([Out,Info],(member(A,S),fof(A,theorem,In,_,_),
 			 all_collect_top(In,Out,Info)),S1).
 
 expanded_franks(Flas,D):-
