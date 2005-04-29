@@ -109,15 +109,16 @@ sort_transform_top(X,Y):- sort_transform(X,Y), !.
 sort_transform(X,X):- atomic(X); var(X).
 % todo: use sort_transform_qlist here for multiple quantifs, consider unsorted
 % do sort relativization
-sort_transform(![X:S]:Y,![X]:(S1 => Y1)):-
-	sort_transform(sort(X,S),S1),
+sort_transform(! Svars : Y, ! Qvars : (Preds => Y1)):-
+	sort_transform_qlist(Svars,Qvars,Preds),
 	sort_transform(Y,Y1).
-sort_transform(?[X:S]:Y,?[X]:(S1 & Y1)):-
-	sort_transform(sort(X,S),S1),
+sort_transform(? Svars : Y, ? Qvars : (Preds & Y1)):-
+	sort_transform_qlist(Svars,Qvars,Preds),
 	sort_transform(Y,Y1).
 % This clause is redundant now, sort trafo can be done only after 'all' removal
-sort_transform(all(Svars,Trm,Frm),all(Qvars,Trm,Preds & Frm1)):-	
+sort_transform(all(Svars,Trm,Frm),all(Qvars,Trm1,Preds & Frm1)):-	
 	sort_transform_qlist(Svars,Qvars,Preds),
+	sort_transform(Trm,Trm1),
 	sort_transform(Frm,Frm1).
 sort_transform(sort(X,Y1 & Y2),Z1 & Z2):-
 	sort_transform(sort(X,Y1),Z1),
@@ -127,7 +128,9 @@ sort_transform(sort(X,~Y),~Z):-
 sort_transform(sort(_,$true),$true).
 sort_transform(sort(_,$false),$false).
 sort_transform(sort(X,Y),Z):-
-	Y =.. [F|Args], Z =..[F,X|Args].
+	Y =.. [F|Args],
+	maplist(sort_transform,[X|Args],Args1),
+	Z =.. [F|Args1].
 % we should not get here
 sort_transform(sort(_,_),_):- throw(sort).
 % functor traversal
@@ -145,7 +148,7 @@ sort_transform(X1,X2):-
 %             -Info=[[NewVar,Context,all(Svars1,Trm1,Frm1)]|RestI])
 
 
-all_collect_qlist([],[],C,C,[]).  % needed only for fraenkel
+all_collect_qlist([],[],C,C,[]).
 all_collect_qlist([(X:S)|T],[(X:S1)|T1],Context,NewContext,Info):-
 	all_collect(S,S1,Context,Info_s),
 	all_collect_qlist(T,T1,[(X:S1)|Context],NewContext,Info_t),
@@ -155,13 +158,13 @@ all_collect_top(In,Out,Info):- all_collect(In,Out,[],Info),!.
 % end of traversal
 all_collect(X,X,_,[]):- atomic(X); var(X).
 % todo: use all_collect_qlist here for multiple quantifs, consider unsorted
-all_collect(![X:S]:Y,![X:S1]:Y1,Context,Info_r):-
-	all_collect(S,S1,Context,Info_s),
-	all_collect(Y,Y1,[(X:S1)|Context],Info_y),
+all_collect(! Svars : Y, ! Svars1 : Y1, Context, Info_r):-
+	all_collect_qlist(Svars,Svars1,Context,NewContext,Info_s),
+	all_collect(Y,Y1,NewContext,Info_y),
 	append(Info_s,Info_y,Info_r).
-all_collect(?[X:S]:Y,?[X:S1]:Y1,Context,Info_r):-
-	all_collect(S,S1,Context,Info_s),
-	all_collect(Y,Y1,[(X:S1)|Context],Info_y),
+all_collect(? Svars : Y, ? Svars1 : Y1, Context, Info_r):-
+	all_collect_qlist(Svars,Svars1,Context,NewContext,Info_s),
+	all_collect(Y,Y1,NewContext,Info_y),
 	append(Info_s,Info_y,Info_r).
 % fix context!!
 all_collect(all(Svars,Trm,Frm),NewVar,Context,
@@ -234,6 +237,10 @@ load_theorems:-
 
 load_clusters:-
 	expand_file_name("/home/urban/tmp-miz/mml/*.dcl2",K),
+	consult(K).
+
+load_constructors:-
+	expand_file_name("/home/urban/tmp-miz/mml/*.dco2",K),
 	consult(K).
 
 fraenkel_ths(S):-
