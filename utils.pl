@@ -66,6 +66,16 @@ declare_TPTP_operators:-
     op(400,xfx,'..').
 
 :- declare_TPTP_operators.
+logic_syms([++,--,'$',~,'|','~|',&,~&,=>,<=,<=>,<~>,!,?,:,'..',sort,all,'.',[]]).
+
+portray(A = B):- format(' equal(~p,~p) ',[A,B]).
+portray(~A):- write(' ~ ('), print(A), write(') ').
+portray(A & B):- format(' (~p & ~p) ',[A,B]).
+portray(A => B):- format(' (~p => ~p) ',[A,B]).
+portray(A <=> B):- format(' (~p <=> ~p) ',[A,B]).
+portray(! A : B):- format(' (! ~p : ~p) ',[A,B]).
+portray(? A : B):- format(' (? ~p : ~p) ',[A,B]).
+
 % explain tstp parsing
 d2l(X,X):- atomic(X);var(X).
 d2l([],[]).
@@ -76,8 +86,15 @@ d2ls([H|T],[H1|T1]):- d2l(H,H1), d2ls(T,T1).
 declare_mptp_predicates:-
  abolish(fof/4),
  abolish(fof/5),
+ abolish(theory/2),
  multifile(fof/4),
- multifile(fof/5).
+ multifile(fof/5),
+ multifile(theory/2),
+ abolish(fof_section/2),
+ abolish(fof_cluster/3),
+ abolish(fof_req/3),
+ index(fof(1,1,0,1,1)),
+ index(fof(1,1,0,1)).
 
 %% collect nonvar symbols from term
 collect_symbols_top(X,L):-
@@ -206,7 +223,7 @@ new_fr_sym(Arity, FrInfo, NewFrInfo, NewSym):-
 	( select([Arity|FrSyms], FrInfo, TmpInfo);
 	    ( FrSyms = [], TmpInfo = FrInfo )),
 	length(FrSyms, Nr),
-	concat_atom([fraenkel,Arity,Nr], '_', NewSym),
+	concat_atom([all,Arity,Nr], '_', NewSym),
 	select([Arity,NewSym|FrSyms], NewFrInfo, TmpInfo), ! .
 
 mk_fraenkel_def(Var, Context, all(Svars1,Trm1,Frm1), FrInfo, NewFrInfo, Def) :-
@@ -230,18 +247,254 @@ mk_fraenkel_defs1([[V,C,Trm]|T], FrSyms, NewFrSyms, [D|Defs]):-
 	mk_fraenkel_def(V, C, Trm, FrSyms, FrSyms1, D),
 	mk_fraenkel_defs1(T, FrSyms1, NewFrSyms, Defs).
 
+% should be unique for Ref
+get_ref_fla(Ref,Fla):- fof(Ref,_,Fla,_,_),!.
+
+% not unique for Sec and Info
+get_sec_info_refs(RefsIn, Secs, Info, NewRefs):- !,
+	findall(Ref1, (member(Sec1,Secs), fof_section(Sec1,Id),
+			  clause(fof(Ref1,_,_,file(_,Sec1), Info),_,Id)), Refs1),
+	subtract(Refs1, RefsIn, NewRefs).
+%% this was very slow for many clauses, even with maximum prolog indexing
+%% so the previous clause is used instead with hommade indexing
+get_sec_info_refs(RefsIn, Secs, Info, NewRefs):-
+	findall(Ref1, (member(Sec1,Secs), fof(Ref1,_,_,file(_,Sec1), Info)), Refs1),
+	subtract(Refs1, RefsIn, NewRefs).
+
+%% add properties for SymsIn
+get_properties(RefsIn,SymsIn,AddedRefs):-
+	get_sec_info_refs(RefsIn, SymsIn, mptp_info(_,_,property(_)), AddedRefs).
+
+get_existence(RefsIn,SymsIn,AddedRefs):-
+	get_sec_info_refs(RefsIn, SymsIn, mptp_info(_,_,existence), AddedRefs).
+
+get_redefinitions(RefsIn,SymsIn,AddedRefs):-	get_sec_info_refs(RefsIn, SymsIn,
+			  mptp_info(_,_,redefinition(_,_,_,_)), AddedRefs).
+
+get_types(RefsIn,SymsIn,AddedRefs):-
+	get_sec_info_refs(RefsIn, SymsIn, mptp_info(_,_,ctype), Refs1),
+	get_sec_info_refs(RefsIn, SymsIn, mptp_info(_,_,constant(_,type)), Refs2),
+	get_sec_info_refs(RefsIn, SymsIn, mptp_info(_,_,functor(scheme,type)), Refs3),
+	flatten([Refs1, Refs2, Refs3], AddedRefs).
+
+get_equalities(RefsIn,SymsIn,AddedRefs):-
+	get_sec_info_refs(RefsIn, SymsIn,
+			  mptp_info(_,_,constant(_,equality)), AddedRefs).
+
+%% OldSyms are used only for clusters and requirements
+one_pass(F,RefsIn,OldSyms,NewSyms,AddedRefs):-
+	theory(F, Theory),
+	member(registrations(Regs),Theory),
+	member(requirements(Reqs),Theory),
+	get_properties(RefsIn,NewSyms,Refs0),
+	get_existence(RefsIn,NewSyms,Refs1),
+	get_redefinitions(RefsIn,NewSyms,Refs2),
+	get_types(RefsIn,NewSyms,Refs3),
+	get_equalities(RefsIn,NewSyms,Refs4),
+%% Refs5=[],
+	get_clusters([F|Regs],RefsIn,OldSyms,NewSyms,Refs5),
+	get_requirements(Reqs,RefsIn,OldSyms,NewSyms,Refs6),
+	flatten([Refs0,Refs1,Refs2,Refs3,Refs4,Refs5,Refs6], AddedRefs).
+
+%% add symbol references until nothing added
+fixpoint(F,RefsIn,OldSyms,NewSyms,RefsOut):-
+	one_pass(F, RefsIn, OldSyms, NewSyms, Refs1), !,
+	(Refs1 = [] -> RefsOut = RefsIn;	    
+	    union(Refs1, RefsIn, Refs2),
+	    union(OldSyms, NewSyms, OldSyms1),
+	    maplist(get_ref_fla, Refs1, Flas1),
+	    collect_symbols_top(Flas1, Syms1),
+	    subtract(Syms1, OldSyms1, NewSyms1), 
+	    fixpoint(F, Refs2, OldSyms1, NewSyms1, RefsOut)).
+
+
+%% antecedent symbols needed for fcluster or ccluster
+cl_needed_syms_top(Fla,Syms):-
+	cl_needed_syms(Fla,Syms1),
+	logic_syms(Syms2),
+	subtract(Syms1, Syms2, Syms), !.
+cl_needed_syms( ! Svars : Fla, AnteSyms):- !,
+	collect_symbols_top(Svars, Syms1),
+	cl_needed_syms(Fla, Syms2),
+	union(Syms1, Syms2, AnteSyms).
+cl_needed_syms( sort(_,Ante) => sort(_,_), AnteSyms):- !, collect_symbols_top(Ante, AnteSyms).
+cl_needed_syms( sort(Trm,_), AnteSyms):- !, collect_symbols_top(Trm, AnteSyms).
+%% should not get here
+cl_needed_syms(_,_):- throw(cluster).
+
+
+%% fof_cluster contains precomputed info
+get_clusters(Files,RefsIn,OldSyms,NewSyms,AddedRefs):-
+	union(OldSyms, NewSyms, AllSyms),
+	findall(Ref1, (member(F1,Files),
+			  fof_cluster(F1,Ref1,AnteSyms),
+			  not(member(Ref1, RefsIn)),
+			  subset(AnteSyms, AllSyms)),
+		AddedRefs).
+
+%%
+get_requirements(Files,RefsIn,OldSyms,NewSyms,AddedRefs):-
+	union(OldSyms, NewSyms, AllSyms),
+	findall(Ref1, (member(F1,Files),
+			  fof_req(F1,Ref1,Syms),
+			  not(member(Ref1, RefsIn)),
+			  subset(Syms, AllSyms)),
+		AddedRefs).
+
+nr_boole(0,fof(spc0_boole,theorem, v1_xboole_0(0),
+		  file(boole,spc0_boole),mptp_info(spc0_boole,theorem))):- !.
+nr_boole(N,Res):-
+	integer(N), N > 0, concat_atom([spc,N,'_boole'],Name),
+	Res= fof(Name,theorem, ~ (v1_xboole_0(N)),
+		 file(boole,Name),mptp_info(Name,theorem)).
+
+nr_numerals(N,Res):-
+	integer(N), N > 0, concat_atom([spc,N,'_numerals'],Name),
+	Res= fof(Name,theorem,
+		 sort(N,(v4_ordinal2 & m1_subset_1(k5_numbers))),
+		 file(numerals,Name),mptp_info(Name,theorem)).
+
+
+first100([
+	  xboole_0,boole,xboole_1,enumset1,zfmisc_1,subset_1,subset,relat_1,
+	  funct_1,grfunc_1,relat_2,ordinal1,wellord1,setfam_1,relset_1,partfun1,
+	  mcart_1,wellord2,funct_2,funct_3,domain_1,binop_1,funcop_1,funct_4,
+	  ordinal2,ordinal3,arytm_3,arytm_2,arytm_1,finset_1,finsub_1,setwiseo,
+	  fraenkel,
+	  numbers,arytm_0,numerals,xcmplx_0,arithm,xreal_0,real,xcmplx_1,
+	  xreal_1,axioms,real_1,square_1,nat_1,int_1,rat_1,binop_2,membered,
+	  complex1,absvalue,card_1,finseq_1,zf_lang,zf_model,zf_colla,orders_1,
+	  eqrel_1,funct_5,card_2,trees_1,finseq_2,recdef_1,classes1,card_3,
+	  classes2,ordinal4,finseq_3,zfmodel1,zf_lang1,zf_refle,zfrefle1,qc_lang1,
+	  qc_lang2,qc_lang3,cqc_lang,pboole,seq_1,seq_2,prob_1,wellset1,seqm_3,
+	  seq_4,real_2,margrel1,prob_2,rcomp_1,multop_1,mcart_2,mcart_3,mcart_4,
+	  mcart_5,mcart_6,finseq_4,finseqop,finsop_1,setwop_2]).
+
+
+mk_article_problems(Article):-
+	declare_mptp_predicates,
+	load_mml1,
+	concat_atom(['/home/urban/mizsrc.current.test6/test/tmp/',Article,'.xml2'],File),
+	consult(File),
+	install_index,
+	concat_atom(['problems/',Article,'/'],Dir),
+	(exists_directory(Dir) -> (string_concat('rm -r -f ', Dir, Command),
+				      shell(Command)); true),
+	make_directory(Dir),
+	findall(P,mk_prop_problem(P,Article,Dir),_).
+
+%theory(fraenkel, [registrations([finsub_1, funct_1, relset_1, subset_1, finset_1, relat_1,
+%				zfmisc_1, xboole_0, fraenkel]),
+%		  requirements([boole, subset])]).
+% create proving problem for a given proposition, store it in file Prefix.P
+% propositions only from the current article can be loaded -
+% - otherwise change their naming
+mk_prop_problem(P,F,Prefix):-
+	theory(F, Theory),
+	fof(P,lemma-derived,Fla,file(F,P),
+		   mptp_info(Nr,Lev,proposition(Line,Col,_),
+			     inference(mizar_by,_,Refs))),
+	atom_concat(Prefix,P,Outfile),
+	tell(Outfile),
+	format('% Mizar problem: ~w,~w,~w,~w ~n', [P,F,Line,Col]),
+	maplist(get_ref_fla, [P|Refs], Flas1),
+	collect_symbols_top(Flas1, Syms1),
+	once(fixpoint(F, [P|Refs], [], Syms1, AllRefs)),
+	findall([fof(R,R1,Out,R3,R4),Info],
+		(member(R,AllRefs),fof(R,R1,R2,R3,R4),all_collect_top(R2,Out,Info)),
+		S1),
+	zip(Flas, Infos, S1),
+	mk_fraenkel_defs(Infos, [], NewFrSyms, Defs),
+	findall(dummy,(nth1(Pos,Defs,D),
+		       sort_transform_top(D,D1), numbervars(D1,0,_),
+		       print(fof(Pos,axiom,D1,file(F,Pos),[freankel])),write('.'),nl),_),
+
+	( member(_,Defs) -> Refs1 = [t2_tarski|AllRefs]; Refs1 = AllRefs),
+	findall(dummy,(member(Q,Refs1), (member(fof(Q,Q1,Q2,Q3,Q4),Flas);
+					    (Q=t2_tarski,fof(Q,Q1,Q2,Q3,Q4))),
+		       sort_transform_top(Q2,SR2), numbervars(SR2,0,_),
+		       (Q=P -> Status = conjecture; Status = axiom),
+		       print(fof(Q,Status,SR2,Q3,[Q4])),write('.'),nl),_),
+%	fof(P,_,P2,file(F,P),P4),
+%	member(fof(P,_,P2,file(F,P),P4),Flas),
+%	sort_transform_top(P2,SP2), numbervars(SP2,0,_),
+%	print(fof(P,conjecture,SP2,file(F,P),[P4])), write('.'),nl,
+	told.
+
 % loads def. theorems too
 load_theorems:-
 	expand_file_name("/home/urban/tmp-miz/mml/*.the2",K),
-	consult(K).
+	load_files(K,[silent(true)]).
+
+load_theorems1:-
+	expand_file_name("/home/urban/mizsrc.current.test6/test/tmp/*.the2",K),
+	load_files(K,[silent(true)]).
+
+% should fail - load with theorems and propositions first
+check_refs:-
+	fof(_,_,_,_,mptp_info(_,_,_,inference(mizar_by,_,I))),
+	member(P,I),
+	not(fof(P,_,_,_,_)).
+
+% should fail
+check_consts:-
+	File=abcmiz_0,
+	findall(L1,(fof(_,_,F,file(File,_),_),collect_symbols_top(F,L1)),L2),
+	union1(L2,[],L),!,
+	member(Const,L),
+	atom_prefix(Const,'c'),
+	not(fof(_,_,_,file(File,Const),_)).
+	
 
 load_clusters:-
 	expand_file_name("/home/urban/tmp-miz/mml/*.dcl2",K),
-	consult(K).
+	load_files(K,[silent(true)]).
+
+load_clusters1:-
+	expand_file_name("/home/urban/mizsrc.current.test6/test/tmp/*.dcl2",K),
+	load_files(K,[silent(true)]).
+
 
 load_constructors:-
 	expand_file_name("/home/urban/tmp-miz/mml/*.dco2",K),
-	consult(K).
+	load_files(K,[silent(true)]).
+
+load_constructors1:-
+	expand_file_name("/home/urban/mizsrc.current.test6/test/tmp/*.dco2",K),
+	load_files(K,[silent(true)]).
+
+load_environs1:-
+	expand_file_name("/home/urban/mizsrc.current.test6/test/tmp/*.evl2",K),
+	load_files(K,[silent(true)]).
+
+load_mml1:- load_clusters1,load_theorems1,load_constructors1,load_environs1.
+
+install_index:-
+	abolish(fof_section/2),
+	abolish(fof_cluster/3),
+	abolish(fof_req/3),
+%	add_hidden,
+	logic_syms(LogicSyms),
+	findall(d, (
+		     clause(fof(_,_,_,file(_,Sec1), _),_,Id),
+		     assert(fof_section(Sec1, Id))), _),
+	findall(d, (
+		     member(Cl,[fcluster,ccluster]),
+		     fof(Ref,_,Fla,file(F,_),mptp_info(_,Cl)),
+		     cl_needed_syms_top(Fla,AnteSyms),
+		     assert(fof_cluster(F,Ref,AnteSyms))), _),
+	findall(d, (
+		     fof(Ref,_,Fla,file(F,_),mptp_info(_,rcluster)),
+		     collect_symbols_top(Fla,AllSyms),
+		     subtract(AllSyms,LogicSyms,Syms),
+		     assert(fof_cluster(F,Ref,AnteSyms))), _),
+	findall(d, (
+		     member(F,[numerals, boole, subset, arithm, real]),
+		     fof(Ref,_,Fla,file(F,_),mptp_info(_,theorem)),
+		     collect_symbols_top(Fla,AllSyms),
+		     subtract(AllSyms,LogicSyms,Syms),
+		     assert(fof_req(F,Ref,Syms))), _).
+
 
 fraenkel_ths(S):-
 	findall(A,(fof(A,theorem,D,_,_),collect_symbols_top(D,L),
