@@ -68,11 +68,13 @@ declare_TPTP_operators:-
 :- declare_TPTP_operators.
 logic_syms([++,--,'$',~,'|','~|',&,~&,=>,<=,<=>,<~>,!,?,:,'..',sort,all,'.',[]]).
 
+
 portray(A = B):- format(' equal(~p,~p) ',[A,B]).
 portray(~A):- write(' ~ ('), print(A), write(') ').
 portray(A & B):- format(' (~p & ~p) ',[A,B]).
 portray(A => B):- format(' (~p => ~p) ',[A,B]).
 portray(A <=> B):- format(' (~p <=> ~p) ',[A,B]).
+portray(A : B):- var(A), format(' ( ~p : ~p) ',[A,B]).
 portray(! A : B):- format(' (! ~p : ~p) ',[A,B]).
 portray(? A : B):- format(' (? ~p : ~p) ',[A,B]).
 
@@ -90,11 +92,84 @@ declare_mptp_predicates:-
  multifile(fof/4),
  multifile(fof/5),
  multifile(theory/2),
+ abolish(fof_name/2),
  abolish(fof_section/2),
  abolish(fof_cluster/3),
  abolish(fof_req/3),
  index(fof(1,1,0,1,1)),
  index(fof(1,1,0,1)).
+
+%% collect subterms satisfying P with count, test by equality
+collect_with_count_top(Pred,Term,OutList,OutCounts):-
+	collect_with_count(Pred,Term,[],[],OutList,OutCounts),!.
+collect_with_count(P,X,In,InC,Out,OutC):-
+	(var(X);atomic(X)), !, collect_with_count1(P,X,In,InC,Out,OutC).
+%% neglects the head functor!
+collect_with_count(P,X,In,InC,Out,OutC):-
+	collect_with_count1(P,X,In,InC,Out1,OutC1),
+	X =.. [_|T1],
+	collect_with_countl(P,T1,Out1,OutC1,Out,OutC).
+collect_with_countl(_,[],In,InC,In,InC).
+collect_with_countl(P,[H|T],In,InC,Out,OutC):-
+	collect_with_count(P,H,In,InC,Out1,OutC1),
+	collect_with_countl(P,T,Out1,OutC1,Out,OutC).
+
+%% do the collecting
+collect_with_count1(P,X,In,InC,Out,OutC):- apply(P,[X]),!,
+	(enth1(N,In,X) ->
+	    (Out = In, remove_at(C_X,InC,N,Tmp),
+		succ(C_X,C1_X), insert_at(C1_X,Tmp,N,OutC));
+	    (Out = [X|In], OutC = [1|InC])).
+collect_with_count1(_,_,In,InC,In,InC).
+
+%% exact select
+eselect(A, [C|B], B):- A == C,!.
+eselect(A, [B|C], [B|D]):- eselect(A, C, D).
+%% exact nth1
+enth1(A, B, C):- var(A), !, enth_gen(B, C, 1, A).
+enth_gen([A|_], A1, C, C):- A == A1. 
+enth_gen([_|B], C, D, E) :-
+        succ(D, F),
+        enth_gen(B, C, F, E).
+
+%% remove K-th element (1-based)
+% remove_at(X,L,K,R) :- X is the K'th element of the list L; R is the
+%    list that remains when the K'th element is removed from L.
+%    (element,list,integer,list) (?,?,+,?)
+remove_at(X,[X|Xs],1,Xs).
+remove_at(X,[Y|Xs],K,[Y|Ys]) :- K > 1, 
+   K1 is K - 1, remove_at(X,Xs,K1,Ys).
+
+% Insert an element at a given position into a list (1-based)
+% insert_at(X,L,K,R) :- X is inserted into the list L such that it
+%    occupies position K. The result is the list R.
+%    (element,list,integer,list) (?,?,+,?)
+insert_at(X,L,K,R) :- remove_at(X,R,K,L).
+
+% Split a list into two parts
+% split(L,N,L1,L2) :- the list L1 contains the first N elements
+%    of the list L, the list L2 contains the remaining elements.
+%    (list,integer,list,list) (?,+,?,?)
+split(L,0,[],L).
+split([X|Xs],N,[X|Ys],Zs) :- N > 0, N1 is N - 1, split(Xs,N1,Ys,Zs).
+
+%% mptp_func with args
+mptp_func(X):- X =..[H|_],atom_chars(H,[F|_]),member(F,[k,g,u,'0','1','2','3','4','5','6','7','8','9']).
+ground_mptp_func(X):- ground(X),mptp_func(X).
+
+%% collect ground counts into buk/3, stack failure otherwise
+%% then print and run perl -e 'while(<>) { /.([0-9]+), (.*)./; $h{$2}+=$1;} foreach $k (sort {$h{$b} <=> $h{$a}} (keys %h)) {print "$h{$k}:$k\n";}'
+%% on the result
+get_ground_info:-
+	fof(Ref,_,Fla,file(_,_), mptp_info(_,theorem)),
+	collect_with_count_top(ground_mptp_func,Fla,Out,OutC),
+	not(buk(Ref,_,_)),assert(buk(Ref,Out,OutC)),
+	fail.
+print_ground_info:-
+	tell('00ground'),
+	findall(e,(buk(A,B,C),zip(C,B,S),findall(d,(member(X,S),print(X),nl),_)),L),
+	told.
+
 
 %% collect nonvar symbols from term
 collect_symbols_top(X,L):-
@@ -248,7 +323,7 @@ mk_fraenkel_defs1([[V,C,Trm]|T], FrSyms, NewFrSyms, [D|Defs]):-
 	mk_fraenkel_defs1(T, FrSyms1, NewFrSyms, Defs).
 
 % should be unique for Ref
-get_ref_fla(Ref,Fla):- fof(Ref,_,Fla,_,_),!.
+get_ref_fla(Ref,Fla):- fof_name(Ref,Id),clause(fof(Ref,_,Fla,_,_),_,Id),!.
 
 % not unique for Sec and Info
 get_sec_info_refs(RefsIn, Secs, Info, NewRefs):- !,
@@ -401,7 +476,9 @@ mk_prop_problem(P,F,Prefix):-
 	collect_symbols_top(Flas1, Syms1),
 	once(fixpoint(F, [P|Refs], [], Syms1, AllRefs)),
 	findall([fof(R,R1,Out,R3,R4),Info],
-		(member(R,AllRefs),fof(R,R1,R2,R3,R4),all_collect_top(R2,Out,Info)),
+		(member(R,AllRefs), fof_name(R,Id),
+		    clause(fof(R,R1,R2,R3,R4),_,Id),
+		    all_collect_top(R2,Out,Info)),
 		S1),
 	zip(Flas, Infos, S1),
 	mk_fraenkel_defs(Infos, [], NewFrSyms, Defs),
@@ -470,11 +547,15 @@ load_environs1:-
 load_mml1:- load_clusters1,load_theorems1,load_constructors1,load_environs1.
 
 install_index:-
+	abolish(fof_name/2),
 	abolish(fof_section/2),
 	abolish(fof_cluster/3),
 	abolish(fof_req/3),
 %	add_hidden,
 	logic_syms(LogicSyms),
+	findall(d, (
+		     clause(fof(Ref,_,_,_,_),_,Id),
+		     assert(fof_name(Ref, Id))), _),
 	findall(d, (
 		     clause(fof(_,_,_,file(_,Sec1), _),_,Id),
 		     assert(fof_section(Sec1, Id))), _),
