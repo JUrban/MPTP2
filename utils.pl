@@ -240,12 +240,18 @@ sort_transform(X1,X2):-
 % all_collect(+InTerm,-OutTerm,+Context=[(Var:Sort1)|RestV],
 %             -Info=[[NewVar,Context,all(Svars1,Trm1,Frm1)]|RestI])
 
+%% switch to fail for debug
+optimize_fraenkel:-true.
 
 all_collect_qlist([],[],C,C,[]).
 all_collect_qlist([(X:S)|T],[(X:S1)|T1],Context,NewContext,Info):-
 	all_collect(S,S1,Context,Info_s),
-	all_collect_qlist(T,T1,[(X:S1)|Context],NewContext,Info_t),
+	append(Context,[(X:S1)],C1),
+	all_collect_qlist(T,T1,C1,NewContext,Info_t),
 	append(Info_s,Info_t,Info).
+
+fr_vars(FrInfo, FrVars):- maplist(nth1(1), FrInfo, FrVars).
+split_svars(Vars,Sorts,Svars):- zip_s(':', Vars, Sorts, Svars).
 
 all_collect_top(In,Out,Info):- all_collect(In,Out,[],Info),!.
 % end of traversal
@@ -261,7 +267,11 @@ all_collect(? Svars : Y, ? Svars1 : Y1, Context, Info_r):-
 	append(Info_s,Info_y,Info_r).
 % fix context!!
 all_collect(all(Svars,Trm,Frm),NewVar,Context,
-	    [[NewVar,Context,all(Svars1,Trm1,Frm1)]|Info_r]):-
+	    [[NewVar,RContext,all(Svars1,Trm1,Frm1)]|Info_r]):-
+	(optimize_fraenkel ->
+	    (free_variables(all(Svars,Trm,Frm), FreeVars),
+		real_context(FreeVars, Context, RContext));
+	    RContext = Context),
 	all_collect_qlist(Svars,Svars1,Context,NewContext,Info),
 	all_collect_l([Trm,Frm],[Trm1,Frm1],NewContext,Info_l),
 	append(Info,Info_l,Info_r).
@@ -279,6 +289,36 @@ all_collect_l([H1|T1],[H2|T2],Context,Info_r):-
 	all_collect_l(T1,T2,Context,Info_l),
 	append(Info,Info_l,Info_r).
 
+%% only select context necessary for InVars from BigC
+%% done by copy & number to avoid freevars
+is_numvar(X):- ground(X), X=..['$VAR'|_].
+
+
+%% add variables recursively needed for New (i.e. in their sorts)
+%% AllVars and AllSorts must be aligned
+add_real_numvars(_,_,Old,[],Old).
+add_real_numvars(AllVars,AllSorts,Old,New,Result):-
+	append(Old,New,Old1),
+	findall(S, (member(V,New),nth1(N,AllVars,V),nth1(N,AllSorts,S)), Srts0),
+	collect_with_count_top(is_numvar,Srts0,New0,_),
+	intersection(AllVars,New0,New1),
+	subtract(New1,Old1,New2),
+	add_real_numvars(AllVars,AllSorts,Old1,New2,Result).
+
+%% bagof needed in the end instead of findall! (not to spoil freevars);
+%% hence the alternative - bagof fails with empty list unlike findall
+%% N1^ is needed for bagof not to bind N1
+real_context(InVars, BigC, RealC):-
+	split_svars(Vars,Sorts,BigC),
+	copy_term([InVars,Vars,Sorts],[InVars1,Vars1,Sorts1]),
+	numbervars([InVars1,Vars1,Sorts1],0,_),
+	intersection(Vars1,InVars1,Added),
+	add_real_numvars(Vars1,Sorts1,[],Added,AllAdded),
+	(AllAdded = [] -> RealC = [];
+	    (findall(N, (member(V,AllAdded),nth1(N,Vars1,V)), Nrs),
+		sort(Nrs,Nrs1),
+		bagof(C, (N1^member(N1,Nrs1),nth1(N1,BigC,C)), RealC))).
+
 
 % ##todo: this now assumes that length of Context is number of
 %       preceding variables - fix for other quantification formats
@@ -292,8 +332,6 @@ all_collect_l([H1|T1],[H2|T2],Context,Info_r):-
 % +FrInfo, -NewFrInfo ... unordered list of
 % lists of Fraenkel symbols starting with their arity, e.g.:
 % [[0|FrSymsOfArity_0],[2|FrSymsOfArity_2],[1|FrSymsOfArity_1]],
-
-split_svars(Vars,Sorts,Svars):- zip_s(':', Vars, Sorts, Svars).
 
 new_fr_sym(Arity, FrInfo, NewFrInfo, NewSym):-
 	( select([Arity|FrSyms], FrInfo, TmpInfo);
