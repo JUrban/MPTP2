@@ -167,7 +167,7 @@ get_ground_info:-
 	fail.
 print_ground_info:-
 	tell('00ground'),
-	findall(e,(buk(A,B,C),zip(C,B,S),findall(d,(member(X,S),print(X),nl),_)),L),
+	findall(e,(buk(_,B,C),zip(C,B,S),findall(d,(member(X,S),print(X),nl),_)),_),
 	told.
 
 
@@ -301,7 +301,7 @@ new_fr_sym(Arity, FrInfo, NewFrInfo, NewSym):-
 	concat_atom([all,Arity,Nr], '_', NewSym),
 	select([Arity,NewSym|FrSyms], NewFrInfo, TmpInfo), ! .
 
-mk_fraenkel_def(Var, Context, all(Svars1,Trm1,Frm1), FrInfo, NewFrInfo, Def) :-
+mk_fraenkel_def(Var, Context, all(Svars1,Trm1,Frm1), FrInfo, NewFrInfo, NewSym, Def) :-
 	split_svars(Vars, _, Context),
 	length(Vars, Arity),
 	new_fr_sym(Arity, FrInfo, NewFrInfo, NewSym),	
@@ -311,16 +311,13 @@ mk_fraenkel_def(Var, Context, all(Svars1,Trm1,Frm1), FrInfo, NewFrInfo, Def) :-
 	Def = ( ! [(X : $true)|Context] : ( InPred <=> ExFla ) ),
 	Var = FrTrm.
 
-mk_fraenkel_defs([], FrSyms, FrSyms, []).
-mk_fraenkel_defs([Info|T], FrSyms, NewFrSyms, Defs):-
-	mk_fraenkel_defs1(Info, FrSyms, FrSyms1, Defs1),
-	mk_fraenkel_defs(T, FrSyms1, NewFrSyms, Defs2),
-	append(Defs1, Defs2, Defs).
+mk_fraenkel_defs_top(Infos, NewFrSyms, NewDefs):-
+	mk_fraenkel_defs(Infos, [], [], NewFrSyms, NewDefs),!.
 
-mk_fraenkel_defs1([], FrSyms, FrSyms, []).
-mk_fraenkel_defs1([[V,C,Trm]|T], FrSyms, NewFrSyms, [D|Defs]):-
-	mk_fraenkel_def(V, C, Trm, FrSyms, FrSyms1, D),
-	mk_fraenkel_defs1(T, FrSyms1, NewFrSyms, Defs).
+mk_fraenkel_defs([], _, FrSyms, FrSyms, []).
+mk_fraenkel_defs([[V,C,Trm]|T], _, FrSyms, NewFrSyms, [D|Defs]):-
+	mk_fraenkel_def(V, C, Trm, FrSyms, FrSyms1, _, D),
+	mk_fraenkel_defs(T, _, FrSyms1, NewFrSyms, Defs).
 
 % should be unique for Ref
 get_ref_fla(Ref,Fla):- fof_name(Ref,Id),clause(fof(Ref,_,Fla,_,_),_,Id),!.
@@ -480,8 +477,9 @@ mk_prop_problem(P,F,Prefix):-
 		    clause(fof(R,R1,R2,R3,R4),_,Id),
 		    all_collect_top(R2,Out,Info)),
 		S1),
-	zip(Flas, Infos, S1),
-	mk_fraenkel_defs(Infos, [], NewFrSyms, Defs),
+	zip(Flas, Infos1, S1),
+	append_l(Infos1,Infos),
+	mk_fraenkel_defs_top(Infos, NewFrSyms, Defs),
 	findall(dummy,(nth1(Pos,Defs,D),
 		       sort_transform_top(D,D1), numbervars(D1,0,_),
 		       print(fof(Pos,axiom,D1,file(F,Pos),[freankel])),write('.'),nl),_),
@@ -589,8 +587,9 @@ fraenkel_info(S1):-
 
 expanded_franks(Flas,D):-
 	fraenkel_info(S),
-	zip(Flas,Infos,S),
-	mk_fraenkel_defs(Infos,[],NewFrSyms,D),
+	zip(Flas,Infos1,S),
+	append_l(Infos1,Infos),
+	mk_fraenkel_defs_top(Infos,NewFrSyms,D),
 	length(D,N1), maplist(length,NewFrSyms,Lengths),
 	sumlist(Lengths,N2),
 	maplist(collect_symbols_top,Flas,L),
