@@ -91,6 +91,7 @@ declare_mptp_predicates:-
  abolish(theory/2),
  multifile(fof/4),
  multifile(fof/5),
+ dynamic(fof/5),
  multifile(theory/2),
  abolish(fof_name/2),
  abolish(fof_section/2),
@@ -442,18 +443,32 @@ first100([
 	  seq_4,real_2,margrel1,prob_2,rcomp_1,multop_1,mcart_2,mcart_3,mcart_4,
 	  mcart_5,mcart_6,finseq_4,finseqop,finsop_1,setwop_2]).
 
+mk_first100:-
+	declare_mptp_predicates,load_mml1,first100(L),!,
+	member(A,L),mk_article_problems(A),fail.
 
 mk_article_problems(Article):-
-	declare_mptp_predicates,
-	load_mml1,
-	concat_atom(['/home/urban/mizsrc.current.test6/test/tmp/',Article,'.xml2'],File),
+%	declare_mptp_predicates,
+%	load_mml1,
+	MMLDir='/home/urban/mizsrc.current.test6/test/tmp/',
+	concat_atom([MMLDir, Article,'.xml2'],File),
 	consult(File),
 	install_index,
 	concat_atom(['problems/',Article,'/'],Dir),
 	(exists_directory(Dir) -> (string_concat('rm -r -f ', Dir, Command),
 				      shell(Command)); true),
 	make_directory(Dir),
-	findall(P,mk_prop_problem(P,Article,Dir),_).
+	findall(P,mk_prop_problem(P,Article,Dir),_),
+%% retract current file but return mml parts
+	retractall(fof(_,_,_,file(Article,_),_)),
+	concat_atom([MMLDir ,Article, '.dcl2'],DCL),
+	concat_atom([MMLDir ,Article, '.dco2'],DCO),
+	concat_atom([MMLDir ,Article, '.the2'],THE),
+	sublist(exists_file,[DCL,DCO,THE],ToLoad),
+	load_files(ToLoad,[silent(true)]).
+%	retractall(fof(_,_,_,file(Article,_),mptp_info(_,_,proposition(_,_,_)))),
+%	retractall(fof(_,_,_,file(Article,_),mptp_info(_,_,proposition(_,_,_),_))),
+%	retractall(fof(_,_,_,file(Article,_),mptp_info(_,_,constant(_,_)))),!.
 
 %theory(fraenkel, [registrations([finsub_1, funct_1, relset_1, subset_1, finset_1, relat_1,
 %				zfmisc_1, xboole_0, fraenkel]),
