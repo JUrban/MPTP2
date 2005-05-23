@@ -237,11 +237,12 @@ sort_transform(X1,X2):-
 % Then we find optimal 'skolem' definitions corresponding to the fraenkels,
 % instantiate such functors for each frankel with its context, and
 % put them into the formulas by unifying them with the placeholder variables.
+% GroundCopy is kept for exact comparisons envolving context
 % all_collect(+InTerm,-OutTerm,+Context=[(Var:Sort1)|RestV],
-%             -Info=[[NewVar,Context,all(Svars1,Trm1,Frm1)]|RestI])
+%             -Info=[[NewVar,Context,all(Svars1,Trm1,Frm1),GroundCopy]|RestI])
 
 %% switch to fail for debug
-optimize_fraenkel:-true.
+optimize_fraenkel:- fail.
 
 all_collect_qlist([],[],C,C,[]).
 all_collect_qlist([(X:S)|T],[(X:S1)|T1],Context,NewContext,Info):-
@@ -267,11 +268,13 @@ all_collect(? Svars : Y, ? Svars1 : Y1, Context, Info_r):-
 	append(Info_s,Info_y,Info_r).
 % fix context!!
 all_collect(all(Svars,Trm,Frm),NewVar,Context,
-	    [[NewVar,RContext,all(Svars1,Trm1,Frm1)]|Info_r]):-
+	    [[NewVar,RContext,all(Svars1,Trm1,Frm1),GroundCopy]|Info_r]):-
 	(optimize_fraenkel ->
 	    (free_variables(all(Svars,Trm,Frm), FreeVars),
 		real_context(FreeVars, Context, RContext));
 	    RContext = Context),
+	copy_term([RContext,all(Svars,Trm,Frm)],GroundCopy),
+	numbervars(GroundCopy,0,_),
 	all_collect_qlist(Svars,Svars1,Context,NewContext,Info),
 	all_collect_l([Trm,Frm],[Trm1,Frm1],NewContext,Info_l),
 	append(Info,Info_l,Info_r).
@@ -354,9 +357,15 @@ mk_fraenkel_defs_top(Infos, NewFrSyms, NewDefs):-
 	mk_fraenkel_defs(Infos, [], [], NewFrSyms, NewDefs),!.
 
 mk_fraenkel_defs([], _, FrSyms, FrSyms, []).
-mk_fraenkel_defs([[V,C,Trm]|T], _, FrSyms, NewFrSyms, [D|Defs]):-
-	mk_fraenkel_def(V, C, Trm, FrSyms, FrSyms1, _, D),
-	mk_fraenkel_defs(T, _, FrSyms1, NewFrSyms, Defs).
+mk_fraenkel_defs([[V,C,_,GrC]|T], GrCopies, FrSyms, NewFrSyms, Defs):-
+	member([FoundSym,GrC], GrCopies), !,
+	split_svars(Vars, _, C),
+	V =.. [FoundSym|Vars],
+	mk_fraenkel_defs(T, GrCopies, FrSyms, NewFrSyms, Defs).
+
+mk_fraenkel_defs([[V,C,Trm,GrC]|T], GrCopies, FrSyms, NewFrSyms, [D|Defs]):-
+	mk_fraenkel_def(V, C, Trm, FrSyms, FrSyms1, NewSym, D),
+	mk_fraenkel_defs(T, [[NewSym,GrC]|GrCopies], FrSyms1, NewFrSyms, Defs).
 
 % should be unique for Ref
 get_ref_fla(Ref,Fla):- fof_name(Ref,Id),clause(fof(Ref,_,Fla,_,_),_,Id),!.
