@@ -369,6 +369,9 @@ mk_fraenkel_defs([[V,C,Trm,GrC]|T], GrCopies, FrSyms, NewFrSyms, [D|Defs]):-
 
 % should be unique for Ref
 get_ref_fla(Ref,Fla):- fof_name(Ref,Id),clause(fof(Ref,_,Fla,_,_),_,Id),!.
+get_ref_fof(Ref,fof(Ref,R1,R2,R3,R4)):-
+	fof_name(Ref,Id),
+	clause(fof(Ref,R1,R2,R3,R4),_,Id),!.
 
 % not unique for Sec and Info
 get_sec_info_refs(RefsIn, Secs, Info, NewRefs):- !,
@@ -471,7 +474,7 @@ nr_boole(N,Res):-
 nr_numerals(N,Res):-
 	integer(N), N > 0, concat_atom([spc,N,'_numerals'],Name),
 	Res= fof(Name,theorem,
-		 sort(N,(v4_ordinal2 & m1_subset_1(k5_numbers))),
+		 sort(N,(v2_xreal_0 & m1_subset_1(k5_numbers))),
 		 file(numerals,Name),mptp_info(Name,theorem)).
 
 
@@ -493,6 +496,22 @@ first100([
 mk_first100:-
 	declare_mptp_predicates,load_mml1,first100(L),!,
 	member(A,L),mk_article_problems(A),fail.
+
+test_refs_first100:-
+	declare_mptp_predicates,first100(L),!,
+	member(A,L),test_refs(A),fail.
+
+%% test uniqueness of references inside Article
+test_refs(Article):-
+	MMLDir='/home/urban/mizsrc.current.test6/test/tmp/',
+	concat_atom([MMLDir, Article,'.xml2'],File),
+	consult(File),
+	install_index,
+	findall([Fof1,Fof2], (fof_name(X,Id1),fof_name(X,Id2),
+				 Id1 < Id2, clause(Fof1,_,Id1),
+				 clause(Fof2,_,Id2)),S),
+	print(S),nl,length(S,N),print(N),
+	retractall(fof(_,_,_,file(Article,_),_)).
 
 mk_article_problems(Article):-
 %	declare_mptp_predicates,
@@ -535,8 +554,7 @@ mk_prop_problem(P,F,Prefix):-
 	collect_symbols_top(Flas1, Syms1),
 	once(fixpoint(F, [P|Refs], [], Syms1, AllRefs)),
 	findall([fof(R,R1,Out,R3,R4),Info],
-		(member(R,AllRefs), fof_name(R,Id),
-		    clause(fof(R,R1,R2,R3,R4),_,Id),
+		(member(R,AllRefs), get_ref_fof(R,fof(R,R1,R2,R3,R4)),
 		    all_collect_top(R2,Out,Info)),
 		S1),
 	zip(Flas, Infos1, S1),
