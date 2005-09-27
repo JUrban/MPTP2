@@ -1,3 +1,14 @@
+%%- -*-Mode: Prolog;-*--------------------------------------------------
+%%
+%% File  : utils.pl
+%%
+%% Author: Josef Urban
+%%
+%%  MPTP2 Prolog utilities
+%%     
+%%------------------------------------------------------------------------
+
+
 zip([],[],[]).
 zip([H|T],[H1|T1],[[H,H1]|T2]):- zip(T,T1,T2).
 
@@ -476,6 +487,15 @@ nr_numerals(N,Res):-
 	Res= fof(Name,theorem,
 		 sort(N,(v2_xreal_0 & m1_subset_1(k5_numbers))),
 		 file(numerals,Name),mptp_info(Name,theorem)).
+
+%% other requirements:
+%% - 2 distinct numerals are not equal
+%% - functor rqImaginaryUnit (k1_xcmplx_0) equals to i (what is i? - I'll ignore
+%%   "complex numerals" in the first version probably
+%% - +,*,-/1, 1/x, -/2,/ evaluation (rqRealAdd, rqRealMult, rqRealNeg, rqRealInv,
+%%                 rqRealDiff, rqRealDiv -
+%%         - k2_xcmplx_0, k3_xcmplx_0, k4_xcmplx_0, k5_xcmplx_0, k6_xcmplx_0, k7_xcmplx_0)
+%%   special cases for 0 and 1 mentioned in arithm.miz
 
 
 first100([
