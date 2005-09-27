@@ -8,6 +8,8 @@ Installation:
 
 - Unpack, set the variable mml_dir at the top of utils.pl 
   to the location of the unpacked 'pl' directory in the distro.
+- If you want to work with the XML files too, unpack the file
+  xml.tar.gz. It will take almost 2GB.
 - The prolog files are tested only with SWI Prolog 5.2 now.
 - Load utils.pl into SWI.
 - Try generating 'by' problems for first 100 MML articles by 
@@ -25,6 +27,7 @@ Files:
 README   ... this file
 mizar-7.5.01_4.39.921-i386-linux.tar .... Mizar distro used for this MPTP
 mml.lar  ... List of regular Mizar articles in the Mizar distro
+xml.tar.gz . packed xml directory - takes about 2GB unpacked
 utils.pl ... Prolog utilities for generating ATP problems, etc.
 
 
