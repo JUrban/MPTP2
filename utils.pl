@@ -4,9 +4,15 @@
 %%
 %% Author: Josef Urban
 %%
-%%  MPTP2 Prolog utilities
-%%     
+%%  MPTP2 Prolog utilities, tested only with SWI Prolog 5.2 now.
+%%  The top-level predicate is now mk_first100/0.
 %%------------------------------------------------------------------------
+
+
+%% set this to the location of Prolog files created from MML
+%% ('pl' directory in the distro).
+mml_dir("/home/urban/miztmp/distro/pl/").
+mml_dir_atom(A):- mml_dir(S), string_to_atom(S,A).
 
 
 zip([],[],[]).
@@ -513,8 +519,11 @@ first100([
 	  seq_4,real_2,margrel1,prob_2,rcomp_1,multop_1,mcart_2,mcart_3,mcart_4,
 	  mcart_5,mcart_6,finseq_4,finseqop,finsop_1,setwop_2]).
 
+
+%% Top level predicate for creating 'by' problems for
+%% first 100 MML articles.
 mk_first100:-
-	declare_mptp_predicates,load_mml1,first100(L),!,
+	declare_mptp_predicates,load_mml,first100(L),!,
 	member(A,L),mk_article_problems(A),fail.
 
 test_refs_first100:-
@@ -523,7 +532,7 @@ test_refs_first100:-
 
 %% test uniqueness of references inside Article
 test_refs(Article):-
-	MMLDir='/home/urban/mizsrc.current.test6/test/tmp/',
+	mml_dir_atom(MMLDir),
 	concat_atom([MMLDir, Article,'.xml2'],File),
 	consult(File),
 	install_index,
@@ -535,8 +544,8 @@ test_refs(Article):-
 
 mk_article_problems(Article):-
 %	declare_mptp_predicates,
-%	load_mml1,
-	MMLDir='/home/urban/mizsrc.current.test6/test/tmp/',
+%	load_mml,
+	mml_dir_atom(MMLDir),
 	concat_atom([MMLDir, Article,'.xml2'],File),
 	consult(File),
 	install_index,
@@ -596,14 +605,30 @@ mk_prop_problem(P,F,Prefix):-
 %	print(fof(P,conjecture,SP2,file(F,P),[P4])), write('.'),nl,
 	told.
 
-% loads def. theorems too
-load_theorems:-
-	expand_file_name("/home/urban/tmp-miz/mml/*.the2",K),
-	load_files(K,[silent(true)]).
 
-load_theorems1:-
-	expand_file_name("/home/urban/mizsrc.current.test6/test/tmp/*.the2",K),
-	load_files(K,[silent(true)]).
+
+%% allowed file estensions for theory files
+theory_exts([dcl,dco,evl,the]).
+
+%% Kind must be in theory_exts
+load_theory_files(Kind):-
+	atom(Kind),
+	theory_exts(Exts),
+	member(Kind, Exts),
+	mml_dir_atom(MMLDir),
+	concat_atom([MMLDir, '*.', Kind, '2'], Anames),
+	string_to_atom(WildCard, Anames),
+	expand_file_name(WildCard, Names),
+	load_files(Names,[silent(true)]).
+
+
+load_clusters:- load_theory_files(dcl).
+load_constructors:- load_theory_files(dco).
+load_environs:- load_theory_files(evl).
+load_theorems:- load_theory_files(the).
+
+load_mml:- load_clusters,load_theorems,load_constructors,load_environs.
+
 
 % should fail - load with theorems and propositions first
 check_refs:-
@@ -620,29 +645,6 @@ check_consts:-
 	atom_prefix(Const,'c'),
 	not(fof(_,_,_,file(File,Const),_)).
 	
-
-load_clusters:-
-	expand_file_name("/home/urban/tmp-miz/mml/*.dcl2",K),
-	load_files(K,[silent(true)]).
-
-load_clusters1:-
-	expand_file_name("/home/urban/mizsrc.current.test6/test/tmp/*.dcl2",K),
-	load_files(K,[silent(true)]).
-
-
-load_constructors:-
-	expand_file_name("/home/urban/tmp-miz/mml/*.dco2",K),
-	load_files(K,[silent(true)]).
-
-load_constructors1:-
-	expand_file_name("/home/urban/mizsrc.current.test6/test/tmp/*.dco2",K),
-	load_files(K,[silent(true)]).
-
-load_environs1:-
-	expand_file_name("/home/urban/mizsrc.current.test6/test/tmp/*.evl2",K),
-	load_files(K,[silent(true)]).
-
-load_mml1:- load_clusters1,load_theorems1,load_constructors1,load_environs1.
 
 install_index:-
 	abolish(fof_name/2),
