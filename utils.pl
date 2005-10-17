@@ -11,7 +11,8 @@
 
 %% set this to the location of Prolog files created from MML
 %% ('pl' directory in the distro).
-mml_dir("/home/urban/miztmp/distro/pl/").
+%mml_dir("/home/urban/miztmp/distro/pl/").
+mml_dir("/big/urban/miztmp/mml3/tmp/").
 mml_dir_atom(A):- mml_dir(S), string_to_atom(S,A).
 
 
@@ -179,7 +180,7 @@ ground_mptp_func(X):- ground(X),mptp_func(X).
 %% then print and run perl -e 'while(<>) { /.([0-9]+), (.*)./; $h{$2}+=$1;} foreach $k (sort {$h{$b} <=> $h{$a}} (keys %h)) {print "$h{$k}:$k\n";}'
 %% on the result
 get_ground_info:-
-	fof(Ref,_,Fla,file(_,_), mptp_info(_,theorem)),
+	fof(Ref,_,Fla,file(_,_), [mptp_info(_,_,theorem,_,_)|_]),
 	collect_with_count_top(ground_mptp_func,Fla,Out,OutC),
 	not(buk(Ref,_,_)),assert(buk(Ref,Out,OutC)),
 	fail.
@@ -403,23 +404,30 @@ get_sec_info_refs(RefsIn, Secs, Info, NewRefs):-
 
 %% add properties for SymsIn
 get_properties(RefsIn,SymsIn,AddedRefs):-
-	get_sec_info_refs(RefsIn, SymsIn, mptp_info(_,_,property(_)), AddedRefs).
+	get_sec_info_refs(RefsIn, SymsIn,
+			  [mptp_info(_,_,_,_,[property(_)])|_], AddedRefs).
 
 get_existence(RefsIn,SymsIn,AddedRefs):-
-	get_sec_info_refs(RefsIn, SymsIn, mptp_info(_,_,existence), AddedRefs).
+	get_sec_info_refs(RefsIn, SymsIn,
+			  [mptp_info(_,_,_,_,[existence])|_], AddedRefs).
 
-get_redefinitions(RefsIn,SymsIn,AddedRefs):-	get_sec_info_refs(RefsIn, SymsIn,
-			  mptp_info(_,_,redefinition(_,_,_,_)), AddedRefs).
+get_redefinitions(RefsIn,SymsIn,AddedRefs):-
+	get_sec_info_refs(RefsIn, SymsIn,
+			  [mptp_info(_,_,_,_,[redefinition(_,_,_,_)])|_],
+			  AddedRefs).
 
 get_types(RefsIn,SymsIn,AddedRefs):-
-	get_sec_info_refs(RefsIn, SymsIn, mptp_info(_,_,ctype), Refs1),
-	get_sec_info_refs(RefsIn, SymsIn, mptp_info(_,_,constant(_,type)), Refs2),
-	get_sec_info_refs(RefsIn, SymsIn, mptp_info(_,_,functor(scheme,type)), Refs3),
+	get_sec_info_refs(RefsIn, SymsIn,
+			  [mptp_info(_,_,_,_,[ctype])|_], Refs1),
+	get_sec_info_refs(RefsIn, SymsIn,
+			  [mptp_info(_,_,constant,_,[_,type])|_], Refs2),
+	get_sec_info_refs(RefsIn, SymsIn,
+			  [mptp_info(_,_,functor,_,[scheme,type])|_], Refs3),
 	flatten([Refs1, Refs2, Refs3], AddedRefs).
 
 get_equalities(RefsIn,SymsIn,AddedRefs):-
 	get_sec_info_refs(RefsIn, SymsIn,
-			  mptp_info(_,_,constant(_,equality)), AddedRefs).
+			  [mptp_info(_,_,constant,_,[_,equality])], AddedRefs).
 
 %% OldSyms are used only for clusters and requirements
 one_pass(F,RefsIn,OldSyms,NewSyms,AddedRefs):-
@@ -482,17 +490,19 @@ get_requirements(Files,RefsIn,OldSyms,NewSyms,AddedRefs):-
 		AddedRefs).
 
 nr_boole(0,fof(spc0_boole,theorem, v1_xboole_0(0),
-		  file(boole,spc0_boole),mptp_info(spc0_boole,theorem))):- !.
+	       file(boole,spc0_boole),
+	       [mptp_info(0,[],theorem,position(0,0),[0])])):- !.
 nr_boole(N,Res):-
 	integer(N), N > 0, concat_atom([spc,N,'_boole'],Name),
 	Res= fof(Name,theorem, ~ (v1_xboole_0(N)),
-		 file(boole,Name),mptp_info(Name,theorem)).
+		 file(boole,Name),[mptp_info(0,[],theorem,position(0,0),[0])]).
 
 nr_numerals(N,Res):-
 	integer(N), N > 0, concat_atom([spc,N,'_numerals'],Name),
 	Res= fof(Name,theorem,
 		 sort(N,(v2_xreal_0 & m1_subset_1(k5_numbers))),
-		 file(numerals,Name),mptp_info(Name,theorem)).
+		 file(numerals,Name),
+		 [mptp_info(0,[],theorem,position(0,0),[0])]).
 
 %% other requirements:
 %% - 2 distinct numerals are not equal
@@ -524,7 +534,7 @@ first100([
 %% first 100 MML articles.
 mk_first100:-
 	declare_mptp_predicates,load_mml,first100(L),!,
-	member(A,L),mk_article_problems(A),fail.
+	member(A,L),mk_article_problems(A,[[mizar_by,mizar_proof],[theorem]]),fail.
 
 test_refs_first100:-
 	declare_mptp_predicates,first100(L),!,
@@ -542,7 +552,24 @@ test_refs(Article):-
 	print(S),nl,length(S,N),print(N),
 	retractall(fof(_,_,_,file(Article,_),_)).
 
-mk_article_problems(Article):-
+% Shorter is an ancestor level or equal to Longer
+sublevel(Longer,Shorter) :- append(Shorter,_,Longer).
+%% filter out refs with more special level
+%% ###TODO: fix this for all proofs!!
+filter_level_refs(Lev,RefsIn,RefsOut):-
+	sort(RefsIn,Refs1),
+	findall(Ref,(member(Ref,Refs1),
+		     get_ref_fof(Ref,fof(Ref,_,_,_,Info)),
+		     Info = [mptp_info(_,Lev1,_,_,_)|_],
+		     sublevel(Lev,Lev1)), RefsOut).
+%	findall(Ref,(member(Ref,RefsIn),atom_chars(Ref,[C|_]),
+%		     member(C,[t,d,l])), Refs1),
+
+
+%% Kinds is a list [InferenceKinds, PropositionKinds]
+%% possible InferenceKinds are now [mizar_by, mizar_proof]
+%% possible PropositionKinds are now [theorem, top_level_lemma, sublemma]
+mk_article_problems(Article,Kinds):-
 %	declare_mptp_predicates,
 %	load_mml,
 	mml_dir_atom(MMLDir),
@@ -553,7 +580,7 @@ mk_article_problems(Article):-
 	(exists_directory(Dir) -> (string_concat('rm -r -f ', Dir, Command),
 				      shell(Command)); true),
 	make_directory(Dir),
-	findall(P,mk_prop_problem(P,Article,Dir),_),
+	findall(P,mk_problem(P,Article,Dir,Kinds),_),
 %% retract current file but return mml parts
 	retractall(fof(_,_,_,file(Article,_),_)),
 	concat_atom([MMLDir ,Article, '.dcl2'],DCL),
@@ -561,21 +588,31 @@ mk_article_problems(Article):-
 	concat_atom([MMLDir ,Article, '.the2'],THE),
 	sublist(exists_file,[DCL,DCO,THE],ToLoad),
 	load_files(ToLoad,[silent(true)]).
-%	retractall(fof(_,_,_,file(Article,_),mptp_info(_,_,proposition(_,_,_)))),
-%	retractall(fof(_,_,_,file(Article,_),mptp_info(_,_,proposition(_,_,_),_))),
-%	retractall(fof(_,_,_,file(Article,_),mptp_info(_,_,constant(_,_)))),!.
+%	retractall(fof(_,_,_,file(Article,_),[mptp_info(_,_,proposition,_,_)|_])),
+%	retractall(fof(_,_,_,file(Article,_),[mptp_info(_,_,constant,_,_)|_])),!.
 
 %theory(fraenkel, [registrations([finsub_1, funct_1, relset_1, subset_1, finset_1, relat_1,
 %				zfmisc_1, xboole_0, fraenkel]),
 %		  requirements([boole, subset])]).
-% create proving problem for a given proposition, store it in file Prefix.P
+% create proving problem for a given proposition,
+% (P does not have to be instantiated), store it in file Prefix.P
 % propositions only from the current article can be loaded -
 % - otherwise change their naming
-mk_prop_problem(P,F,Prefix):-
+% mk_problem(?P,+F,+Prefix,+Kinds)
+%% Kinds is a list [InferenceKinds, PropositionKinds]
+%% possible InferenceKinds are now [mizar_by, mizar_proof]
+%% possible PropositionKinds are now [theorem, top_level_lemma, sublemma]
+mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds]):-
 	theory(F, Theory),
-	fof(P,lemma-derived,Fla,file(F,P),
-		   mptp_info(Nr,Lev,proposition(Line,Col,_),
-			     inference(mizar_by,_,Refs))),
+	member(InfKind,InferenceKinds),
+	member(PropKind,PropositionKinds),
+	(PropKind == theorem -> MPropKind = theorem;
+	    (MPropKind = proposition,
+		(PropKind == top_level_lemma -> Lev = []))),
+	fof(P,_,Fla,file(F,P),
+	    [mptp_info(Nr,Lev,MPropKind,position(Line,Col),_),
+	     inference(InfKind,_,Refs0)]),
+	filter_level_refs(Lev,Refs0,Refs),
 	atom_concat(Prefix,P,Outfile),
 	tell(Outfile),
 	format('% Mizar problem: ~w,~w,~w,~w ~n', [P,F,Line,Col]),
@@ -598,7 +635,7 @@ mk_prop_problem(P,F,Prefix):-
 					    (Q=t2_tarski,fof(Q,Q1,Q2,Q3,Q4))),
 		       sort_transform_top(Q2,SR2), numbervars(SR2,0,_),
 		       (Q=P -> Status = conjecture; Status = axiom),
-		       print(fof(Q,Status,SR2,Q3,[Q4])),write('.'),nl),_),
+		       print(fof(Q,Status,SR2,Q3,Q4)),write('.'),nl),_),
 %	fof(P,_,P2,file(F,P),P4),
 %	member(fof(P,_,P2,file(F,P),P4),Flas),
 %	sort_transform_top(P2,SP2), numbervars(SP2,0,_),
@@ -632,7 +669,7 @@ load_mml:- load_clusters,load_theorems,load_constructors,load_environs.
 
 % should fail - load with theorems and propositions first
 check_refs:-
-	fof(_,_,_,_,mptp_info(_,_,_,inference(mizar_by,_,I))),
+	fof(_,_,_,_,[mptp_info(_,_,_,_,_),inference(mizar_by,_,I)]),
 	member(P,I),
 	not(fof(P,_,_,_,_)).
 
@@ -661,17 +698,17 @@ install_index:-
 		     assert(fof_section(Sec1, Id))), _),
 	findall(d, (
 		     member(Cl,[fcluster,ccluster]),
-		     fof(Ref,_,Fla,file(F,_),mptp_info(_,Cl)),
+		     fof(Ref,_,Fla,file(F,_),[mptp_info(_,_,Cl,_,_)|_]),
 		     cl_needed_syms_top(Fla,AnteSyms),
 		     assert(fof_cluster(F,Ref,AnteSyms))), _),
 	findall(d, (
-		     fof(Ref,_,Fla,file(F,_),mptp_info(_,rcluster)),
+		     fof(Ref,_,Fla,file(F,_),[mptp_info(_,_,rcluster,_,_)|_]),
 		     collect_symbols_top(Fla,AllSyms),
 		     subtract(AllSyms,LogicSyms,Syms),
 		     assert(fof_cluster(F,Ref,AnteSyms))), _),
 	findall(d, (
 		     member(F,[numerals, boole, subset, arithm, real]),
-		     fof(Ref,_,Fla,file(F,_),mptp_info(_,theorem)),
+		     fof(Ref,_,Fla,file(F,_),[mptp_info(_,_,theorem,_,_)|_]),
 		     collect_symbols_top(Fla,AllSyms),
 		     subtract(AllSyms,LogicSyms,Syms),
 		     assert(fof_req(F,Ref,Syms))), _).
