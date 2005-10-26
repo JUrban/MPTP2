@@ -667,7 +667,7 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds]):-
 
 
 %% allowed file estensions for theory files
-theory_exts([dcl,dco,evl,the]).
+theory_exts([dcl,dco,evl,sch,the]).
 
 %% Kind must be in theory_exts
 load_theory_files(Kind):-
@@ -684,9 +684,12 @@ load_theory_files(Kind):-
 load_clusters:- load_theory_files(dcl).
 load_constructors:- load_theory_files(dco).
 load_environs:- load_theory_files(evl).
+load_schemes:- load_theory_files(sch).
 load_theorems:- load_theory_files(the).
 
-load_mml:- load_clusters,load_theorems,load_constructors,load_environs.
+load_mml:-
+	load_clusters,load_theorems,load_schemes,
+	load_constructors,load_environs.
 
 
 % should fail - load with theorems and propositions first
