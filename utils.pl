@@ -218,7 +218,7 @@ sort_transform_qlist([(X:S)|T],[X|Qvars1],S1 & Preds1):-
 sort_transform_top(X,Y):- sort_transform(X,Y), !.
 % end of traversal
 sort_transform(X,X):- atomic(X); var(X).
-% todo: use sort_transform_qlist here for multiple quantifs, consider unsorted
+
 % do sort relativization
 sort_transform(! Svars : Y, ! Qvars : (Preds => Y1)):-
 	sort_transform_qlist(Svars,Qvars,Preds),
@@ -275,7 +275,7 @@ split_svars(Vars,Sorts,Svars):- zip_s(':', Vars, Sorts, Svars).
 all_collect_top(In,Out,Info):- all_collect(In,Out,[],Info),!.
 % end of traversal
 all_collect(X,X,_,[]):- atomic(X); var(X).
-% todo: use all_collect_qlist here for multiple quantifs, consider unsorted
+
 all_collect(! Svars : Y, ! Svars1 : Y1, Context, Info_r):-
 	all_collect_qlist(Svars,Svars1,Context,NewContext,Info_s),
 	all_collect(Y,Y1,NewContext,Info_y),
@@ -534,11 +534,36 @@ first100([
 %% first 100 MML articles.
 mk_first100:-
 	declare_mptp_predicates,load_mml,first100(L),!,
-	member(A,L),mk_article_problems(A,[[mizar_by,mizar_proof],[theorem]]),fail.
+	member(A,L),mk_article_problems(A,[[mizar_by],[theorem,sublemma,top_level_lemma]]),fail.
 
 test_refs_first100:-
 	declare_mptp_predicates,first100(L),!,
 	member(A,L),test_refs(A),fail.
+
+
+%% print defs and thms, with only top-level references 
+print_thms_and_defs_for_learning:-
+	declare_mptp_predicates,
+	load_theorems,
+	install_index,
+	tell('Proof_learning'),
+	%% print definitions - they have no proof
+	((fof(Name,definition,A1,A2,A3),
+	  numbervars(A1,0,_),
+	  print(fof(Name,definition,A1,A2,A3)),
+	  write('.'),nl,
+	  fail);
+	    true),
+	%% print theorems, with only thm and def references
+	((fof(Name,theorem,A1,A2,[A3,inference(A4,A5,Refs)]),
+	  findall(Ref,(member(Ref,Refs),atom_chars(Ref,[C|_]),
+		       member(C,[t,d])), Refs1),
+	  numbervars(A1,0,_),
+	  print(fof(Name,theorem,A1,A2,[A3,inference(A4,A5,Refs1)])),
+	  write('.'),nl,
+	  fail);
+	    told).
+
 
 %% test uniqueness of references inside Article
 test_refs(Article):-
@@ -554,8 +579,8 @@ test_refs(Article):-
 
 % Shorter is an ancestor level or equal to Longer
 sublevel(Longer,Shorter) :- append(Shorter,_,Longer).
+
 %% filter out refs with more special level
-%% ###TODO: fix this for all proofs!!
 filter_level_refs(Lev,RefsIn,RefsOut):-
 	sort(RefsIn,Refs1),
 	findall(Ref,(member(Ref,Refs1),
@@ -591,24 +616,21 @@ mk_article_problems(Article,Kinds):-
 %	retractall(fof(_,_,_,file(Article,_),[mptp_info(_,_,proposition,_,_)|_])),
 %	retractall(fof(_,_,_,file(Article,_),[mptp_info(_,_,constant,_,_)|_])),!.
 
-%theory(fraenkel, [registrations([finsub_1, funct_1, relset_1, subset_1, finset_1, relat_1,
-%				zfmisc_1, xboole_0, fraenkel]),
-%		  requirements([boole, subset])]).
-% create proving problem for a given proposition,
-% (P does not have to be instantiated), store it in file Prefix.P
-% propositions only from the current article can be loaded -
-% - otherwise change their naming
-% mk_problem(?P,+F,+Prefix,+Kinds)
-%% Kinds is a list [InferenceKinds, PropositionKinds]
+
+%% create proving problem for a given proposition,
+%% (P does not have to be instantiated), store it in file Prefix.P
+%% propositions only from the current article can be loaded -
+%% - otherwise change their naming
+%% mk_problem(?P,+F,+Prefix,+Kinds)
 %% possible InferenceKinds are now [mizar_by, mizar_proof]
 %% possible PropositionKinds are now [theorem, top_level_lemma, sublemma]
 mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds]):-
 	theory(F, Theory),
 	member(InfKind,InferenceKinds),
 	member(PropKind,PropositionKinds),
-	(PropKind == theorem -> MPropKind = theorem;
+	((PropKind == theorem, MPropKind = theorem);
 	    (MPropKind = proposition,
-		(PropKind == top_level_lemma -> Lev = []))),
+		((PropKind == top_level_lemma,Lev = []);true))),
 	fof(P,_,Fla,file(F,P),
 	    [mptp_info(Nr,Lev,MPropKind,position(Line,Col),_),
 	     inference(InfKind,_,Refs0)]),
