@@ -86,8 +86,8 @@ declare_TPTP_operators:-
 :- declare_TPTP_operators.
 logic_syms([++,--,'$',~,'|','~|',&,~&,=>,<=,<=>,<~>,!,?,:,'..',sort,all,'.',[]]).
 
-
-portray(A = B):- format(' equal(~p,~p) ',[A,B]).
+%% uncomment this for E prover versions earlier than 0.9
+% portray(A = B):- format(' equal(~p,~p) ',[A,B]).
 portray(~A):- write(' ~ ('), print(A), write(') ').
 portray(A & B):- format(' (~p & ~p) ',[A,B]).
 portray(A => B):- format(' (~p => ~p) ',[A,B]).
@@ -95,6 +95,16 @@ portray(A <=> B):- format(' (~p <=> ~p) ',[A,B]).
 portray(A : B):- var(A), format(' ( ~p : ~p) ',[A,B]).
 portray(! A : B):- format(' (! ~p : ~p) ',[A,B]).
 portray(? A : B):- format(' (? ~p : ~p) ',[A,B]).
+portray(A):- atom(A), constr_name(A,Name,Quote),
+	((Quote==0, write(Name));
+	    (Quote==1, write(''''),write(Name),write(''''))).
+portray(A):- compound(A), A =.. [F|L], constr_name(F,Name,Quote),
+	((Quote==0, write(Name));
+	    (Quote==1, write(''''),write(Name),write(''''))),
+	write('('), print_many(L), write(')').
+
+print_many([X]):- print(X).
+print_many([X|Y]):- print(X), write(','), print_many(Y). 
 
 % explain tstp parsing
 d2l(X,X):- atomic(X);var(X).
@@ -107,9 +117,12 @@ declare_mptp_predicates:-
  abolish(fof/4),
  abolish(fof/5),
  abolish(theory/2),
+ abolish(constr_name/3),
  multifile(fof/4),
  multifile(fof/5),
  dynamic(fof/5),
+ dynamic(constr_name/3),
+ multifile(constr_name/3),
  multifile(theory/2),
  abolish(fof_name/2),
  abolish(fof_section/2),
@@ -175,6 +188,7 @@ split([X|Xs],N,[X|Ys],Zs) :- N > 0, N1 is N - 1, split(Xs,N1,Ys,Zs).
 %% mptp_func with args
 mptp_func(X):- X =..[H|_],atom_chars(H,[F|_]),member(F,[k,g,u,'0','1','2','3','4','5','6','7','8','9']).
 ground_mptp_func(X):- ground(X),mptp_func(X).
+sch_symbol(X):- atom_chars(X,[F|_]),member(F,[f,p]).
 
 %% collect ground counts into buk/3, stack failure otherwise
 %% then print and run perl -e 'while(<>) { /.([0-9]+), (.*)./; $h{$2}+=$1;} foreach $k (sort {$h{$b} <=> $h{$a}} (keys %h)) {print "$h{$k}:$k\n";}'
@@ -564,6 +578,66 @@ print_thms_and_defs_for_learning:-
 	  fail);
 	    told).
 
+%% find the corresponding subst for X, throw exception if not
+get_sym_subst(X,[],_):- !, throw(sch_subst(X)).
+get_sym_subst(X,[Z/Y|_],Subst):- X == Z, !, copy_term(X/Y, Subst).
+get_sym_subst(X,[_|T],Subst):- get_sym_subst(X,T,Subst).
+
+%% apply one substitution to Sym
+apply_sch_subst0(Sym,Sym/([]:Val),Val):- !.
+apply_sch_subst0(Sym,Sym/([H|T]:Val),Val):- !,throw(sch_subst(Sym,[H|T]:Val)).
+apply_sch_subst0(Sym,Sym/Val,Val):-!.
+apply_sch_subst0(Sym,Subst,_):- throw(sch_subst(Sym,Subst)).
+
+apply_sch_subst1([Sym|Args],Sym/(Vars:Val),Val):- !,
+	(Vars = Args,!; throw(sch_subst(Sym,Vars:Val))).
+
+apply_sch_subst1([Sym|Args],Sym/Val,Val1):- Val1 =.. [Val|Args],!.
+apply_sch_subst1(Sym,Subst,_):- throw(sch_subst(Sym,Subst)).
+
+
+%% apply_sch_substs(+Substs,+Fla,-Fla1)
+%% applies scheme substitutions to Fla, throwing exception
+%% if no substitution for any scheme symbol does not exist
+
+apply_sch_substs_top(Substs,Fla,Fla1):-
+	apply_sch_substs(Substs,Fla,Fla1), !.
+
+%% end of traversal
+apply_sch_substs(_,X,X):- var(X),!.
+apply_sch_substs(Substs,X1,X2):- atomic(X1), sch_symbol(X1), !,
+	get_sym_subst(X1,Substs,Subst),
+	apply_sch_subst0(X1,Subst,X2).
+
+apply_sch_substs(_,X,X):- atomic(X),!.	
+
+apply_sch_substs(Substs,X1,X2):- X1 =.. [H1|T1], sch_symbol(H1), !,
+	maplist(apply_sch_substs(Substs),T1,T2),
+	get_sym_subst(H1,Substs,Subst),
+	apply_sch_subst1([H1|T2],Subst,X2).
+	
+apply_sch_substs(Substs,X1,X2):- 
+	X1 =.. [H1|T1],
+	maplist(apply_sch_substs(Substs),T1,T2),
+	X2 =.. [H1|T2].
+
+
+%% gen_sch_instance(+SchName,+Substs,-Res)
+%% - generate instance of SchName
+gen_sch_instance(SI_Name,Res):-
+	fof(Ref,_,_,file(F,_),
+	    [MPTPInfo,inference(mizar_from,[InstInfo],_Refs)]),
+	InstInfo = scheme_instance(SI_Name,S_Name,Ref,_,Substs),
+	MPTPInfo= mptp_info(_Nr,Lev,_Kind,Pos,_Args),
+	fof(S_Name,theorem,Fla,_,_),
+	copy_term(Fla,Tmp),
+	apply_sch_substs_top(Substs,Tmp,Fla1),
+	Res = fof(SI_Name,theorem, Fla1, file(F,SI_Name),
+		  [mptp_info(0,Lev,scheme_instance,Pos,[]),
+		   inference(mizar_sch_instance,[InstInfo],[S_Name])]).
+			
+
+
 
 %% test uniqueness of references inside Article
 test_refs(Article):-
@@ -629,8 +703,9 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds]):-
 	member(InfKind,InferenceKinds),
 	member(PropKind,PropositionKinds),
 	((PropKind == theorem, MPropKind = theorem);
-	    (MPropKind = proposition,
-		((PropKind == top_level_lemma,Lev = []);true))),
+	    (PropKind \= theorem,MPropKind = proposition,
+		((PropKind == top_level_lemma,Lev = []);
+		    PropKind \= top_level_lemma))),
 	fof(P,_,Fla,file(F,P),
 	    [mptp_info(Nr,Lev,MPropKind,position(Line,Col),_),
 	     inference(InfKind,_,Refs0)]),
