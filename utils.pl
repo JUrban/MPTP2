@@ -548,7 +548,7 @@ first100([
 %% first 100 MML articles.
 mk_first100:-
 	declare_mptp_predicates,load_mml,first100(L),!,
-	member(A,L),mk_article_problems(A,[[mizar_by],[theorem,sublemma,top_level_lemma]]),fail.
+	member(A,L),mk_article_problems(A,[[mizar_from],[theorem,sublemma,top_level_lemma]]),fail.
 
 test_refs_first100:-
 	declare_mptp_predicates,first100(L),!,
@@ -579,11 +579,13 @@ print_thms_and_defs_for_learning:-
 	    told).
 
 %% find the corresponding subst for X, throw exception if not
+%% X is assumed to be a scheme functor or predicate
 get_sym_subst(X,[],_):- !, throw(sch_subst(X)).
 get_sym_subst(X,[Z/Y|_],Subst):- X == Z, !, copy_term(X/Y, Subst).
 get_sym_subst(X,[_|T],Subst):- get_sym_subst(X,T,Subst).
 
 %% apply one substitution to Sym
+%% Sym is assumed to be a scheme functor or predicate
 apply_sch_subst0(Sym,Sym/([]:Val),Val):- !.
 apply_sch_subst0(Sym,Sym/([H|T]:Val),Val):- !,throw(sch_subst(Sym,[H|T]:Val)).
 apply_sch_subst0(Sym,Sym/Val,Val):-!.
@@ -622,22 +624,23 @@ apply_sch_substs(Substs,X1,X2):-
 	X2 =.. [H1|T2].
 
 
-%% gen_sch_instance(+SchName,+Substs,-Res)
+%% gen_sch_instance(?SchInstName,?File,-Res)
 %% - generate instance of SchName
-gen_sch_instance(SI_Name,Res):-
+gen_sch_instance(SI_Name,F,Res):-
 	fof(Ref,_,_,file(F,_),
 	    [MPTPInfo,inference(mizar_from,[InstInfo],_Refs)]),
 	InstInfo = scheme_instance(SI_Name,S_Name,Ref,_,Substs),
 	MPTPInfo= mptp_info(_Nr,Lev,_Kind,Pos,_Args),
-	fof(S_Name,theorem,Fla,_,_),
+	once(fof(S_Name,theorem,Fla,_,_)),
 	copy_term(Fla,Tmp),
 	apply_sch_substs_top(Substs,Tmp,Fla1),
 	Res = fof(SI_Name,theorem, Fla1, file(F,SI_Name),
 		  [mptp_info(0,Lev,scheme_instance,Pos,[]),
 		   inference(mizar_sch_instance,[InstInfo],[S_Name])]).
 			
-
-
+assert_sch_instances(File):-
+	repeat,
+	( gen_sch_instance(_,File,Res), assert(Res), fail; true).
 
 %% test uniqueness of references inside Article
 test_refs(Article):-
@@ -666,7 +669,7 @@ filter_level_refs(Lev,RefsIn,RefsOut):-
 
 
 %% Kinds is a list [InferenceKinds, PropositionKinds]
-%% possible InferenceKinds are now [mizar_by, mizar_proof]
+%% possible InferenceKinds are now [mizar_by, mizar_from, mizar_proof]
 %% possible PropositionKinds are now [theorem, top_level_lemma, sublemma]
 mk_article_problems(Article,Kinds):-
 %	declare_mptp_predicates,
@@ -674,6 +677,7 @@ mk_article_problems(Article,Kinds):-
 	mml_dir_atom(MMLDir),
 	concat_atom([MMLDir, Article,'.xml2'],File),
 	consult(File),
+	once(assert_sch_instances(Article)),
 	install_index,
 	concat_atom(['problems/',Article,'/'],Dir),
 	(exists_directory(Dir) -> (string_concat('rm -r -f ', Dir, Command),
@@ -685,7 +689,8 @@ mk_article_problems(Article,Kinds):-
 	concat_atom([MMLDir ,Article, '.dcl2'],DCL),
 	concat_atom([MMLDir ,Article, '.dco2'],DCO),
 	concat_atom([MMLDir ,Article, '.the2'],THE),
-	sublist(exists_file,[DCL,DCO,THE],ToLoad),
+	concat_atom([MMLDir ,Article, '.sch2'],SCH),
+	sublist(exists_file,[DCL,DCO,THE,SCH],ToLoad),
 	load_files(ToLoad,[silent(true)]).
 %	retractall(fof(_,_,_,file(Article,_),[mptp_info(_,_,proposition,_,_)|_])),
 %	retractall(fof(_,_,_,file(Article,_),[mptp_info(_,_,constant,_,_)|_])),!.
@@ -696,7 +701,7 @@ mk_article_problems(Article,Kinds):-
 %% propositions only from the current article can be loaded -
 %% - otherwise change their naming
 %% mk_problem(?P,+F,+Prefix,+Kinds)
-%% possible InferenceKinds are now [mizar_by, mizar_proof]
+%% possible InferenceKinds are now [mizar_by, mizar_proof, mizar_from]
 %% possible PropositionKinds are now [theorem, top_level_lemma, sublemma]
 mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds]):-
 	theory(F, Theory),
@@ -715,7 +720,10 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds]):-
 	format('% Mizar problem: ~w,~w,~w,~w ~n', [P,F,Line,Col]),
 	maplist(get_ref_fla, [P|Refs], Flas1),
 	collect_symbols_top(Flas1, Syms1),
-	once(fixpoint(F, [P|Refs], [], Syms1, AllRefs)),
+	%% bg info should not be needed for mizar_from 
+	(InfKind \= mizar_from,
+	    once(fixpoint(F, [P|Refs], [], Syms1, AllRefs));
+	    InfKind = mizar_from, AllRefs = [P|Refs]),
 	findall([fof(R,R1,Out,R3,R4),Info],
 		(member(R,AllRefs), get_ref_fof(R,fof(R,R1,R2,R3,R4)),
 		    all_collect_top(R2,Out,Info)),
@@ -730,7 +738,7 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds]):-
 	( member(_,Defs) -> Refs1 = [t2_tarski|AllRefs]; Refs1 = AllRefs),
 	findall(dummy,(member(Q,Refs1), (member(fof(Q,Q1,Q2,Q3,Q4),Flas);
 					    (Q=t2_tarski,fof(Q,Q1,Q2,Q3,Q4))),
-		       sort_transform_top(Q2,SR2), numbervars(SR2,0,_),
+		       sort_transform_top(Q2,SR2), numbervars([SR2,Q3,Q4],0,_),
 		       (Q=P -> Status = conjecture; Status = axiom),
 		       print(fof(Q,Status,SR2,Q3,Q4)),write('.'),nl),_),
 %	fof(P,_,P2,file(F,P),P4),
