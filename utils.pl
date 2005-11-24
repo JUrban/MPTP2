@@ -445,8 +445,11 @@ get_equalities(RefsIn,SymsIn,AddedRefs):-
 	get_sec_info_refs(RefsIn, SymsIn,
 			  [mptp_info(_,_,constant,_,[_,equality])], AddedRefs).
 
+%% version for mizar_by and mizar_proof; mizar_proof should be
+%% enhanced a bit probably
 %% OldSyms are used only for clusters and requirements
-one_pass(F,RefsIn,OldSyms,NewSyms,AddedRefs):-
+one_pass(F,InfKind,RefsIn,OldSyms,NewSyms,AddedRefs):-
+	member(InfKind,[mizar_by,mizar_proof]),
 	theory(F, Theory),
 	member(registrations(Regs),Theory),
 	member(requirements(Reqs),Theory),
@@ -460,16 +463,29 @@ one_pass(F,RefsIn,OldSyms,NewSyms,AddedRefs):-
 	get_requirements(Reqs,RefsIn,OldSyms,NewSyms,Refs6),
 	flatten([Refs0,Refs1,Refs2,Refs3,Refs4,Refs5,Refs6], AddedRefs).
 
+%% version for mizar_from
+%% OldSyms are used only for clusters and requirements
+one_pass(F,mizar_from,RefsIn,OldSyms,NewSyms,AddedRefs):-
+	theory(F, Theory),
+	member(registrations(Regs),Theory),
+	get_properties(RefsIn,NewSyms,Refs0),
+	get_redefinitions(RefsIn,NewSyms,Refs2),
+	get_types(RefsIn,NewSyms,Refs3),
+	get_clusters([F|Regs],RefsIn,OldSyms,NewSyms,Refs5),
+	flatten([Refs0,Refs2,Refs3,Refs5], AddedRefs).
+
+
+
 %% add symbol references until nothing added
-fixpoint(F,RefsIn,OldSyms,NewSyms,RefsOut):-
-	one_pass(F, RefsIn, OldSyms, NewSyms, Refs1), !,
+fixpoint(F,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
+	one_pass(F, InfKind, RefsIn, OldSyms, NewSyms, Refs1), !,
 	(Refs1 = [] -> RefsOut = RefsIn;	    
 	    union(Refs1, RefsIn, Refs2),
 	    union(OldSyms, NewSyms, OldSyms1),
 	    maplist(get_ref_fla, Refs1, Flas1),
 	    collect_symbols_top(Flas1, Syms1),
 	    subtract(Syms1, OldSyms1, NewSyms1), 
-	    fixpoint(F, Refs2, OldSyms1, NewSyms1, RefsOut)).
+	    fixpoint(F, InfKind, Refs2, OldSyms1, NewSyms1, RefsOut)).
 
 
 %% antecedent symbols needed for fcluster or ccluster
@@ -699,7 +715,7 @@ mk_article_problems(Article,Kinds):-
 	(exists_directory(Dir) -> (string_concat('rm -r -f ', Dir, Command),
 				      shell(Command)); true),
 	make_directory(Dir),
-	repeat,(mk_problem(P,Article,Dir,Kinds),fail; !,true),
+	repeat,(mk_problem(_,Article,Dir,Kinds),fail; !,true),
 %% retract current file but return mml parts
 	retractall(fof(_,_,_,file(Article,_),_)),
 	concat_atom([MMLDir ,Article, '.dcl2'],DCL),
@@ -737,9 +753,7 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds]):-
 	maplist(get_ref_fla, [P|Refs], Flas1),
 	collect_symbols_top(Flas1, Syms1),
 	%% bg info should not be needed for mizar_from 
-	(InfKind \= mizar_from,
-	    once(fixpoint(F, [P|Refs], [], Syms1, AllRefs));
-	    InfKind = mizar_from, AllRefs = [P|Refs]),
+	once(fixpoint(F, InfKind, [P|Refs], [], Syms1, AllRefs)),
 	findall([fof(R,R1,Out,R3,R4),Info],
 		(member(R,AllRefs), get_ref_fof(R,fof(R,R1,R2,R3,R4)),
 		    all_collect_top(R2,Out,Info)),
@@ -806,7 +820,10 @@ check_consts:-
 	atom_prefix(Const,'c'),
 	not(fof(_,_,_,file(File,Const),_)).
 	
-
+%% installs the indeces for fast lookup of fof's;
+%% should be called only after addition of custom fof's like
+%% scheme instance, e.g.:
+%% declare_mptp_predicates,assert_sch_instances(File), install_index
 install_index:-
 	abolish(fof_name/2),
 	abolish(fof_section/2),
