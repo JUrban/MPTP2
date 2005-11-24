@@ -209,11 +209,13 @@ collect_symbols_top(X,L):-
 	collect_symbols(X,L1),!,
 	flatten(L1,L2),
 	sort(L2,L).
-collect_symbols(X,[]):- var(X).
-collect_symbols(X,[X]):- atomic(X).
-collect_symbols(X1,[H1|T2]):-
+collect_symbols(X,[]):- var(X),!.
+collect_symbols(X,[X]):- atomic(X),!.
+collect_symbols(X1,T2):-
 	X1 =.. [H1|T1],
-	maplist(collect_symbols,T1,T2).
+	maplist(collect_symbols,T1,T3),
+	flatten(T3,T4),
+	sort([H1|T4],T2).
 
 union1([],In,In).
 union1([H|T],In,Out):-
@@ -544,6 +546,20 @@ first100([
 	  mcart_5,mcart_6,finseq_4,finseqop,finsop_1,setwop_2]).
 
 
+all_articles(List):-
+	mml_dir(Dir),
+	sformat(AList, '~s../mml.lar', [Dir]),
+	open(AList,read,S),
+	read_lines(S,List),
+	close(S).
+
+read_lines(S,Res):-
+	read_line_to_codes(S,C),
+	(C= end_of_file,Res=[];
+	    read_lines(S,Res1),
+	    string_to_atom(C,C1),
+	    Res = [C1|Res1]).
+
 %% Top level predicate for creating 'by' problems for
 %% first 100 MML articles.
 mk_first100:-
@@ -683,7 +699,7 @@ mk_article_problems(Article,Kinds):-
 	(exists_directory(Dir) -> (string_concat('rm -r -f ', Dir, Command),
 				      shell(Command)); true),
 	make_directory(Dir),
-	findall(P,mk_problem(P,Article,Dir,Kinds),_),
+	repeat,(mk_problem(P,Article,Dir,Kinds),fail; !,true),
 %% retract current file but return mml parts
 	retractall(fof(_,_,_,file(Article,_),_)),
 	concat_atom([MMLDir ,Article, '.dcl2'],DCL),
