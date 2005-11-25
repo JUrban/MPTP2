@@ -127,7 +127,7 @@ declare_mptp_predicates:-
  abolish(fof_name/2),
  abolish(fof_section/2),
  abolish(fof_level/2),
- abolish(fof_superlevel/2),
+ abolish(fof_parentlevel/2),
  abolish(fof_cluster/3),
  abolish(fof_req/3),
  index(fof(1,1,0,1,1)),
@@ -702,13 +702,23 @@ filter_level_refs(Lev,RefsIn,RefsOut):-
 %	findall(Ref,(member(Ref,RefsIn),atom_chars(Ref,[C|_]),
 %		     member(C,[t,d,l])), Refs1),
 
-%% all refs below this level (block), uses fof_level/2 and
-%% fof_superlevel/2 for speed FINISH THIS!!
-% get_sublevel_refs(File,Lev,Refs):- 
-% 	findall(Ref,(member(Ref,Refs1),
-% 		     get_ref_fof(Ref,fof(Ref,_,_,_,Info)),
-% 		     Info = [mptp_info(_,Lev1,_,_,_)|_],
-% 		     sublevel(Lev,Lev1)), RefsOut).
+%% childern and decendants of a level expressed as atom (for speed)
+at_level_children(At1,Childs):- findall(C, fof_parentlevel(At1,C), Childs).
+at_level_descendents(At1,Descs):-
+	at_level_children(At1,Childs),
+	( Childs = [], Descs = [];
+	    Childs \= [],
+	    maplist(at_level_descendents,Childs,Ds1),
+	    flatten([Childs|Ds1], Descs)).
+
+%% all fof names on this level (block) and below, uses fof_level/2 and
+%% fof_parentlevel/2 for speed 
+get_sublevel_refs(Lev,Refs):-
+	level_atom(Lev, At1),
+	at_level_descendents(At1, Descs),
+	findall(Ref,( member(L1, [At1|Descs]),
+		      fof_level(L1, Id),		     
+		      clause(fof(Ref,_,_,_,_),_,Id)), Refs).
 
 %% Kinds is a list [InferenceKinds, PropositionKinds]
 %% possible InferenceKinds are now [mizar_by, mizar_from, mizar_proof]
@@ -845,7 +855,7 @@ install_index:-
 	abolish(fof_name/2),
 	abolish(fof_section/2),
 	abolish(fof_level/2),
-	abolish(fof_superlevel/2),
+	abolish(fof_parentlevel/2),
 	abolish(fof_cluster/3),
 	abolish(fof_req/3),
 %	add_hidden,
@@ -868,7 +878,7 @@ install_index:-
 	    level_atom(L_l1,Lev1),
 	    append(L2, [_], L_l1),
 	    level_atom(L2,Lev2),
-	    assert(fof_superlevel(Lev2,Lev1)), fail; true),
+	    assert(fof_parentlevel(Lev2,Lev1)), fail; true),
 	findall(d, (
 		     member(Cl,[fcluster,ccluster]),
 		     fof(Ref,_,Fla,file(F,_),[mptp_info(_,_,Cl,_,_)|_]),
