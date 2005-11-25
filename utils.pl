@@ -126,6 +126,8 @@ declare_mptp_predicates:-
  multifile(theory/2),
  abolish(fof_name/2),
  abolish(fof_section/2),
+ abolish(fof_level/2),
+ abolish(fof_superlevel/2),
  abolish(fof_cluster/3),
  abolish(fof_req/3),
  index(fof(1,1,0,1,1)),
@@ -189,6 +191,7 @@ split([X|Xs],N,[X|Ys],Zs) :- N > 0, N1 is N - 1, split(Xs,N1,Ys,Zs).
 mptp_func(X):- X =..[H|_],atom_chars(H,[F|_]),member(F,[k,g,u,'0','1','2','3','4','5','6','7','8','9']).
 ground_mptp_func(X):- ground(X),mptp_func(X).
 sch_symbol(X):- atom_chars(X,[F|_]),member(F,[f,p]).
+mptp_local_const(X):- atom_chars(X,[c|_]).
 
 %% collect ground counts into buk/3, stack failure otherwise
 %% then print and run perl -e 'while(<>) { /.([0-9]+), (.*)./; $h{$2}+=$1;} foreach $k (sort {$h{$b} <=> $h{$a}} (keys %h)) {print "$h{$k}:$k\n";}'
@@ -699,6 +702,13 @@ filter_level_refs(Lev,RefsIn,RefsOut):-
 %	findall(Ref,(member(Ref,RefsIn),atom_chars(Ref,[C|_]),
 %		     member(C,[t,d,l])), Refs1),
 
+%% all refs below this level (block), uses fof_level/2 and
+%% fof_superlevel/2 for speed FINISH THIS!!
+% get_sublevel_refs(File,Lev,Refs):- 
+% 	findall(Ref,(member(Ref,Refs1),
+% 		     get_ref_fof(Ref,fof(Ref,_,_,_,Info)),
+% 		     Info = [mptp_info(_,Lev1,_,_,_)|_],
+% 		     sublevel(Lev,Lev1)), RefsOut).
 
 %% Kinds is a list [InferenceKinds, PropositionKinds]
 %% possible InferenceKinds are now [mizar_by, mizar_from, mizar_proof]
@@ -819,7 +829,14 @@ check_consts:-
 	member(Const,L),
 	atom_prefix(Const,'c'),
 	not(fof(_,_,_,file(File,Const),_)).
-	
+
+%% encode and decode between [1,2,3] and '1_2_3'
+level_atom(List,Atom):- atom(Atom), !, concat_atom(V1,'_',Atom),
+	maplist(atom_number,V1,List).
+level_atom([H|T],Atom):- ground([H|T]),
+	maplist(atom_number,V1,[H|T]),
+	concat_atom(V1,'_',Atom).
+
 %% installs the indeces for fast lookup of fof's;
 %% should be called only after addition of custom fof's like
 %% scheme instance, e.g.:
@@ -827,16 +844,31 @@ check_consts:-
 install_index:-
 	abolish(fof_name/2),
 	abolish(fof_section/2),
+	abolish(fof_level/2),
+	abolish(fof_superlevel/2),
 	abolish(fof_cluster/3),
 	abolish(fof_req/3),
 %	add_hidden,
 	logic_syms(LogicSyms),
-	findall(d, (
-		     clause(fof(Ref,_,_,_,_),_,Id),
-		     assert(fof_name(Ref, Id))), _),
-	findall(d, (
-		     clause(fof(_,_,_,file(_,Sec1), _),_,Id),
-		     assert(fof_section(Sec1, Id))), _),
+	repeat,
+	( clause(fof(Ref,_,_,_,_),_,Id),
+	    assert(fof_name(Ref, Id)), fail; true),
+	repeat,
+	( clause(fof(_,_,_,file(_,Sec1), _),_,Id),
+	    assert(fof_section(Sec1, Id)), fail; true),
+	findall(L_l, (
+		       clause(fof(_,_,_,_,[mptp_info(_,L_l,_,_,_)|_]),_,Id),
+		       L_l = [_|_],
+		       level_atom(L_l,Lev1),
+		       assert(fof_level(Lev1, Id))), Levs),
+	sort(Levs,Levs1),
+	repeat,
+	( member(L_l1,Levs1),
+	    L_l1 = [_,_|_],
+	    level_atom(L_l1,Lev1),
+	    append(L2, [_], L_l1),
+	    level_atom(L2,Lev2),
+	    assert(fof_superlevel(Lev2,Lev1)), fail; true),
 	findall(d, (
 		     member(Cl,[fcluster,ccluster]),
 		     fof(Ref,_,Fla,file(F,_),[mptp_info(_,_,Cl,_,_)|_]),
