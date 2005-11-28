@@ -713,12 +713,12 @@ at_level_descendents(At1,Descs):-
 
 %% all fof names on this level (block) and below, uses fof_level/2 and
 %% fof_parentlevel/2 for speed 
-get_sublevel_refs(Lev,Refs):-
+get_sublevel_names(Lev,Names):-
 	level_atom(Lev, At1),
 	at_level_descendents(At1, Descs),
-	findall(Ref,( member(L1, [At1|Descs]),
+	findall(Name,( member(L1, [At1|Descs]),
 		      fof_level(L1, Id),		     
-		      clause(fof(Ref,_,_,_,_),_,Id)), Refs).
+		      clause(fof(Name,_,_,_,_),_,Id)), Names).
 
 %% Kinds is a list [InferenceKinds, PropositionKinds]
 %% possible InferenceKinds are now [mizar_by, mizar_from, mizar_proof]
