@@ -34,8 +34,12 @@ append_l1([H|T],Done,Res):-
 	append(H,Done,Res1),
 	append_l1(T,Res1,Res).
 
-% equivalence classes under binary predicate P
-% eqclasses(EquivalencePredicate, InputList, EqClasses)
+
+%% succeed once or throw ecxeption
+ensure(Goal, Exception):- Goal,!; throw(Exception).
+
+%% equivalence classes under binary predicate P
+%% eqclasses(EquivalencePredicate, InputList, EqClasses)
 eqclasses(_,[],[]).
 eqclasses(P,[H|T],[E_h|O_t]):-
 	eqcl1(P,H,[H|T],E_h,N_h),
@@ -702,6 +706,7 @@ filter_level_refs(Lev,RefsIn,RefsOut):-
 %	findall(Ref,(member(Ref,RefsIn),atom_chars(Ref,[C|_]),
 %		     member(C,[t,d,l])), Refs1),
 
+
 %% childern and decendants of a level expressed as atom (for speed)
 at_level_children(At1,Childs):- findall(C, fof_parentlevel(At1,C), Childs).
 at_level_descendents(At1,Descs):-
@@ -720,6 +725,24 @@ get_sublevel_names(Lev,Names):-
 		      fof_level(L1, Id),		     
 		      clause(fof(Name,_,_,_,_),_,Id)), Names).
 
+%% get all (also proof-local) symbols used in this proof, and all
+%% formula names in the proof. the proof
+%% is described by the explicit references and the proof level.
+%% Symbols from the references and from all formulas on this level
+%% and below are collected.
+%% used as input for the fixpoint algorithm
+%% NOTE: proof-local symbols cannot be filtered-out here. E.g.
+%%   if we filtered-out a locally reconsidered constant, whose
+%%   original is outside this proof, we would never reach the original
+%%   in the fixpoint algorithm. So we have to pass all symbols to
+%%   the fixpoint algorithm, and filter the proof-local flas afterwards.
+get_proof_syms_and_flas(RefsIn, PLevel, PSyms, PRefs):-
+	get_sublevel_names(PLevel, Names),
+	append(RefsIn, Names, AllNames),
+	sort(AllNames, PRefs),!,
+	maplist(get_ref_fla, PRefs, Flas1),
+	collect_symbols_top(Flas1, PSyms).
+	
 %% Kinds is a list [InferenceKinds, PropositionKinds]
 %% possible InferenceKinds are now [mizar_by, mizar_from, mizar_proof]
 %% possible PropositionKinds are now [theorem, top_level_lemma, sublemma]
@@ -765,15 +788,28 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds]):-
 		    PropKind \= top_level_lemma))),
 	fof(P,_,Fla,file(F,P),
 	    [mptp_info(Nr,Lev,MPropKind,position(Line,Col),_),
-	     inference(InfKind,_,Refs0)]),
-	filter_level_refs(Lev,Refs0,Refs),
+	     inference(InfKind,InfInfo,Refs0)]),
+%	filter_level_refs(Lev,Refs0,Refs),
 	atom_concat(Prefix,P,Outfile),
 	tell(Outfile),
 	format('% Mizar problem: ~w,~w,~w,~w ~n', [P,F,Line,Col]),
-	maplist(get_ref_fla, [P|Refs], Flas1),
-	collect_symbols_top(Flas1, Syms1),
+	(
+	  InfKind == mizar_proof,
+	  ensure(InfInfo = [proof_level(PLevel)|_], inf_info(InfInfo,PLevel)),
+	  get_proof_syms_and_flas([P|Refs0], PLevel, PSyms, PRefs),
+	  Syms1 = PSyms,
+	  once(fixpoint(F, InfKind, PRefs, [], Syms1, AllRefs0)),
+	  %% incorrect, but needs handling of fraenkels and sch_insts
+	  filter_level_refs(Lev,AllRefs0,AllRefs)
+	;
+	  InfKind \== mizar_proof,
+	  Refs = Refs0,
+	  maplist(get_ref_fla, [P|Refs], Flas1),
+	  collect_symbols_top(Flas1, Syms0),
+	  Syms1 = Syms0,
+	  once(fixpoint(F, InfKind, [P|Refs], [], Syms1, AllRefs))
+	),
 	%% bg info should not be needed for mizar_from 
-	once(fixpoint(F, InfKind, [P|Refs], [], Syms1, AllRefs)),
 	findall([fof(R,R1,Out,R3,R4),Info],
 		(member(R,AllRefs), get_ref_fof(R,fof(R,R1,R2,R3,R4)),
 		    all_collect_top(R2,Out,Info)),
