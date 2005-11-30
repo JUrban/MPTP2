@@ -15,6 +15,9 @@
 mml_dir("/big/urban/miztmp/mml3/tmp/").
 mml_dir_atom(A):- mml_dir(S), string_to_atom(S,A).
 
+%% switch to fail for debug
+optimize_fraenkel:- fail.
+
 
 zip([],[],[]).
 zip([H|T],[H1|T1],[[H,H1]|T2]):- zip(T,T1,T2).
@@ -273,6 +276,7 @@ sort_transform(X1,X2):-
 	maplist(sort_transform,T1,T2),
 	X2 =.. [H1|T2].
 
+
 % First we replace fraenkels by placeholder variables which we remember, and collect
 % the fraenkels (with their context) into a list corresponding to the variables.
 % Then we find optimal 'skolem' definitions corresponding to the fraenkels,
@@ -281,9 +285,6 @@ sort_transform(X1,X2):-
 % GroundCopy is kept for exact comparisons envolving context
 % all_collect(+InTerm,-OutTerm,+Context=[(Var:Sort1)|RestV],
 %             -Info=[[NewVar,Context,all(Svars1,Trm1,Frm1),GroundCopy]|RestI])
-
-%% switch to fail for debug
-optimize_fraenkel:- fail.
 
 all_collect_qlist([],[],C,C,[]).
 all_collect_qlist([(X:S)|T],[(X:S1)|T1],Context,NewContext,Info):-
@@ -349,6 +350,9 @@ add_real_numvars(AllVars,AllSorts,Old,New,Result):-
 	subtract(New1,Old1,New2),
 	add_real_numvars(AllVars,AllSorts,Old1,New2,Result).
 
+%% real_context(+InVars, +BigC, -RealC)
+%% puts the "really needed" variables from BigContext into RealContext
+%% BigC and RealC are lists of Var:Sort
 %% bagof needed in the end instead of findall! (not to spoil freevars);
 %% hence the alternative - bagof fails with empty list unlike findall
 %% N1^ is needed for bagof not to bind N1
@@ -372,7 +376,13 @@ real_context(InVars, BigC, RealC):-
 %         ?[X1,X2:integer]:( X = plus(X1,X2) & X1 < X2))
 % Take care with variables, context is shared with formulas,
 % newvars are used as placeholders for other fraenkels.
-% +Info=[[NewVar,Context,all(Svars1,Trm1,Frm1)]|RestI])
+% +Info=[[NewVar,Context,all(Svars1,Trm1,Frm1),GroundCopy]|RestI])
+% where GroundCopy is cretaed in all_collect by following:
+% copy_term([RContext,all(Svars,Trm,Frm)],GroundCopy),
+% numbervars(GroundCopy,0,_),
+% which means that two fraenkels with the same GroundCopy are 
+% the same (because the RContext is complete, and all symbol names
+% are absolute inside one article)
 % +FrInfo, -NewFrInfo ... unordered list of
 % lists of Fraenkel symbols starting with their arity, e.g.:
 % [[0|FrSymsOfArity_0],[2|FrSymsOfArity_2],[1|FrSymsOfArity_1]],
@@ -617,6 +627,9 @@ print_thms_and_defs_for_learning:-
 	  fail);
 	    told).
 
+
+%%%%%%%%%%%%%%% generating scheme instances  %%%%%%%%%%%%%%%%%%%%%%%
+
 %% find the corresponding subst for X, throw exception if not
 %% X is assumed to be a scheme functor or predicate
 get_sym_subst(X,[],_):- !, throw(sch_subst(X)).
@@ -664,7 +677,7 @@ apply_sch_substs(Substs,X1,X2):-
 
 
 %% gen_sch_instance(?SchInstName,?File,-Res)
-%% - generate instance of SchName
+%% - generate instance of SchName as fof with the same level
 gen_sch_instance(SI_Name,F,Res):-
 	fof(Ref,_,_,file(F,_),
 	    [MPTPInfo,inference(mizar_from,[InstInfo],_Refs)]),
@@ -676,10 +689,117 @@ gen_sch_instance(SI_Name,F,Res):-
 	Res = fof(SI_Name,theorem, Fla1, file(F,SI_Name),
 		  [mptp_info(0,Lev,scheme_instance,Pos,[]),
 		   inference(mizar_sch_instance,[InstInfo],[S_Name])]).
-			
+
+%% create and assert all scheme instances for a given article
 assert_sch_instances(File):-
 	repeat,
 	( gen_sch_instance(_,File,Res), assert(Res), fail; true).
+	
+
+%%%%%%%%%%%% Constant generalization (abstraction) %%%%%%%%%%%%%%%%%%%%
+
+%% add_const_vars(+RefsIn, +ConstsIn, +AddedConsts, -RefsOut, -ConstsOut)
+%% collect all constants together with their type definitions
+add_consts(RefsIn, ConstsIn, AddedConsts, RefsOut, ConstsOut):-
+	get_sec_info_refs(RefsIn, AddedConsts,
+			  [mptp_info(_,_,constant,_,[_,type])|_], NewRefs),
+	([] = NewRefs ->
+	    (RefsOut = RefsIn, ConstsOut = ConstsIn)
+	;
+	    maplist(get_ref_fla, NewRefs, Sorts0),
+	    collect_symbols_top(Sorts0, Syms0),
+	    sublist(mptp_local_const, Syms0, Consts0),
+	    subtract( Consts0, ConstsIn, Consts1),
+	    union(ConstsIn, Consts1, AllConsts1),
+	    union(RefsIn, NewRefs, AllRefs1),
+	    add_consts(AllRefs1, AllConsts1, Consts1, RefsOut, ConstsOut)
+	).
+
+%% this ensures that the infos are comparable and different
+cmp_const_info(Res, fof(_,_,_,_,[mptp_info(Nr1,Lev1,_,_,_)|_]),
+	       fof(_,_,_,_,[mptp_info(Nr2,Lev2,_,_,_)|_])):- !,
+	(Lev1 = Lev2 ->
+	    (compare(Res,Nr1,Nr2),
+		ensure(Nr1 \= Nr2, cmp_const_info(Nr1,Lev1)))
+	;
+	    (sublevel(Lev1, Lev2) ->
+		Res = '>'
+	    ;
+		(ensure(sublevel(Lev2, Lev1), cmp_const_info(Lev1,Lev2)),
+		    Res = '<'))).
+
+%% must not be reached
+cmp_const_info(_,I1,I2):- ensure( fail, cmp_const_info(I1,I2)).
+
+insrt_by_info(X, [], [X]).
+insrt_by_info(F1, [F2|T], Sorted):-
+	cmp_const_info(Res, F1, F2),
+	(Res = '<' ->
+	    Sorted = [F1,F2|T]
+	;
+	    (insrt_by_info(F1, T, Sorted1),
+		Sorted = [F2|Sorted1])
+	).
+
+%% this is an insert sort by mptp_info
+%% all consts must be comparable
+sort_by_const_names([], Sorted, Sorted).
+sort_by_const_names([H|T], Sorted, Res):-
+	insrt_by_info(H, Sorted, Sorted1),
+	sort_by_const_names(T, Sorted1, Res).
+	
+
+
+%% find the corresponding subst for X, throw exception if not
+%% X is assumed to be a local constant
+get_const_subst(X,[],_):- !, throw(const_subst(X)).
+get_const_subst(X,[Z/Y|_],Z/Y):- X == Z, !.
+get_const_subst(X,[_|T],Subst):- get_const_subst(X,T,Subst).
+
+%% apply_const_substs(+Substs,+Fla,-Fla1)
+%% applies local constant substitutions to Fla, throwing exception
+%% if no substitution for any local const exists
+apply_const_substs_top(Substs,Fla,Fla1):-
+	apply_const_substs(Substs,Fla,Fla1), !.
+
+%% end of traversal
+apply_const_substs(_,X,X):- var(X),!.
+
+apply_const_substs(Substs,X1,Var1):- atomic(X1), mptp_local_const(X1), !,
+	get_const_subst(X1,Substs,X1/Var1).
+
+apply_const_substs(_,X,X):- atomic(X),!.	
+apply_const_substs(Substs,X1,X2):- 
+	X1 =.. [H1|T1],
+	maplist(apply_const_substs(Substs),T1,T2),
+	X2 =.. [H1|T2].
+
+%% make new variables for the constants
+make_const_var_substs([], []).
+make_const_var_substs([H|T], [(H/_NewVar)|NewVars]):-
+	make_const_var_substs(T, NewVars).
+
+%% generalize local constants into universally bound variables
+%% generalize_consts(+In, -Out, -UnivContext, -Subst)
+%% all local consts in -Out are replaced with new vars, these vars
+%% are collected in UnivContext (with their sorts),
+%% -Subst is the substitution which turns -Out into +In again
+generalize_consts(In, Out, UnivContext, NewConstSubst):-
+	collect_symbols_top(In, Syms0),
+	sublist(mptp_local_const, Syms0, Consts0),
+	add_consts([], Consts0, Consts0, SortRefs, AllConsts),
+	length(AllConsts, N),
+	ensure(length(SortRefs, N), gen_consts(In,AllConsts,SortRefs)),
+	maplist(get_ref_fof, SortRefs, SortFofs),
+	sort_by_const_names(SortFofs, [], SortFofs1),
+	maplist(arg(3), SortFofs1, SortFlas1),
+	ensure( zip_s(sort, SortedConsts,Sorts,SortFlas1),gen_consts),
+	zip_s(':', SortedConsts, Sorts, Context1),
+	once(make_const_var_substs(SortedConsts, NewConstSubst)),
+	apply_const_substs(NewConstSubst, [In,Context1], [Out,UnivContext]).
+	
+%%%%%%%%%%%% End of constant generalization %%%%%%%%%%%%%%%%%%%%%%%%%%%	
+
 
 %% test uniqueness of references inside Article
 test_refs(Article):-
@@ -693,7 +813,7 @@ test_refs(Article):-
 	print(S),nl,length(S,N),print(N),
 	retractall(fof(_,_,_,file(Article,_),_)).
 
-% Shorter is an ancestor level or equal to Longer
+%% Shorter is an ancestor level or equal to Longer
 sublevel(Longer,Shorter) :- append(Shorter,_,Longer).
 
 %% filter out refs with more special level
@@ -790,7 +910,7 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds]):-
 	    [mptp_info(Nr,Lev,MPropKind,position(Line,Col),_),
 	     inference(InfKind,InfInfo,Refs0)]),
 %	filter_level_refs(Lev,Refs0,Refs),
-	atom_concat(Prefix,P,Outfile),
+	concat_atom([Prefix,F,'__',P],Outfile),
 	tell(Outfile),
 	format('% Mizar problem: ~w,~w,~w,~w ~n', [P,F,Line,Col]),
 	(
@@ -809,13 +929,14 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds]):-
 	  Syms1 = Syms0,
 	  once(fixpoint(F, InfKind, [P|Refs], [], Syms1, AllRefs))
 	),
-	%% bg info should not be needed for mizar_from 
+	%% collect fraenkel infos and put variables into fraenkel flas
 	findall([fof(R,R1,Out,R3,R4),Info],
 		(member(R,AllRefs), get_ref_fof(R,fof(R,R1,R2,R3,R4)),
 		    all_collect_top(R2,Out,Info)),
 		S1),
 	zip(Flas, Infos1, S1),
 	append_l(Infos1,Infos),
+	%% instantiate fraenkels with their defs, create the defs
 	mk_fraenkel_defs_top(Infos, NewFrSyms, Defs),
 	findall(dummy,(nth1(Pos,Defs,D),
 		       sort_transform_top(D,D1), numbervars(D1,0,_),
