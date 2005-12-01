@@ -630,7 +630,7 @@ print_thms_and_defs_for_learning:-
 
 %%%%%%%%%%%%%%% generating scheme instances  %%%%%%%%%%%%%%%%%%%%%%%
 
-%% find the corresponding subst for X, throw exception if not
+%% find the corresponding subst for X, throw exception if not;
 %% X is assumed to be a scheme functor or predicate
 get_sym_subst(X,[],_):- !, throw(sch_subst(X)).
 get_sym_subst(X,[Z/Y|_],Subst):- X == Z, !, copy_term(X/Y, Subst).
@@ -678,22 +678,33 @@ apply_sch_substs(Substs,X1,X2):-
 
 %% gen_sch_instance(?SchInstName,?File,-Res)
 %% - generate instance of SchName as fof with the same level
-gen_sch_instance(SI_Name,F,Res):-
+gen_sch_instance(SI_Name,F,Res,Options):-
 	fof(Ref,_,_,file(F,_),
 	    [MPTPInfo,inference(mizar_from,[InstInfo],_Refs)]),
 	InstInfo = scheme_instance(SI_Name,S_Name,Ref,_,Substs),
 	MPTPInfo= mptp_info(_Nr,Lev,_Kind,Pos,_Args),
 	once(fof(S_Name,theorem,Fla,_,_)),
 	copy_term(Fla,Tmp),
-	apply_sch_substs_top(Substs,Tmp,Fla1),
+	apply_sch_substs_top(Substs,Tmp,Fla0),
+	(member(opt_REM_SCH_CONSTS,Options) ->
+	    generalize_consts(Fla0, Tmp2, UnivContext, _ ),
+	    (UnivContext == [] ->
+		Fla1 = Tmp2
+	    ;
+		Fla1 = ( ! UnivContext : ( Tmp2) )
+	    ),
+	    Lev1 = []
+	;
+	    Fla1 = Fla0, Lev1 = Lev
+	),
 	Res = fof(SI_Name,theorem, Fla1, file(F,SI_Name),
-		  [mptp_info(0,Lev,scheme_instance,Pos,[]),
+		  [mptp_info(0,Lev1,scheme_instance,Pos,[]),
 		   inference(mizar_sch_instance,[InstInfo],[S_Name])]).
 
 %% create and assert all scheme instances for a given article
-assert_sch_instances(File):-
+assert_sch_instances(File,Options):-
 	repeat,
-	( gen_sch_instance(_,File,Res), assert(Res), fail; true).
+	( gen_sch_instance(_,File,Res,Options), assert(Res), fail; true).
 	
 
 %%%%%%%%%%%% Constant generalization (abstraction) %%%%%%%%%%%%%%%%%%%%
@@ -872,7 +883,8 @@ mk_article_problems(Article,Kinds):-
 	mml_dir_atom(MMLDir),
 	concat_atom([MMLDir, Article,'.xml2'],File),
 	consult(File),
-	once(assert_sch_instances(Article)),
+	install_index,
+	once(assert_sch_instances(Article,[opt_REM_SCH_CONSTS])),
 	install_index,
 	concat_atom(['problems/',Article,'/'],Dir),
 	(exists_directory(Dir) -> (string_concat('rm -r -f ', Dir, Command),
