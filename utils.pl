@@ -16,8 +16,13 @@ mml_dir("/big/urban/miztmp/mml3/tmp/").
 mml_dir_atom(A):- mml_dir(S), string_to_atom(S,A).
 
 %% switch to fail for debug
-optimize_fraenkel:- fail.
+optimize_fraenkel. % :- fail.
 
+%% debugging, Flags can be: [dbg_FRAENKELS]
+dbg_flags([]).
+dbg(Flag, Goal):-
+	dbg_flags(Flags), member(Flag, Flags), !, Goal.
+dbg(_,_).
 
 zip([],[],[]).
 zip([H|T],[H1|T1],[[H,H1]|T2]):- zip(T,T1,T2).
@@ -132,6 +137,7 @@ declare_mptp_predicates:-
  multifile(constr_name/3),
  multifile(theory/2),
  abolish(fof_name/2),
+ abolish(fof_file/2),
  abolish(fof_section/2),
  abolish(fof_level/2),
  abolish(fof_parentlevel/2),
@@ -387,36 +393,40 @@ real_context(InVars, BigC, RealC):-
 % lists of Fraenkel symbols starting with their arity, e.g.:
 % [[0|FrSymsOfArity_0],[2|FrSymsOfArity_2],[1|FrSymsOfArity_1]],
 
-new_fr_sym(Arity, FrInfo, NewFrInfo, NewSym):-
+new_fr_sym(File, Arity, FrInfo, NewFrInfo, NewSym):-
 	( select([Arity|FrSyms], FrInfo, TmpInfo);
 	    ( FrSyms = [], TmpInfo = FrInfo )),
 	length(FrSyms, Nr),
-	concat_atom([all,Arity,Nr], '_', NewSym),
+	concat_atom([a,Arity,Nr,File], '_', NewSym),
 	select([Arity,NewSym|FrSyms], NewFrInfo, TmpInfo), ! .
 
-mk_fraenkel_def(Var, Context, all(Svars1,Trm1,Frm1), FrInfo, NewFrInfo, NewSym, Def) :-
+mk_fraenkel_def(File, Var, Context, all(Svars1,Trm1,Frm1),
+		FrInfo, NewFrInfo, NewSym, Def) :-
 	split_svars(Vars, _, Context),
 	length(Vars, Arity),
-	new_fr_sym(Arity, FrInfo, NewFrInfo, NewSym),	
+	new_fr_sym(File, Arity, FrInfo, NewFrInfo, NewSym),	
 	FrTrm =.. [NewSym|Vars],
 	InPred =.. [r2_hidden, X, FrTrm],
 	ExFla = ( ? Svars1 : ( ( X = Trm1 ) & Frm1)),
 	Def = ( ! [(X : $true)|Context] : ( InPred <=> ExFla ) ),
 	Var = FrTrm.
 
-mk_fraenkel_defs_top(Infos, NewFrSyms, NewDefs):-
-	mk_fraenkel_defs(Infos, [], [], NewFrSyms, NewDefs),!.
+%% NewDefs id a list of pairs [DefinedSymbol, Def] now
+mk_fraenkel_defs_top(File, Infos, NewFrSyms, NewDefs):-
+	mk_fraenkel_defs(File, Infos, [], [], NewFrSyms, NewDefs),!.
 
-mk_fraenkel_defs([], _, FrSyms, FrSyms, []).
-mk_fraenkel_defs([[V,C,_,GrC]|T], GrCopies, FrSyms, NewFrSyms, Defs):-
+mk_fraenkel_defs(_, [], _, FrSyms, FrSyms, []).
+mk_fraenkel_defs(File, [[V,C,_,GrC]|T], GrCopies, FrSyms, NewFrSyms, Defs):-
 	member([FoundSym,GrC], GrCopies), !,
 	split_svars(Vars, _, C),
 	V =.. [FoundSym|Vars],
-	mk_fraenkel_defs(T, GrCopies, FrSyms, NewFrSyms, Defs).
+	mk_fraenkel_defs(File, T, GrCopies, FrSyms, NewFrSyms, Defs).
 
-mk_fraenkel_defs([[V,C,Trm,GrC]|T], GrCopies, FrSyms, NewFrSyms, [D|Defs]):-
-	mk_fraenkel_def(V, C, Trm, FrSyms, FrSyms1, NewSym, D),
-	mk_fraenkel_defs(T, [[NewSym,GrC]|GrCopies], FrSyms1, NewFrSyms, Defs).
+mk_fraenkel_defs(File, [[V,C,Trm,GrC]|T], GrCopies, FrSyms,
+		 NewFrSyms, [[NewSym,D]|Defs]):-
+	mk_fraenkel_def(File, V, C, Trm, FrSyms, FrSyms1, NewSym, D),
+	mk_fraenkel_defs(File, T, [[NewSym,GrC]|GrCopies],
+			 FrSyms1, NewFrSyms, Defs).
 
 % should be unique for Ref
 get_ref_fla(Ref,Fla):- fof_name(Ref,Id),clause(fof(Ref,_,Fla,_,_),_,Id),!.
@@ -449,6 +459,13 @@ get_redefinitions(RefsIn,SymsIn,AddedRefs):-
 			  [mptp_info(_,_,_,_,[redefinition(_,_,_,_)])|_],
 			  AddedRefs).
 
+get_fraenkel_defs(RefsIn,SymsIn,AddedRefs):-
+	get_sec_info_refs(RefsIn, SymsIn,
+			  [mptp_info(_,_,fraenkel,_,_)|_], Refs1),
+	(Refs1 = [] -> AddedRefs = [];
+	    (memberchk(t2_tarski, RefsIn) -> AddedRefs = Refs1;
+		AddedRefs = [t2_tarski|Refs1])).
+
 get_types(RefsIn,SymsIn,AddedRefs):-
 	get_sec_info_refs(RefsIn, SymsIn,
 			  [mptp_info(_,_,_,_,[ctype])|_], Refs1),
@@ -478,10 +495,12 @@ one_pass(F,InfKind,RefsIn,OldSyms,NewSyms,AddedRefs):-
 %% Refs5=[],
 	get_clusters([F|Regs],RefsIn,OldSyms,NewSyms,Refs5),
 	get_requirements(Reqs,RefsIn,OldSyms,NewSyms,Refs6),
-	flatten([Refs0,Refs1,Refs2,Refs3,Refs4,Refs5,Refs6], AddedRefs).
+	get_fraenkel_defs(RefsIn,NewSyms,Refs7),
+	flatten([Refs0,Refs1,Refs2,Refs3,Refs4,Refs5,Refs6,Refs7], AddedRefs).
 
 %% version for mizar_from
-%% OldSyms are used only for clusters and requirements
+%% OldSyms are used only for clusters and requirements,
+%% fraenkel defs should not be needed
 one_pass(F,mizar_from,RefsIn,OldSyms,NewSyms,AddedRefs):-
 	theory(F, Theory),
 	member(registrations(Regs),Theory),
@@ -597,7 +616,7 @@ read_lines(S,Res):-
 %% first 100 MML articles.
 mk_first100:-
 	declare_mptp_predicates,load_mml,first100(L),!,
-	member(A,L),mk_article_problems(A,[[mizar_from],[theorem,sublemma,top_level_lemma]]),fail.
+	member(A,L),mk_article_problems(A,[[mizar_from],[theorem,sublemma,top_level_lemma]],[opt_REM_SCH_CONSTS]),fail.
 
 test_refs_first100:-
 	declare_mptp_predicates,first100(L),!,
@@ -676,6 +695,9 @@ apply_sch_substs(Substs,X1,X2):-
 	X2 =.. [H1|T2].
 
 
+add_univ_context([],Fla,Fla).
+add_univ_context([H|T], Fla, ( ! [H|T] : ( Fla) )).
+
 %% gen_sch_instance(?SchInstName,?File,-Res)
 %% - generate instance of SchName as fof with the same level
 gen_sch_instance(SI_Name,F,Res,Options):-
@@ -688,11 +710,7 @@ gen_sch_instance(SI_Name,F,Res,Options):-
 	apply_sch_substs_top(Substs,Tmp,Fla0),
 	(member(opt_REM_SCH_CONSTS,Options) ->
 	    generalize_consts(Fla0, Tmp2, UnivContext, _ ),
-	    (UnivContext == [] ->
-		Fla1 = Tmp2
-	    ;
-		Fla1 = ( ! UnivContext : ( Tmp2) )
-	    ),
+	    add_univ_context(UnivContext, Tmp2, Fla1),
 	    Lev1 = []
 	;
 	    Fla1 = Fla0, Lev1 = Lev
@@ -811,6 +829,73 @@ generalize_consts(In, Out, UnivContext, NewConstSubst):-
 	
 %%%%%%%%%%%% End of constant generalization %%%%%%%%%%%%%%%%%%%%%%%%%%%	
 
+%%%%%%%%%%%% Installation of fraenkel definitions %%%%%%%%%%%%%%%%%%%%%
+
+%% inst_univ_fof([+Fof,+Substs], -Res)
+%% apply all the substitutioons in Substs to Fof, assuming that
+%% the length of Substs equals the first quantif. prefix, and
+%% the prefic contains the insntiated vars; strip this quantif. prefix
+inst_univ_fof([X,[]],X):- !.
+inst_univ_fof([fof(R,R1,(! [_] : Out),R3,R4),[Cnst/Var]], Res):- !,
+	Var = Cnst,
+	Res = fof(R,R1,Out,R3,R4).	
+inst_univ_fof([fof(R,R1,(! [_|Vs] : Out),R3,R4),[Cnst/Var|T]], Res):- !,
+	Var = Cnst,
+	inst_univ_fof([fof(R,R1,(! Vs : Out),R3,R4), T], Res).
+
+inst_univ_fof(_,_):- throw(inst_univ_fof).
+
+%% create the fof for a given pair [NewSym, Def], and assert
+assert_fraenkel_def(File,[NewSym, Def]):-
+	concat_atom(['fraenkel_', NewSym], Name),
+	Res= fof(Name, definition, Def, file(File,NewSym),
+		 [mptp_info(0,[],fraenkel,position(0,0),[])]),
+	assert(Res),!.
+
+print_clause_id(Id):- clause(X,_,Id), print(X), nl, !.
+print_nl(X):- print(X), nl, !.
+
+%% abstract_fraenkels(+Article, -NewFrSyms)
+%%
+%% create definitions for all fraenkel terms in Article,
+%% in which the possible local consts are generalized-out;
+%% assert these definitions as new fofs, erase the original clauses
+%% with fraenkel terms and assert instead of them their versions
+%% with fraenkel terms replaced by the new fraenkel functors
+abstract_fraenkels(Article, NewFrSyms):-
+	findall(Id,(fof_file(Article,Id),
+		    clause(fof(_,_,Fla,file(_,_),_),_,Id),
+		    collect_symbols_top(Fla,Syms),
+		    memberchk(all,Syms)),Ids), !,
+	%% collect fraenkel infos and put variables into fraenkel flas
+	findall([[fof(R,R1,Out,R3,R4),Subst],Info],
+		(member(Id,Ids), clause(fof(R,R1,R2,R3,R4),_,Id),
+		    once(generalize_consts(R2, Out1, UnivContext, Subst)),
+		    add_univ_context(UnivContext, Out1, Out2),
+		    all_collect_top(Out2,Out,Info)),
+		S1),
+	zip(FofSubsts, Infos1, S1),
+	append_l(Infos1,Infos),
+	%% instantiate fraenkels with their defs, create the defs
+	mk_fraenkel_defs_top(Article, Infos, NewFrSyms, Defs),
+	%% Defs generally share context vars with the original flas,
+	%% and with each other (if multiple fraenkels in one fla);
+	%% so we have to give them fresh vars, since the vars in original
+	%% flas can be e.g. instantiated back to constants
+	maplist(copy_term,Defs,Defs1),
+	dbg(dbg_FRAENKELS, checklist(print_nl, Defs1)),
+	%% now we can safely instantiate the added vars to constants again
+	maplist(inst_univ_fof, FofSubsts, Fofs),
+	checklist(erase, Ids),
+	checklist(assert, Fofs),
+	dbg(dbg_FRAENKELS, checklist(print_nl, Fofs)),
+	length(Defs1, NDefs1), length(Ids, NIds),
+	format('~p flas with fraenkel terms, ~p defs created ~n',
+	       [NIds,NDefs1]),
+	checklist(assert_fraenkel_def(Article), Defs1).
+
+%%%%%%%%%%%% End of Installation of fraenkel definitions %%%%%%%%%%%%%%%%%%%%%
+
 
 %% test uniqueness of references inside Article
 test_refs(Article):-
@@ -877,14 +962,16 @@ get_proof_syms_and_flas(RefsIn, PLevel, PSyms, PRefs):-
 %% Kinds is a list [InferenceKinds, PropositionKinds]
 %% possible InferenceKinds are now [mizar_by, mizar_from, mizar_proof]
 %% possible PropositionKinds are now [theorem, top_level_lemma, sublemma]
-mk_article_problems(Article,Kinds):-
+mk_article_problems(Article,Kinds,Options):-
 %	declare_mptp_predicates,
 %	load_mml,
 	mml_dir_atom(MMLDir),
 	concat_atom([MMLDir, Article,'.xml2'],File),
 	consult(File),
 	install_index,
-	once(assert_sch_instances(Article,[opt_REM_SCH_CONSTS])),
+	once(assert_sch_instances(Article,Options)),
+	install_index,
+	abstract_fraenkels(Article, _),
 	install_index,
 	concat_atom(['problems/',Article,'/'],Dir),
 	(exists_directory(Dir) -> (string_concat('rm -r -f ', Dir, Command),
@@ -949,7 +1036,8 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds]):-
 	zip(Flas, Infos1, S1),
 	append_l(Infos1,Infos),
 	%% instantiate fraenkels with their defs, create the defs
-	mk_fraenkel_defs_top(Infos, NewFrSyms, Defs),
+	mk_fraenkel_defs_top(F, Infos, NewFrSyms, Defs0),
+	zip(_NewSyms, Defs, Defs0),
 	findall(dummy,(nth1(Pos,Defs,D),
 		       sort_transform_top(D,D1), numbervars(D1,0,_),
 		       print(fof(Pos,axiom,D1,file(F,Pos),[freankel])),write('.'),nl),_),
@@ -1022,6 +1110,7 @@ level_atom([H|T],Atom):- ground([H|T]),
 %% declare_mptp_predicates,assert_sch_instances(File), install_index
 install_index:-
 	abolish(fof_name/2),
+	abolish(fof_file/2),
 	abolish(fof_section/2),
 	abolish(fof_level/2),
 	abolish(fof_parentlevel/2),
@@ -1032,6 +1121,9 @@ install_index:-
 	repeat,
 	( clause(fof(Ref,_,_,_,_),_,Id),
 	    assert(fof_name(Ref, Id)), fail; true),
+	repeat,
+	( clause(fof(_,_,_,file(File1,_), _),_,Id),
+	    assert(fof_file(File1, Id)), fail; true),
 	repeat,
 	( clause(fof(_,_,_,file(_,Sec1), _),_,Id),
 	    assert(fof_section(Sec1, Id)), fail; true),
