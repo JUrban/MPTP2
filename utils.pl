@@ -141,6 +141,7 @@ declare_mptp_predicates:-
  abolish(fof_section/2),
  abolish(fof_level/2),
  abolish(fof_parentlevel/2),
+ dynamic(fof_parentlevel/2),
  abolish(fof_cluster/3),
  abolish(fof_req/3),
  index(fof(1,1,0,1,1)),
@@ -597,6 +598,10 @@ first100([
 	  seq_4,real_2,margrel1,prob_2,rcomp_1,multop_1,mcart_2,mcart_3,mcart_4,
 	  mcart_5,mcart_6,finseq_4,finseqop,finsop_1,setwop_2]).
 
+nonnumeric(Article):-
+	theory(Article,T),
+	member(requirements(Req),T),
+	subset(Req,[hidden, boole, subset]). 
 
 all_articles(List):-
 	mml_dir(Dir),
@@ -616,7 +621,7 @@ read_lines(S,Res):-
 %% first 100 MML articles.
 mk_first100:-
 	declare_mptp_predicates,load_mml,first100(L),!,
-	member(A,L),mk_article_problems(A,[[mizar_from],[theorem,sublemma,top_level_lemma]],[opt_REM_SCH_CONSTS]),fail.
+	member(A,L),mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem]],[opt_REM_SCH_CONSTS]),fail.
 
 test_refs_first100:-
 	declare_mptp_predicates,first100(L),!,
@@ -1036,11 +1041,12 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds]):-
 	zip(Flas, Infos1, S1),
 	append_l(Infos1,Infos),
 	%% instantiate fraenkels with their defs, create the defs
-	mk_fraenkel_defs_top(F, Infos, NewFrSyms, Defs0),
+	concat_atom([F,'_spc'],FSpec),
+	mk_fraenkel_defs_top(FSpec, Infos, NewFrSyms, Defs0),
 	zip(_NewSyms, Defs, Defs0),
 	findall(dummy,(nth1(Pos,Defs,D),
 		       sort_transform_top(D,D1), numbervars(D1,0,_),
-		       print(fof(Pos,axiom,D1,file(F,Pos),[freankel])),write('.'),nl),_),
+		       print(fof(Pos,axiom,D1,file(F,Pos),[fraenkel])),write('.'),nl),_),
 
 	( member(_,Defs) -> Refs1 = [t2_tarski|AllRefs]; Refs1 = AllRefs),
 	findall(dummy,(member(Q,Refs1), (member(fof(Q,Q1,Q2,Q3,Q4),Flas);
@@ -1114,6 +1120,7 @@ install_index:-
 	abolish(fof_section/2),
 	abolish(fof_level/2),
 	abolish(fof_parentlevel/2),
+	dynamic(fof_parentlevel/2),
 	abolish(fof_cluster/3),
 	abolish(fof_req/3),
 %	add_hidden,
