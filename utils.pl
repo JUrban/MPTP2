@@ -508,8 +508,10 @@ one_pass(F,InfKind,RefsIn,OldSyms,NewSyms,AddedRefs):-
 	get_clusters([F|Regs],RefsIn,OldSyms,NewSyms,Refs5),
 	get_requirements(Reqs,RefsIn,OldSyms,NewSyms,Refs6),
 	get_fraenkel_defs(RefsIn,NewSyms,Refs7),
-	get_eq_defs(Defs,RefsIn,NewSyms,Refs8),
-	flatten([Refs0,Refs1,Refs2,Refs3,Refs4,Refs5,Refs6,Refs7,Refs8], AddedRefs).
+	get_eq_defs([F|Defs],RefsIn,NewSyms,Refs8),
+	get_nr_types(Reqs,RefsIn,NewSyms,Refs9),
+	flatten([Refs0,Refs1,Refs2,Refs3,Refs4,Refs5,Refs6,Refs7,Refs8,Refs9],
+		AddedRefs).
 
 %% version for mizar_from
 %% OldSyms are used only for clusters and requirements,
@@ -517,11 +519,13 @@ one_pass(F,InfKind,RefsIn,OldSyms,NewSyms,AddedRefs):-
 one_pass(F,mizar_from,RefsIn,OldSyms,NewSyms,AddedRefs):-
 	theory(F, Theory),
 	member(registrations(Regs),Theory),
+	member(requirements(Reqs),Theory),
 	get_properties(RefsIn,NewSyms,Refs0),
 	get_redefinitions(RefsIn,NewSyms,Refs2),
 	get_types(RefsIn,NewSyms,Refs3),
 	get_clusters([F|Regs],RefsIn,OldSyms,NewSyms,Refs5),
-	flatten([Refs0,Refs2,Refs3,Refs5], AddedRefs).
+	get_nr_types(Reqs,RefsIn,NewSyms,Refs6),
+	flatten([Refs0,Refs2,Refs3,Refs5,Refs6], AddedRefs).
 
 
 
@@ -569,15 +573,41 @@ get_requirements(Files,RefsIn,OldSyms,NewSyms,AddedRefs):-
 			  subset(Syms, AllSyms)),
 		AddedRefs).
 
-nr_boole(0,fof(spc0_boole,theorem, v1_xboole_0(0),
+
+%% get references for types of numbers
+get_nr_types(Files,RefsIn,NewSyms,AddedRefs):-
+	findall(Ref1, (member(F1,Files),
+			  member(N,NewSyms),
+			  integer(N),
+			  get_nr_type(F1,N,Ref1),
+			  not(member(Ref1, RefsIn))),
+		AddedRefs).
+
+%% get the type formula for numbers added by a requirement File
+%% possibly create and index the fof, if not existing yet
+get_nr_type(File,N,Name):-
+	member(File, [boole,numerals]),
+	integer(N),
+	concat_atom([spc,N,'_',File],Name),
+	(fof_name(Name,_),!
+	;
+	    get_nr_fof(File,N,Res),
+	    Res = fof(Name,_,_,_,_),
+	    assert(Res,Id),
+	    assert(fof_name(Name,Id)),
+	    assert(fof_section(Name,Id))
+	).
+
+
+get_nr_fof(boole,0,fof(spc0_boole,theorem, v1_xboole_0(0),
 	       file(boole,spc0_boole),
 	       [mptp_info(0,[],theorem,position(0,0),[0])])):- !.
-nr_boole(N,Res):-
+get_nr_fof(boole,N,Res):-
 	integer(N), N > 0, concat_atom([spc,N,'_boole'],Name),
 	Res= fof(Name,theorem, ~ (v1_xboole_0(N)),
 		 file(boole,Name),[mptp_info(0,[],theorem,position(0,0),[0])]).
 
-nr_numerals(N,Res):-
+get_nr_fof(numerals,N,Res):-
 	integer(N), N > 0, concat_atom([spc,N,'_numerals'],Name),
 	Res= fof(Name,theorem,
 		 sort(N,(v2_xreal_0 & m1_subset_1(k5_numbers))),
