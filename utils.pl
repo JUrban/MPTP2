@@ -1012,7 +1012,15 @@ mk_article_problems(Article,Kinds,Options):-
 %	declare_mptp_predicates,
 %	load_mml,
 	mml_dir_atom(MMLDir),
-	concat_atom([MMLDir, Article,'.xml2'],File),
+	concat_atom([MMLDir, Article, '.xml2'],File),
+	concat_atom([MMLDir, Article, '.dcl2'],DCL),
+	concat_atom([MMLDir, Article, '.dco2'],DCO),
+	concat_atom([MMLDir, Article, '.the2'],THE),
+	concat_atom([MMLDir, Article, '.sch2'],SCH),
+	%% remove the ovelapping mml parts first
+	retractall(fof(_,_,_,file(Article,_),_)),
+	sublist(exists_file,[DCL,DCO],ToLoad1),
+	load_files(ToLoad1,[silent(true)]),
 	consult(File),
 	install_index,
 	once(assert_sch_instances(Article,Options)),
@@ -1026,10 +1034,6 @@ mk_article_problems(Article,Kinds,Options):-
 	repeat,(mk_problem(_,Article,Dir,Kinds),fail; !,true),
 %% retract current file but return mml parts
 	retractall(fof(_,_,_,file(Article,_),_)),
-	concat_atom([MMLDir ,Article, '.dcl2'],DCL),
-	concat_atom([MMLDir ,Article, '.dco2'],DCO),
-	concat_atom([MMLDir ,Article, '.the2'],THE),
-	concat_atom([MMLDir ,Article, '.sch2'],SCH),
 	sublist(exists_file,[DCL,DCO,THE,SCH],ToLoad),
 	load_files(ToLoad,[silent(true)]).
 %	retractall(fof(_,_,_,file(Article,_),[mptp_info(_,_,proposition,_,_)|_])),
