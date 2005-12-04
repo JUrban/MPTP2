@@ -138,6 +138,7 @@ declare_mptp_predicates:-
  multifile(theory/2),
  abolish(fof_name/2),
  abolish(fof_file/2),
+ abolish(fof_eq_def/2),
  abolish(fof_section/2),
  abolish(fof_level/2),
  abolish(fof_parentlevel/2),
@@ -480,6 +481,15 @@ get_equalities(RefsIn,SymsIn,AddedRefs):-
 	get_sec_info_refs(RefsIn, SymsIn,
 			  [mptp_info(_,_,constant,_,[_,equality])], AddedRefs).
 
+%% get functor definitions by 'equals' but only for articles
+%% mentioned in the 'definitions' env. declaration
+get_eq_defs(Files,RefsIn,SymsIn,AddedRefs):-
+	findall(Ref1, (member(Sym,SymsIn), fof_eq_def(Sym, Id),
+			  clause(fof(Ref1,_,_,file(F,_),_),_,Id),
+			  member(F,Files)), Refs1),
+	subtract(Refs1, RefsIn, AddedRefs).
+
+
 %% version for mizar_by and mizar_proof; mizar_proof should be
 %% enhanced a bit probably
 %% OldSyms are used only for clusters and requirements
@@ -488,6 +498,7 @@ one_pass(F,InfKind,RefsIn,OldSyms,NewSyms,AddedRefs):-
 	theory(F, Theory),
 	member(registrations(Regs),Theory),
 	member(requirements(Reqs),Theory),
+	member(definitions(Defs),Theory),
 	get_properties(RefsIn,NewSyms,Refs0),
 	get_existence(RefsIn,NewSyms,Refs1),
 	get_redefinitions(RefsIn,NewSyms,Refs2),
@@ -497,7 +508,8 @@ one_pass(F,InfKind,RefsIn,OldSyms,NewSyms,AddedRefs):-
 	get_clusters([F|Regs],RefsIn,OldSyms,NewSyms,Refs5),
 	get_requirements(Reqs,RefsIn,OldSyms,NewSyms,Refs6),
 	get_fraenkel_defs(RefsIn,NewSyms,Refs7),
-	flatten([Refs0,Refs1,Refs2,Refs3,Refs4,Refs5,Refs6,Refs7], AddedRefs).
+	get_eq_defs(Defs,RefsIn,NewSyms,Refs8),
+	flatten([Refs0,Refs1,Refs2,Refs3,Refs4,Refs5,Refs6,Refs7,Refs8], AddedRefs).
 
 %% version for mizar_from
 %% OldSyms are used only for clusters and requirements,
@@ -523,7 +535,6 @@ fixpoint(F,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
 	    collect_symbols_top(Flas1, Syms1),
 	    subtract(Syms1, OldSyms1, NewSyms1), 
 	    fixpoint(F, InfKind, Refs2, OldSyms1, NewSyms1, RefsOut)).
-
 
 %% antecedent symbols needed for fcluster or ccluster
 cl_needed_syms_top(Fla,Syms):-
@@ -1110,6 +1121,9 @@ level_atom([H|T],Atom):- ground([H|T]),
 	maplist(atom_number,V1,[H|T]),
 	concat_atom(V1,'_',Atom).
 
+strip_univ_quant((! _ : X ),Y):- !,strip_univ_quant(X,Y).
+strip_univ_quant(X,X).
+
 %% installs the indeces for fast lookup of fof's;
 %% should be called only after addition of custom fof's like
 %% scheme instance, e.g.:
@@ -1117,6 +1131,7 @@ level_atom([H|T],Atom):- ground([H|T]),
 install_index:-
 	abolish(fof_name/2),
 	abolish(fof_file/2),
+	abolish(fof_eq_def/2),
 	abolish(fof_section/2),
 	abolish(fof_level/2),
 	abolish(fof_parentlevel/2),
@@ -1131,6 +1146,14 @@ install_index:-
 	repeat,
 	( clause(fof(_,_,_,file(File1,_), _),_,Id),
 	    assert(fof_file(File1, Id)), fail; true),
+	repeat,
+	( clause(fof(_,definition,KDef,_,
+		     [mptp_info(_,[],definition,_,_)|_]),_,Id),
+	    strip_univ_quant(KDef, ( KTerm = _)),
+	    nonvar(KTerm),
+	    KTerm =..[KFun|_],
+	    atom_chars(KFun,[k|_]),
+	    assert(fof_eq_def(KFun, Id)), fail; true),
 	repeat,
 	( clause(fof(_,_,_,file(_,Sec1), _),_,Id),
 	    assert(fof_section(Sec1, Id)), fail; true),
