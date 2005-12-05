@@ -96,7 +96,7 @@ declare_TPTP_operators:-
     op(400,xfx,'..').
 
 :- declare_TPTP_operators.
-logic_syms([++,--,'$',~,'|','~|',&,~&,=>,<=,<=>,<~>,!,?,:,'..',sort,all,'.',[]]).
+logic_syms([++,--,'$',~,'|','~|',true,&,~&,=>,<=,<=>,<~>,!,?,:,'..',sort,all,'.',[]]).
 
 %% uncomment this for E prover versions earlier than 0.9
 % portray(A = B):- format(' equal(~p,~p) ',[A,B]).
@@ -691,6 +691,70 @@ print_thms_and_defs_for_learning:-
 	  write('.'),nl,
 	  fail);
 	    told).
+
+
+
+
+%% symbol and reference numbering for snow
+%% symbols start at 100000
+get_snow_refnr(Ref,Nr):- snow_refnr(Ref,Nr),!.
+get_snow_refnr(Ref,Nr):-
+	flag(snow_refnr,N,N+1), Nr is N+1,
+	assert(snow_refnr(Ref,Nr)),!.
+
+get_snow_symnr(Ref,Nr):- snow_symnr(Ref,Nr),!.
+get_snow_symnr(Ref,Nr):- flag(snow_symnr,N,N+1), Nr is N+1,
+	assert(snow_symnr(Ref,Nr)),!.
+
+%% print defs and thms, with only top-level references 	      
+%% now prints in the article order, and also respects
+%% the order of defs and theorems in the article -
+%% needed for incremental learning
+mk_snow_input_for_learning:-
+	declare_mptp_predicates,
+	load_theorems,
+	install_index,
+	all_articles(Articles),
+	abolish(snow_symnr/2),
+	abolish(snow_refnr/2),
+	dynamic(snow_symnr/2),
+	dynamic(snow_refnr/2),
+	flag(snow_refnr,_,0),
+	flag(snow_symnr,_,100000),
+	logic_syms(LogicSyms),
+	tell('Snow_MML.train'),
+	%% print definitions - they have no proof
+	(
+	  member(A,[tarski|Articles]),
+	  fof(Name,Kind,Fla,file(A,Name),Info),
+	  (
+	    Kind = definition,
+	    Refs1 = []
+	  ;
+	    Kind = theorem,
+	    Info = [mptp_info(_,[],theorem,_,_),
+		    inference(_,_,Refs)],
+	    findall(Ref,(member(Ref,Refs),atom_chars(Ref,[C|_]),
+			 member(C,[t,d])), Refs1)
+	  ),
+	  collect_symbols_top(Fla, AllSyms),
+	  subtract(AllSyms,LogicSyms,Syms),
+	  Syms = [_|_],
+	  maplist(get_snow_symnr,Syms,SymNrs),
+	  maplist(get_snow_refnr,[Name|Refs1],RefNrs),
+	  append(SymNrs,RefNrs,AllNrs),
+	  concat_atom(AllNrs,',',ToPrint),
+	  write(ToPrint), write(':'), nl,
+	  fail
+	;
+	  told
+	),
+	tell('Snow_MML.symnr'),
+	listing(snow_symnr),
+	told,
+	tell('Snow_MML.refnr'),
+	listing(snow_refnr),
+	told.
 
 
 %%%%%%%%%%%%%%% generating scheme instances  %%%%%%%%%%%%%%%%%%%%%%%
