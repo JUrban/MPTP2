@@ -568,10 +568,14 @@ get_clusters(Files,RefsIn,OldSyms,NewSyms,AddedRefs):-
 get_requirements(Files,RefsIn,OldSyms,NewSyms,AddedRefs):-
 	union(OldSyms, NewSyms, AllSyms),
 	findall(Ref1, (member(F1,Files),
-			  fof_req(F1,Ref1,Syms),
+			  (fof_req(F1,Ref1,Syms);
+			      hard_wired_req(F1,Ref1,Syms)
+			  ),
 			  not(member(Ref1, RefsIn)),
 			  subset(Syms, AllSyms)),
-		AddedRefs).
+		AddedRefs1),
+	%% need to remove multiples introduced by hard_wired_req
+	sort(AddedRefs1, AddedRefs).
 
 
 %% get references for types of numbers
@@ -613,6 +617,28 @@ get_nr_fof(numerals,N,Res):-
 		 sort(N,(v2_xreal_0 & m1_subset_1(k5_numbers))),
 		 file(numerals,Name),
 		 [mptp_info(0,[],theorem,position(0,0),[0])]).
+
+%% these requirements need to be hard-wired, because not all syms
+%% are needed to fire; therefore they do not need to bee asserted
+%% during the normal processing (but are now)
+
+%% t6_boole: b1 is empty implies b1 = {}
+hard_wired_req(boole,t6_boole,[v1_xboole_0]).
+hard_wired_req(boole,t6_boole,[k1_xboole_0]).
+
+%% t7_boole: not ( b1 in b2 & b2 is empty )
+hard_wired_req(boole,t7_boole,[v1_xboole_0]).
+hard_wired_req(boole,t7_boole,[r2_hidden]).
+
+%% t1_subset: b1 in b2 implies b1 is Element of b2
+hard_wired_req(subset,t1_subset,[r2_hidden]).
+
+%% t2_subset: b1 is Element of b2 implies (b2 is empty or b1 in b2) 
+hard_wired_req(subset,t2_subset,[m1_subset_1,v1_xboole_0]).
+
+%% t3_subset: b1 is Subset of b2 iff b1 c= b2
+hard_wired_req(subset,t3_subset,[r1_tarski]).
+hard_wired_req(subset,t3_subset,[m1_subset_1,k1_zfmisc_1]).
 
 %% other requirements:
 %% - 2 distinct numerals are not equal
