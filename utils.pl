@@ -493,7 +493,7 @@ get_eq_defs(Files,RefsIn,SymsIn,AddedRefs):-
 %% version for mizar_by and mizar_proof; mizar_proof should be
 %% enhanced a bit probably
 %% OldSyms are used only for clusters and requirements
-one_pass(F,InfKind,RefsIn,OldSyms,NewSyms,AddedRefs):-
+one_pass(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,AddedRefs):-
 	member(InfKind,[mizar_by,mizar_proof]),
 	theory(F, Theory),
 	member(registrations(Regs),Theory),
@@ -505,7 +505,7 @@ one_pass(F,InfKind,RefsIn,OldSyms,NewSyms,AddedRefs):-
 	get_types(RefsIn,NewSyms,Refs3),
 	get_equalities(RefsIn,NewSyms,Refs4),
 %% Refs5=[],
-	get_clusters([F|Regs],RefsIn,OldSyms,NewSyms,Refs5),
+	get_clusters([F|Regs],Pos,RefsIn,OldSyms,NewSyms,Refs5),
 	get_requirements(Reqs,RefsIn,OldSyms,NewSyms,Refs6),
 	get_fraenkel_defs(RefsIn,NewSyms,Refs7),
 	get_eq_defs([F|Defs],RefsIn,NewSyms,Refs8),
@@ -516,29 +516,29 @@ one_pass(F,InfKind,RefsIn,OldSyms,NewSyms,AddedRefs):-
 %% version for mizar_from
 %% OldSyms are used only for clusters and requirements,
 %% fraenkel defs should not be needed
-one_pass(F,mizar_from,RefsIn,OldSyms,NewSyms,AddedRefs):-
+one_pass(F,Pos,mizar_from,RefsIn,OldSyms,NewSyms,AddedRefs):-
 	theory(F, Theory),
 	member(registrations(Regs),Theory),
 	member(requirements(Reqs),Theory),
 	get_properties(RefsIn,NewSyms,Refs0),
 	get_redefinitions(RefsIn,NewSyms,Refs2),
 	get_types(RefsIn,NewSyms,Refs3),
-	get_clusters([F|Regs],RefsIn,OldSyms,NewSyms,Refs5),
+	get_clusters([F|Regs],Pos,RefsIn,OldSyms,NewSyms,Refs5),
 	get_nr_types(Reqs,RefsIn,NewSyms,Refs6),
 	flatten([Refs0,Refs2,Refs3,Refs5,Refs6], AddedRefs).
 
 
 
 %% add symbol references until nothing added
-fixpoint(F,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
-	one_pass(F, InfKind, RefsIn, OldSyms, NewSyms, Refs1), !,
+fixpoint(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
+	one_pass(F, Pos, InfKind, RefsIn, OldSyms, NewSyms, Refs1), !,
 	(Refs1 = [] -> RefsOut = RefsIn;	    
 	    union(Refs1, RefsIn, Refs2),
 	    union(OldSyms, NewSyms, OldSyms1),
 	    maplist(get_ref_fla, Refs1, Flas1),
 	    collect_symbols_top(Flas1, Syms1),
 	    subtract(Syms1, OldSyms1, NewSyms1), 
-	    fixpoint(F, InfKind, Refs2, OldSyms1, NewSyms1, RefsOut)).
+	    fixpoint(F, Pos, InfKind, Refs2, OldSyms1, NewSyms1, RefsOut)).
 
 %% antecedent symbols needed for fcluster or ccluster
 cl_needed_syms_top(Fla,Syms):-
@@ -554,12 +554,34 @@ cl_needed_syms( sort(Trm,_), AnteSyms):- !, collect_symbols_top(Trm, AnteSyms).
 %% should not get here
 cl_needed_syms(_,_):- throw(cluster).
 
+%% return the level on which cluster must not be used
+get_cluster_proof_level(Ref,Lev):-
+	fof_name(Ref, Id),
+	clause(fof(Ref,_,_,_,[Info|_]), _, Id),
+	Info = mptp_info(_,[],_,_,[proof_level(Lev)|_]), ! .
+
+get_cluster_proof_level(Ref,_):-
+	throw(get_cluster_proof_level(Ref)).
+
+%% check that cluster is applicable to [Pos1,Lev1]
+%% only relevant if from the same file
+check_cluster_position(F,[Pos1,Lev1],F,Ref2):- !,
+	fof_name(Ref2, Id2),
+	nth_clause(_, Pos2, Id2),
+	Pos2 < Pos1,
+	get_cluster_proof_level(Ref2,Lev2),
+	not(sublevel(Lev1, Lev2)).
+	
+check_cluster_position(F,P,F,_):- throw(check_cluster_position(F,P)).
+check_cluster_position(_,_,_,_).
 
 %% fof_cluster contains precomputed info
-get_clusters(Files,RefsIn,OldSyms,NewSyms,AddedRefs):-
+%% assumes that F is the current article
+get_clusters([F|Regs],Pos,RefsIn,OldSyms,NewSyms,AddedRefs):-
 	union(OldSyms, NewSyms, AllSyms),
-	findall(Ref1, (member(F1,Files),
+	findall(Ref1, (member(F1,[F|Regs]),
 			  fof_cluster(F1,Ref1,AnteSyms),
+			  check_cluster_position(F,Pos,F1,Ref1),
 			  not(member(Ref1, RefsIn)),
 			  subset(AnteSyms, AllSyms)),
 		AddedRefs).
@@ -1109,7 +1131,7 @@ mk_article_problems(Article,Kinds,Options):-
 	concat_atom([MMLDir, Article, '.sch2'],SCH),
 	%% remove the ovelapping mml parts first
 	retractall(fof(_,_,_,file(Article,_),_)),
-	sublist(exists_file,[DCL,DCO],ToLoad1),
+	sublist(exists_file,[DCO],ToLoad1),
 	load_files(ToLoad1,[silent(true)]),
 	consult(File),
 	install_index,
@@ -1148,6 +1170,9 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds]):-
 	fof(P,_,Fla,file(F,P),
 	    [mptp_info(Nr,Lev,MPropKind,position(Line,Col),_),
 	     inference(InfKind,InfInfo,Refs0)]),
+	fof_name(P, Id1),
+	%% this is used to limit clusters to preceding
+	nth_clause(_, Pos1, Id1), 
 %	filter_level_refs(Lev,Refs0,Refs),
 	concat_atom([Prefix,F,'__',P],Outfile),
 	tell(Outfile),
@@ -1157,7 +1182,7 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds]):-
 	  ensure(InfInfo = [proof_level(PLevel)|_], inf_info(InfInfo,PLevel)),
 	  get_proof_syms_and_flas([P|Refs0], PLevel, PSyms, PRefs),
 	  Syms1 = PSyms,
-	  once(fixpoint(F, InfKind, PRefs, [], Syms1, AllRefs0)),
+	  once(fixpoint(F, [Pos1, Lev], InfKind, PRefs, [], Syms1, AllRefs0)),
 	  %% incorrect, but needs handling of fraenkels and sch_insts
 	  filter_level_refs(Lev,AllRefs0,AllRefs)
 	;
@@ -1166,7 +1191,7 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds]):-
 	  maplist(get_ref_fla, [P|Refs], Flas1),
 	  collect_symbols_top(Flas1, Syms0),
 	  Syms1 = Syms0,
-	  once(fixpoint(F, InfKind, [P|Refs], [], Syms1, AllRefs))
+	  once(fixpoint(F, [Pos1, Lev], InfKind, [P|Refs], [], Syms1, AllRefs))
 	),
 	%% collect fraenkel infos and put variables into fraenkel flas
 	findall([fof(R,R1,Out,R3,R4),Info],
