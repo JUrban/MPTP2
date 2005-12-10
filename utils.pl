@@ -12,13 +12,14 @@
 %% set this to the location of Prolog files created from MML
 %% ('pl' directory in the distro).
 %mml_dir("/home/urban/miztmp/distro/pl/").
+%mml_dir("/home/urban/mptp0.19.2/pl/").
 mml_dir("/big/urban/miztmp/mml3/tmp/").
 mml_dir_atom(A):- mml_dir(S), string_to_atom(S,A).
 
 %% switch to fail for debug
 optimize_fraenkel. % :- fail.
 
-%% debugging, Flags can be: [dbg_FRAENKELS]
+%% debugging, Flags can be: [dbg_FRAENKELS,dbg_CLUSTERS]
 dbg_flags([]).
 dbg(Flag, Goal):-
 	dbg_flags(Flags), member(Flag, Flags), !, Goal.
@@ -568,9 +569,14 @@ get_cluster_proof_level(Ref,_):-
 check_cluster_position(F,[Pos1,Lev1],F,Ref2):- !,
 	fof_name(Ref2, Id2),
 	nth_clause(_, Pos2, Id2),
+	dbg(dbg_CLUSTERS,
+	    format('Considering cluster: ~w,~w, position: ~w with [~w,~w] ~n',
+		   [Ref2,F,Pos2,Pos1,Lev1])),
 	Pos2 < Pos1,
 	get_cluster_proof_level(Ref2,Lev2),
-	not(sublevel(Lev1, Lev2)).
+	dbg(dbg_CLUSTERS, format('Cluster proof level: ~w', [Lev2])),
+	not(sublevel(Lev1, Lev2)),
+	dbg(dbg_CLUSTERS, format('cluster succeeded ~n')).
 	
 check_cluster_position(F,P,F,_):- throw(check_cluster_position(F,P)).
 check_cluster_position(_,_,_,_).
@@ -712,6 +718,20 @@ mk_first100:-
 	declare_mptp_predicates,load_mml,first100(L),!,
 	member(A,L),mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem]],[opt_REM_SCH_CONSTS]),fail.
 
+mk_nonnumeric:-
+	declare_mptp_predicates,load_mml,all_articles(L),!,
+	member(A,L),nonnumeric(A),
+	mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem]],[opt_REM_SCH_CONSTS]),fail.
+
+
+mk_nonnumeric_snow(SpecFile):-
+	abolish(snow_spec/2), consult(SpecFile),
+	declare_mptp_predicates,load_mml,all_articles(L),!,
+	member(A,L),nonnumeric(A),
+	mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem],snow_spec],[opt_REM_SCH_CONSTS]),fail.
+
+
+
 test_refs_first100:-
 	declare_mptp_predicates,first100(L),!,
 	member(A,L),test_refs(A),fail.
@@ -758,7 +778,7 @@ get_snow_symnr(Ref,Nr):- flag(snow_symnr,N,N+1), Nr is N+1,
 %% now prints in the article order, and also respects
 %% the order of defs and theorems in the article -
 %% needed for incremental learning
-mk_snow_input_for_learning:-
+mk_snow_input_for_learning(File):-
 	declare_mptp_predicates,
 	load_theorems,
 	install_index,
@@ -770,7 +790,10 @@ mk_snow_input_for_learning:-
 	flag(snow_refnr,_,0),
 	flag(snow_symnr,_,100000),
 	logic_syms(LogicSyms),
-	tell('Snow_MML.train'),
+	concat_atom([File,'.train'], TrainFile),
+	concat_atom([File,'.refnr'], RefFile),
+	concat_atom([File,'.symnr'], SymFile),
+	tell(TrainFile),
 	%% print definitions - they have no proof
 	(
 	  member(A,[tarski|Articles]),
@@ -797,12 +820,63 @@ mk_snow_input_for_learning:-
 	;
 	  told
 	),
-	tell('Snow_MML.symnr'),
+	tell(SymFile),
 	listing(snow_symnr),
 	told,
-	tell('Snow_MML.refnr'),
+	tell(RefFile),
 	listing(snow_refnr),
 	told.
+
+%% translate numerical spec into Refs and assert them
+%% not used any more, implementing the translation in perl
+%% with an array is much faster 
+snow_nr_spec_translate(Nr,Nrs):-
+	maplist(snow_refnr, [Ref | Refs], [Nr | Nrs]),
+	assert(snow_spec( Ref, Refs)), !,
+	((0 =:= Nr mod 1000) -> write('.'),nl; true).
+
+% snow_nr_spec_translate(R,Rs):- throw(snow_nr_spec_translate(R,Rs)).
+
+	      
+%% parse snow specification
+%% not used any more, the prolog translation was very slow
+%% use just consult(Specfile) instead now!!
+parse_snow_specs(File):-
+	throw(do_not_use_this),
+	abolish(snow_symnr/2),
+	abolish(snow_refnr/2),
+	abolish(snow_spec/2),
+	abolish(snow_nr_spec/2),
+%	dynamic(snow_symnr/2),
+%	dynamic(snow_refnr/2),
+	dynamic(snow_spec/2),
+%	dynamic(snow_nr_spec/2),
+	index(snow_symnr(1,1)),
+	index(snow_refnr(1,1)),
+	concat_atom([File,'.spec'], SpecFile),
+	concat_atom([File,'.refnr'], RefFile),
+	concat_atom([File,'.symnr'], SymFile),
+ 	load_files([RefFile, SymFile]),
+	index(snow_refnr(1,1)),
+	compile_predicates([snow_refnr/2]),
+	see(SpecFile),
+	repeat,
+	read(Spec),
+	( Spec = end_of_file -> seen;
+	    Spec = snow_nr_spec(Nr,Nrs),
+%	    assert(snow_nr_spec(Nr,Nrs)),
+	    snow_nr_spec_translate(Nr, Nrs),
+	    fail).
+% 	load_files([SpecFile, RefFile, SymFile]),
+% 	(
+% 	  snow_nr_spec(Nr, Nrs),
+% 	  snow_nr_spec_translate(Nr, Nrs),
+% 	  fail
+% 	;
+% 	  true
+% 	).
+	
+
 
 
 %%%%%%%%%%%%%%% generating scheme instances  %%%%%%%%%%%%%%%%%%%%%%%
@@ -1117,9 +1191,10 @@ get_proof_syms_and_flas(RefsIn, PLevel, PSyms, PRefs):-
 	maplist(get_ref_fla, PRefs, Flas1),
 	collect_symbols_top(Flas1, PSyms).
 	
-%% Kinds is a list [InferenceKinds, PropositionKinds]
+%% Kinds is a list [InferenceKinds, PropositionKinds | Rest]
 %% possible InferenceKinds are now [mizar_by, mizar_from, mizar_proof]
 %% possible PropositionKinds are now [theorem, top_level_lemma, sublemma]
+%% Rest is a list now only possibly containing snow_spec.
 mk_article_problems(Article,Kinds,Options):-
 %	declare_mptp_predicates,
 %	load_mml,
@@ -1159,24 +1234,32 @@ mk_article_problems(Article,Kinds,Options):-
 %% mk_problem(?P,+F,+Prefix,+Kinds)
 %% possible InferenceKinds are now [mizar_by, mizar_proof, mizar_from]
 %% possible PropositionKinds are now [theorem, top_level_lemma, sublemma]
-mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds]):-
-	theory(F, Theory),
-	member(InfKind,InferenceKinds),
+%% Rest is now checked for containing snow_refs, in that case
+%% the snow_spec of P have to be available in predicate
+%% snow_spec(P,Refs) and they are used instead of the Mizar refs,
+%% and InfKind is set to mizar_by
+mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest]):-
+	theory(F, _Theory),
+	member(InfKind0,InferenceKinds),
 	member(PropKind,PropositionKinds),
-	((PropKind == theorem, MPropKind = theorem);
+	((PropKind = theorem, MPropKind = theorem);
 	    (PropKind \= theorem,MPropKind = proposition,
-		((PropKind == top_level_lemma,Lev = []);
+		((PropKind = top_level_lemma,Lev = []);
 		    PropKind \= top_level_lemma))),
-	fof(P,_,Fla,file(F,P),
-	    [mptp_info(Nr,Lev,MPropKind,position(Line,Col),_),
-	     inference(InfKind,InfInfo,Refs0)]),
+	fof(P,_,_Fla,file(F,P),[Mptp_info,Inference_info]),
+	Mptp_info = mptp_info(_Nr,Lev,MPropKind,position(Line,Col),_),
+	(
+	  member(snow_spec, Rest) ->
+	  snow_spec(P, Refs0),
+	  InfKind = mizar_by
+	;
+	  Inference_info = inference(InfKind0,InfInfo,Refs0),
+	  InfKind = InfKind0
+	),
 	fof_name(P, Id1),
 	%% this is used to limit clusters to preceding
 	nth_clause(_, Pos1, Id1), 
 %	filter_level_refs(Lev,Refs0,Refs),
-	concat_atom([Prefix,F,'__',P],Outfile),
-	tell(Outfile),
-	format('% Mizar problem: ~w,~w,~w,~w ~n', [P,F,Line,Col]),
 	(
 	  InfKind == mizar_proof,
 	  ensure(InfInfo = [proof_level(PLevel)|_], inf_info(InfInfo,PLevel)),
@@ -1192,6 +1275,13 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds]):-
 	  collect_symbols_top(Flas1, Syms0),
 	  Syms1 = Syms0,
 	  once(fixpoint(F, [Pos1, Lev], InfKind, [P|Refs], [], Syms1, AllRefs))
+	),
+	concat_atom([Prefix,F,'__',P],Outfile),
+	tell(Outfile),
+	format('% Mizar problem: ~w,~w,~w,~w ~n', [P,F,Line,Col]),
+	(member(snow_spec, Rest) ->
+	    format('% Using references advised by SNoW ~n', [])
+	; true
 	),
 	%% collect fraenkel infos and put variables into fraenkel flas
 	findall([fof(R,R1,Out,R3,R4),Info],
