@@ -5,9 +5,13 @@
 %% Author: Josef Urban
 %%
 %%  MPTP2 Prolog utilities, tested only with SWI Prolog 5.2 now.
-%%  The top-level predicate is now mk_first100/0.
+%%  The top-level predicate is now mk_nonnumeric/0
+%%  or mk_first100/0, see below. You also need to set the mml_dir/1
+%%  location here appropriately.
 %%------------------------------------------------------------------------
 
+
+%%%%%%%%%%%%%%%%%%%% Settings %%%%%%%%%%%%%%%%%%%%
 
 %% set this to the location of Prolog files created from MML
 %% ('pl' directory in the distro).
@@ -24,6 +28,9 @@ dbg_flags([]).
 dbg(Flag, Goal):-
 	dbg_flags(Flags), member(Flag, Flags), !, Goal.
 dbg(_,_).
+
+%%%%%%%%%%%%%%%%%%%% End of settings %%%%%%%%%%%%%%%%%%%%
+
 
 zip([],[],[]).
 zip([H|T],[H1|T1],[[H,H1]|T2]):- zip(T,T1,T2).
@@ -240,7 +247,9 @@ union1([],In,In).
 union1([H|T],In,Out):-
 	union(H,In,R1),
 	union1(T,R1,Out).
-       
+
+%%%%%%%%%%%%%%%%%%%% Sort relativization %%%%%%%%%%%%%%%%%%%%
+
 % return the list of quantified variables and conjunction of predicates
 sort_transform_qlist([],[],$true).  % needed only for fraenkel
 sort_transform_qlist([X:S],[X],S1):-
@@ -285,6 +294,7 @@ sort_transform(X1,X2):-
 	maplist(sort_transform,T1,T2),
 	X2 =.. [H1|T2].
 
+%%%%%%%%%%%%%%%%%%%% Fraenkel de-anonymization %%%%%%%%%%%%%%%%%%%%
 
 % First we replace fraenkels by placeholder variables which we remember, and collect
 % the fraenkels (with their context) into a list corresponding to the variables.
@@ -431,6 +441,8 @@ mk_fraenkel_defs(File, [[V,C,Trm,GrC]|T], GrCopies, FrSyms,
 	mk_fraenkel_defs(File, T, [[NewSym,GrC]|GrCopies],
 			 FrSyms1, NewFrSyms, Defs).
 
+%%%%%%%%%%%%%%%%%%%% FOF accessors %%%%%%%%%%%%%%%%%%%%
+
 % should be unique for Ref
 get_ref_fla(Ref,Fla):- fof_name(Ref,Id),clause(fof(Ref,_,Fla,_,_),_,Id),!.
 get_ref_fof(Ref,fof(Ref,R1,R2,R3,R4)):-
@@ -447,6 +459,8 @@ get_sec_info_refs(RefsIn, Secs, Info, NewRefs):- !,
 get_sec_info_refs(RefsIn, Secs, Info, NewRefs):-
 	findall(Ref1, (member(Sec1,Secs), fof(Ref1,_,_,file(_,Sec1), Info)), Refs1),
 	subtract(Refs1, RefsIn, NewRefs).
+
+%%%%%%%%%%%%%%%%%%%% Background computation %%%%%%%%%%%%%%%%%%%%
 
 %% add properties for SymsIn
 get_properties(RefsIn,SymsIn,AddedRefs):-
@@ -678,6 +692,8 @@ hard_wired_req(subset,t3_subset,[m1_subset_1,k1_zfmisc_1]).
 %%   special cases for 0 and 1 mentioned in arithm.miz
 
 
+%%%%%%%%%%%%%%%%%%%% Problem creation for many articles %%%%%%%%%%%%%%%%%%%%
+
 first100([
 	  xboole_0,boole,xboole_1,enumset1,zfmisc_1,subset_1,subset,relat_1,
 	  funct_1,grfunc_1,relat_2,ordinal1,wellord1,setfam_1,relset_1,partfun1,
@@ -712,18 +728,22 @@ read_lines(S,Res):-
 	    string_to_atom(C,C1),
 	    Res = [C1|Res1]).
 
-%% Top level predicate for creating 'by' problems for
+%% Top level predicate for creating problems for
 %% first 100 MML articles.
 mk_first100:-
 	declare_mptp_predicates,load_mml,first100(L),!,
 	member(A,L),mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem]],[opt_REM_SCH_CONSTS]),fail.
 
+%% Create problems for nonumeric articles (about 300)
 mk_nonnumeric:-
 	declare_mptp_predicates,load_mml,all_articles(L),!,
 	member(A,L),nonnumeric(A),
 	mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem]],[opt_REM_SCH_CONSTS]),fail.
 
 
+%% Create problems from the recommendations given by SNoW
+%% in SpecFile (it contains snow_spec(Conjecture, Refs) clauses.
+%% Now limited to nonnumeric articles.
 mk_nonnumeric_snow(SpecFile):-
 	abolish(snow_spec/2), consult(SpecFile),
 	declare_mptp_predicates,load_mml,all_articles(L),!,
@@ -761,7 +781,7 @@ print_thms_and_defs_for_learning:-
 	    told).
 
 
-
+%%%%%%%%%%%%%%%%%%%% Create training data for SNoW %%%%%%%%%%%%%%%%%%%%
 
 %% symbol and reference numbering for snow
 %% symbols start at 100000
@@ -1190,7 +1210,9 @@ get_proof_syms_and_flas(RefsIn, PLevel, PSyms, PRefs):-
 	sort(AllNames, PRefs),!,
 	maplist(get_ref_fla, PRefs, Flas1),
 	collect_symbols_top(Flas1, PSyms).
-	
+
+%%%%%%%%%%%%%%%%%%%% Problem creation %%%%%%%%%%%%%%%%%%%%
+
 %% Kinds is a list [InferenceKinds, PropositionKinds | Rest]
 %% possible InferenceKinds are now [mizar_by, mizar_from, mizar_proof]
 %% possible PropositionKinds are now [theorem, top_level_lemma, sublemma]
@@ -1311,6 +1333,8 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest]):-
 	told.
 
 
+
+%%%%%%%%%%%%%%%%%%%% MML loading and indexing %%%%%%%%%%%%%%%%%%%%
 
 %% allowed file estensions for theory files
 theory_exts([dcl,dco,evl,sch,the]).
