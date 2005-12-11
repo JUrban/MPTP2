@@ -1,4 +1,4 @@
-MPTP 0.19 (Mizar Problems for Theorem Proving)
+MPTP 0.19.1 (Mizar Problems for Theorem Proving)
 
 This is a preliminary, incomplete and experimental 
 version of MPTP 0.2 - use it at your own risk.
@@ -16,6 +16,10 @@ Installation:
   running mk_first100/0.
 - Try running latest EPROVER (www.eprover.org) on the problems
   (the --tstp-in flag is needed).
+- Data for machine learning on proofs of MML theorems are
+  created by running predicate print_thms_and_defs_for_learning/0.
+  It will create file 'Proof_learning' in the current directory,
+  with definitions and theorems and their proof references.
 - That's it for now. For working with the prolog files 
   study/extend utils.pl for your needs. Or work directly with 
   the rich XML files (directory 'xml').
@@ -23,9 +27,11 @@ Installation:
 
 Files:
 ------
-
+Proof_learning  ... file with definitions and theorems with their proof 
+                    references, usable for Mizar Proof Advisor-like
+		    machine learnings 
 README   ... this file
-mizar-7.5.01_4.39.921-i386-linux.tar .... Mizar distro used for this MPTP
+mizar-7.5.01_4.41.921-i386-linux.tar .... Mizar distro used for this MPTP
 mml.lar  ... List of regular Mizar articles in the Mizar distro
 xml.tar.gz . packed xml directory - takes about 2GB unpacked
 utils.pl ... Prolog utilities for generating ATP problems, etc.
