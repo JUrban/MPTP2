@@ -780,6 +780,28 @@ print_thms_and_defs_for_learning:-
 	  fail);
 	    told).
 
+%% reads ProvedFile and prints comparison of the proofs there
+%% with the MML proofs; sorted by the difference between the
+%% numbers of explicit references
+compare_proved_by_refsnr(ProvedFile):-
+	declare_mptp_predicates,
+	load_mml,
+	install_index,
+	consult(ProvedFile),
+	findall([Diff,R1,Refs0,Refs1,BG],
+		(
+		  proved(R1,_F,Refs0,BG,_I),
+		  get_ref_fof(R1,fof(R1,_,_,_,[_,inference(_,_,I3)])),
+		  findall(Ref, (member(Ref,I3), atom_chars(Ref,[C|_]),
+				   member(C,[t,d])),
+			  Refs11),
+		  sort(Refs11,Refs1),
+		  length(Refs0,N1), length(Refs1,N2),
+		  Diff is N1 - N2),
+		Tuples),
+	sort(Tuples,T1),
+	checklist(print_nl,T1).
+
 
 %%%%%%%%%%%%%%%%%%%% Create training data for SNoW %%%%%%%%%%%%%%%%%%%%
 
