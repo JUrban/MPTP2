@@ -10,6 +10,8 @@
 :- ensure_loaded([utils]).
 
 
+%%%%%%   Term type computing %%%%%%%%%% 
+
 %% get_var_type(+,+,-) get type of a bound variable, 
 %% must be in the context
 get_var_type(Var, [], _):- throw(get_var_type(Var)).
@@ -30,6 +32,9 @@ get_func_type(Term, Info, Type):-
 	Term =.. [Constr | _],
 	fof_section(Constr,Id),
 	clause(fof(_,sort,Decl,file(_,Constr), Info),_,Id),!,
+	%% this unifies, but vars in Decl are always fresh
+	%% and Decl is more general, so no var in term is
+	%% instantiated to nonfresh var
 	(
 	  Decl = ( ! _ : sort(Term, Type)) 
 	;
@@ -101,3 +106,52 @@ get_trm_types(Expr, Context, Types):- !,
 	  Types = Types1
 	).
 	
+%%%%%%  Unique vars %%%%%%%%%% 
+
+%% unique_qvars_top(+, -) replace all vars with a new var,
+%% so that no var is quantified twice
+unique_qvars_top(OldExpr, NewExpr):-
+	numbervars(OldExpr,0,_),
+	unique_qvars([], OldExpr, NewExpr),!.
+
+unique_qvars_qlist([],P,P,[]).
+unique_qvars_qlist([(X:S)|T],Pairs,NewPairs,[(NewVar:S1)|T1]):-
+	unique_qvars(Pairs,S,S1),
+	unique_qvars_qlist(T,[(X:NewVar)|Pairs],NewPairs,T1).
+
+%% all vars must be numbered here
+unique_qvars(Pairs, Var):- var(Var),!,throw(unique_qvars(Var,Pairs)).
+
+unique_qvars(Pairs, NumVar, NewVar):-
+	is_numvar(NumVar), !,
+	(
+	  memberchk((NumVar : NewVar), Pairs),!
+	;
+	  throw(unique_qvars(NumVar,Pairs))
+	).
+
+unique_qvars(Pairs, ! Svars : Y, ! NewSvars : Y1):- !,
+	unique_qvars_qlist(Svars, Pairs, NewPairs, NewSvars),
+	unique_qvars(NewPairs, Y, Y1).
+
+unique_qvars(Pairs, ? Svars : Y, ? NewSvars : Y1):- !,
+	unique_qvars_qlist(Svars, Pairs, NewPairs, NewSvars),
+	unique_qvars(NewPairs, Y, Y1).
+
+unique_qvars(Pairs, all(Svars,Trm,Frm), all(NewSvars,Trm1,Frm1)):- !,
+	unique_qvars_qlist(Svars, Pairs, NewPairs, NewSvars),
+	unique_qvars(NewPairs, [Trm,Frm], [Trm1,Frm1]).
+
+unique_qvars(_, X, X):- atomic(X), !.
+
+unique_qvars(Pairs, Expr, NewExpr):-
+	Expr =.. [ H | T],
+	maplist(unique_qvars(Pairs), T, T1),
+	NewExpr =.. [ H | T1].
+
+
+
+
+
+
+
