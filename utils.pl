@@ -756,6 +756,24 @@ test_refs_first100:-
 	declare_mptp_predicates,first100(L),!,
 	member(A,L),test_refs(A),fail.
 
+%% print all theorems in standard TPTP, so that it can be cnf-ed by E
+print_thms_for_cnf:-
+	all_articles(L),
+	declare_mptp_predicates,
+	load_mml,
+	install_index,
+	(member(A2,L), abstract_fraenkels(A2, _),fail; true), !,
+	install_index,
+	tell('TheoremsInTPTP'),!,
+	(
+	  member(A1,L),
+	  fof_file(A1,I),
+	  clause(fof(A,theorem,B,C,[mptp_info(_,_,theorem,_,_)|_]),_,I),
+	  sort_transform_top(B,B1),
+	  numbervars(B1,0,_),
+	  print(fof(A,axiom,B1,C)),write('.'),nl,fail;
+	  told
+	).
 
 %% print defs and thms, with only top-level references 
 print_thms_and_defs_for_learning:-
