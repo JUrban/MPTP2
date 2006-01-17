@@ -75,16 +75,17 @@ eqc_insert(P,M,[[M1|H]|T],[[M,M1|H]|T]):-
 	apply(P,[M,M1]),!.
 eqc_insert(P,M,[H|T],[H|T1]):-
 	eqc_insert(P,M,T,T1).
-       
+
 % stolen from tptp2X.main
 %----Runtime version of operators
 declare_TPTP_operators:-
+    op(99,fx,'$'),
     op(100,fx,++),
     op(100,fx,--),
-    op(100,fx,'$'),
+    op(100,xf,'!'),
     op(405,xfx,'='),
     op(405,xfx,'~='),
-    op(410,fy,~),
+    op(450,fy,~),
     op(502,xfy,'|'),
     op(502,xfy,'~|'),
     op(503,xfy,&),
