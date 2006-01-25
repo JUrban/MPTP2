@@ -1,0 +1,23 @@
+#!/usr/bin/perl -w
+
+# html-zing filter for mptp problems/results using 
+# the mptp notation
+
+# SYNOPSIS: 
+# mptp_html.pl t10_abcmiz_0 > t10_abcmiz_0.html
+
+$docroot = "http://lipa.ms.mff.cuni.cz/~urban/xmlmml/html.937/";
+
+$header = "<html><head><title></title></head><body><pre>";
+
+$footer = "</pre></body></html>";
+
+print "$header \n";
+
+while (<>)
+{
+    s/\b([dgklmrtuv][0-9]+)_([a-z0-9_]{1,8}\b)/<a href=\"$docroot$2#\u$1\">$1_$2<\/a>/g;
+    print $_;
+}
+
+print "$footer\n";
