@@ -6,7 +6,7 @@
 # SYNOPSIS: 
 # mptp_html.pl t10_abcmiz_0 > t10_abcmiz_0.html
 
-$docroot = "http://lipa.ms.mff.cuni.cz/~urban/xmlmml/html.937/";
+$docroot = "http://lipa.ms.mff.cuni.cz/~urban/xmlmml/html.930/";
 
 $header = "<html><head><title></title></head><body><pre>";
 
