@@ -16,7 +16,7 @@ print "$header \n";
 
 while (<>)
 {
-    s/\b([dgklmrtuv][0-9]+)_([a-z0-9_]{1,8}\b)/<a href=\"$docroot$2#\u$1\">$1_$2<\/a>/g;
+    s/\b(([dgklmrtuv]|rc|cc|fc)[0-9]+)_([a-z0-9_]{1,8}\b)/<a href=\"$docroot$3#\U$1\E\">$1_$3<\/a>/g;
     print $_;
 }
 
