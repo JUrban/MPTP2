@@ -16,8 +16,8 @@
 %% set this to the location of Prolog files created from MML
 %% ('pl' directory in the distro).
 %mml_dir("/home/urban/miztmp/distro/pl/").
-%mml_dir("/home/urban/mptp0.19.2/pl/").
-mml_dir("/big/urban/miztmp/mml3/tmp/").
+mml_dir("/home/urban/mptp0.2/pl/").
+%mml_dir("/big/urban/miztmp/mml3/tmp/").
 mml_dir_atom(A):- mml_dir(S), string_to_atom(S,A).
 
 %% switch to fail for debug
@@ -253,11 +253,16 @@ union1([H|T],In,Out):-
 
 % return the list of quantified variables and conjunction of predicates
 sort_transform_qlist([],[],$true).  % needed only for fraenkel
-sort_transform_qlist([X:S],[X],S1):-
+sort_transform_qlist([X:S],[X],S1):- !,
 	sort_transform(sort(X,S),S1).
-sort_transform_qlist([(X:S)|T],[X|Qvars1],S1 & Preds1):-
+sort_transform_qlist([(X:S)|T],[X|Qvars1],SortPreds1):-
 	sort_transform(sort(X,S),S1),
-	sort_transform_qlist(T,Qvars1,Preds1).
+	sort_transform_qlist(T,Qvars1,Preds1), !,
+	(
+	  S1 == $true -> SortPreds1 = Preds1;
+	  SortPreds1 = (S1 & Preds1)
+	).
+
 
 % to forbid backtracking
 sort_transform_top(X,Y):- sort_transform(X,Y), !.
@@ -265,20 +270,39 @@ sort_transform_top(X,Y):- sort_transform(X,Y), !.
 sort_transform(X,X):- atomic(X); var(X).
 
 % do sort relativization
-sort_transform(! Svars : Y, ! Qvars : (Preds => Y1)):-
+sort_transform(! Svars : Y, ! Qvars : UnivRelat):-
 	sort_transform_qlist(Svars,Qvars,Preds),
-	sort_transform(Y,Y1).
-sort_transform(? Svars : Y, ? Qvars : (Preds & Y1)):-
+	sort_transform(Y,Y1), !,
+	(
+	  Preds == $true -> UnivRelat = Y1;
+	  UnivRelat = (Preds => Y1)
+	).
+sort_transform(? Svars : Y, ? Qvars : ExRelat):-
 	sort_transform_qlist(Svars,Qvars,Preds),
-	sort_transform(Y,Y1).
+	sort_transform(Y,Y1), !,
+	(
+	  Preds == $true -> ExRelat = Y1;
+	  ExRelat = (Preds & Y1)
+	).
 % This clause is redundant now, sort trafo can be done only after 'all' removal
-sort_transform(all(Svars,Trm,Frm),all(Qvars,Trm1,Preds & Frm1)):-	
+sort_transform(all(Svars,Trm,Frm),all(Qvars,Trm1,RelatFrm1)):-	
 	sort_transform_qlist(Svars,Qvars,Preds),
 	sort_transform(Trm,Trm1),
-	sort_transform(Frm,Frm1).
-sort_transform(sort(X,Y1 & Y2),Z1 & Z2):-
+	sort_transform(Frm,Frm1), !,
+	(
+	  Preds == $true -> RelatFrm1 = Frm1;
+	  RelatFrm1 = (Preds & Frm1)
+	).
+sort_transform(sort(X,Y1 & Y2),SortPreds):-
 	sort_transform(sort(X,Y1),Z1),
-	sort_transform(sort(X,Y2),Z2). 
+	sort_transform(sort(X,Y2),Z2), !,
+	(
+	  Z1 == $true -> SortPreds = Z2;
+	  (
+	    Z2 == $true -> SortPreds = Z1;
+	    SortPreds = (Z1 & Z2)
+	  )
+	).
 sort_transform(sort(X,~Y),~Z):-
 	sort_transform(sort(X,Y),Z). 
 sort_transform(sort(_,$true),$true).
@@ -741,7 +765,27 @@ mk_nonnumeric:-
 	member(A,L),nonnumeric(A),
 	mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem]],[opt_REM_SCH_CONSTS]),fail.
 
-
+%% print names of theorem problems in their order into SpecFile
+%% now nonnumeric only;
+%% TODO: check why t13_aff_1 was not created by SNoW
+mk_ordered_th_problem_list(SpecFile):-
+	declare_mptp_predicates,
+	load_theorems,
+	load_environs, % needed for nonnumeric/1
+	install_index,
+	all_articles(Articles),
+	tell(SpecFile),
+	(
+	  member(A,Articles),
+	  nonnumeric(A),
+	  fof(Name,theorem,Fla,file(A,Name),_),
+	  Fla \= $true,
+	  format('~w/~w__~w~n',[A,A,Name]),
+	  fail
+	;
+	  told
+	).
+	
 %% Create problems from the recommendations given by SNoW
 %% in SpecFile (it contains snow_spec(Conjecture, Refs) clauses.
 %% Now limited to nonnumeric articles.
