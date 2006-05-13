@@ -111,6 +111,7 @@ logic_syms([++,--,'$',~,'|','~|',true,&,~&,=>,<=,<=>,<~>,!,?,:,'..',sort,all,'.'
 % portray(A = B):- format(' equal(~p,~p) ',[A,B]).
 portray(~A):- write(' ~ ('), print(A), write(') ').
 portray(A & B):- format(' (~p & ~p) ',[A,B]).
+portray(A | B):- format(' (~p | ~p) ',[A,B]).
 portray(A => B):- format(' (~p => ~p) ',[A,B]).
 portray(A <=> B):- format(' (~p <=> ~p) ',[A,B]).
 portray(A : B):- var(A), format(' ( ~p : ~p) ',[A,B]).
