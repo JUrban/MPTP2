@@ -261,7 +261,10 @@ sort_transform_qlist([(X:S)|T],[X|Qvars1],SortPreds1):-
 	sort_transform_qlist(T,Qvars1,Preds1), !,
 	(
 	  S1 == $true -> SortPreds1 = Preds1;
-	  SortPreds1 = (S1 & Preds1)
+	  (
+	    Preds1 == $true -> SortPreds1 = S1;
+	    SortPreds1 = (S1 & Preds1)
+	  )
 	).
 
 
@@ -270,20 +273,32 @@ sort_transform_top(X,Y):- sort_transform(X,Y), !.
 % end of traversal
 sort_transform(X,X):- atomic(X); var(X).
 
-% do sort relativization
-sort_transform(! Svars : Y, ! Qvars : UnivRelat):-
+% do sort relativization, and simple removal of $true
+sort_transform(! Svars : Y, Result):-
 	sort_transform_qlist(Svars,Qvars,Preds),
 	sort_transform(Y,Y1), !,
 	(
-	  Preds == $true -> UnivRelat = Y1;
-	  UnivRelat = (Preds => Y1)
+	  Y1 == $true -> Result = $true;
+	  Result = (! Qvars : UnivRelat),
+	  (
+	    Preds == $true -> UnivRelat = Y1;
+	    UnivRelat = (Preds => Y1)
+	  )
 	).
-sort_transform(? Svars : Y, ? Qvars : ExRelat):-
+sort_transform(? Svars : Y, Result):-
 	sort_transform_qlist(Svars,Qvars,Preds),
 	sort_transform(Y,Y1), !,
 	(
-	  Preds == $true -> ExRelat = Y1;
-	  ExRelat = (Preds & Y1)
+	  Preds == $true ->
+	  (
+	    Y1 == $true -> Result = $true;
+	    Result = (? Qvars : Y1)
+	  )
+	;
+	  (
+	    Y1 == $true -> Result = (? Qvars : Preds);
+	    Result = (? Qvars : (Preds & Y1))
+	  )
 	).
 % This clause is redundant now, sort trafo can be done only after 'all' removal
 sort_transform(all(Svars,Trm,Frm),all(Qvars,Trm1,RelatFrm1)):-	
@@ -314,6 +329,40 @@ sort_transform(sort(X,Y),Z):-
 	Z =.. [F|Args1].
 % we should not get here
 sort_transform(sort(_,_),_):- throw(sort).
+% removal of $true
+sort_transform((A | B), Result):-
+	maplist(sort_transform,[A,B],[A1,B1]),!,
+	(
+	  (A1 == $true;B1 == $true) -> Result = $true;
+	  Result = (A1 | B1)
+	).
+sort_transform(A & B, Result):-
+	maplist(sort_transform,[A,B],[A1,B1]),!,
+	(
+	  A1== $true -> Result = B1;
+	  (
+	    B1== $true -> Result = A1;
+	    Result = (A1 & B1)
+	  )
+	).
+sort_transform(A => B, Result):-
+	maplist(sort_transform,[A,B],[A1,B1]),!,
+	(
+	  A1== $true -> Result = B1;
+	  (
+	    B1== $true -> Result = $true;
+	    Result = (A1 => B1)
+	  )
+	).
+sort_transform(A <=> B, Result):-
+	maplist(sort_transform,[A,B],[A1,B1]),!,
+	(
+	  A1== $true -> Result = B1;
+	  (
+	    B1== $true -> Result = A1;
+	    Result = (A1 <=> B1)
+	  )
+	).	
 % functor traversal
 sort_transform(X1,X2):-
 	X1 =.. [H1|T1],
