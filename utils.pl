@@ -31,6 +31,13 @@ dbg(_,_).
 
 %%%%%%%%%%%%%%%%%%%% End of settings %%%%%%%%%%%%%%%%%%%%
 
+%%%%%%%%%%%%%%%%%%%% Options %%%%%%%%%%%%%%%%%%%%
+opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme instances
+	       opt_MK_TPTP_INF		%% better tptp inference slot and no mptp_info
+	      ]).
+
+%%%%%%%%%%%%%%%%%%%% End of options %%%%%%%%%%%%%%%%%%%%
+
 
 zip([],[],[]).
 zip([H|T],[H1|T1],[[H,H1]|T2]):- zip(T,T1,T2).
@@ -1375,7 +1382,7 @@ mk_article_problems(Article,Kinds,Options):-
 	(exists_directory(Dir) -> (string_concat('rm -r -f ', Dir, Command),
 				      shell(Command)); true),
 	make_directory(Dir),
-	repeat,(mk_problem(_,Article,Dir,Kinds),fail; !,true),
+	repeat,(mk_problem(_,Article,Dir,Kinds,Options),fail; !,true),
 %% retract current file but return mml parts
 	retractall(fof(_,_,_,file(Article,_),_)),
 	sublist(exists_file,[DCL,DCO,THE,SCH],ToLoad),
@@ -1388,14 +1395,15 @@ mk_article_problems(Article,Kinds,Options):-
 %% (P does not have to be instantiated), store it in file Prefix.P
 %% propositions only from the current article can be loaded -
 %% - otherwise change their naming
-%% mk_problem(?P,+F,+Prefix,+Kinds)
+%% mk_problem(?P,+F,+Prefix,+Kinds,+Options)
 %% possible InferenceKinds are now [mizar_by, mizar_proof, mizar_from]
 %% possible PropositionKinds are now [theorem, top_level_lemma, sublemma]
 %% Rest is now checked for containing snow_refs, in that case
 %% the snow_spec of P have to be available in predicate
 %% snow_spec(P,Refs) and they are used instead of the Mizar refs,
-%% and InfKind is set to mizar_by
-mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest]):-
+%% and InfKind is set to mizar_by;
+%% see opt_available/1 for Options.
+mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	theory(F, _Theory),
 	member(InfKind0,InferenceKinds),
 	member(PropKind,PropositionKinds),
@@ -1448,6 +1456,8 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest]):-
 	zip(Flas, Infos1, S1),
 	append_l(Infos1,Infos),
 	%% instantiate fraenkels with their defs, create the defs
+	%% this is now needed only for the remaining fraenkels not contained
+	%% in the current article; ###TODO: it will currently break with opt_MK_TPTP_INF
 	concat_atom([F,'_spc'],FSpec),
 	mk_fraenkel_defs_top(FSpec, Infos, NewFrSyms, Defs0),
 	zip(_NewSyms, Defs, Defs0),
@@ -1456,11 +1466,19 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest]):-
 		       print(fof(Pos,axiom,D1,file(F,Pos),[fraenkel])),write('.'),nl),_),
 
 	( member(_,Defs) -> Refs1 = [t2_tarski|AllRefs]; Refs1 = AllRefs),
+	delete(Refs1, P, ProperRefs1),
 	findall(dummy,(member(Q,Refs1), (member(fof(Q,Q1,Q2,Q3,Q4),Flas);
 					    (Q=t2_tarski,fof(Q,Q1,Q2,Q3,Q4))),
 		       sort_transform_top(Q2,SR2), numbervars([SR2,Q3,Q4],0,_),
-		       (Q=P -> Status = conjecture; Status = axiom),
-		       print(fof(Q,Status,SR2,Q3,Q4)),write('.'),nl),_),
+		       (Q=P ->
+			   Status = conjecture,
+			   QQ3 = inference(mizar_bg_added,[],ProperRefs1),
+			   QQ4 = [Q3];
+			   Status = axiom, QQ3 = Q3, QQ4= []),
+		       (member(opt_MK_TPTP_INF,Options) ->
+			   print(fof(Q,Status,SR2,QQ3,QQ4));
+			   print(fof(Q,Status,SR2,Q3,Q4))),
+		       write('.'),nl),_),
 %	fof(P,_,P2,file(F,P),P4),
 %	member(fof(P,_,P2,file(F,P),P4),Flas),
 %	sort_transform_top(P2,SP2), numbervars(SP2,0,_),
