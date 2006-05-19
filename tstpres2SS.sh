@@ -55,7 +55,7 @@ while(<>)
     $problem[$pn][2*$sn + 1] = $time;
 }
 
-print join (", ", keys %SystemNumber), "\n";
+print join (", ", sort {$SystemNumber{$a} <=> $SystemNumber{$b}} keys %SystemNumber), "\n";
 
 for($i = 0; $i <= $#problem; $i++)
 {
