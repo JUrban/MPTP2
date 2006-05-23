@@ -1472,7 +1472,7 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 		       sort_transform_top(Q2,SR2), numbervars([SR2,Q3,Q4],0,_),
 		       (Q=P ->
 			   Status = conjecture,
-			   QQ3 = inference(mizar_bg_added,[],ProperRefs1),
+			   QQ3 = inference(mizar_bg_added,[status(thm)],ProperRefs1),
 			   QQ4 = [Q3];
 			   Status = axiom, QQ3 = Q3, QQ4= []),
 		       (member(opt_MK_TPTP_INF,Options) ->
