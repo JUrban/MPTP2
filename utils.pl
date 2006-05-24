@@ -33,7 +33,8 @@ dbg(_,_).
 
 %%%%%%%%%%%%%%%%%%%% Options %%%%%%%%%%%%%%%%%%%%
 opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme instances
-	       opt_MK_TPTP_INF		%% better tptp inference slot and no mptp_info
+	       opt_MK_TPTP_INF,		%% better tptp inference slot and no mptp_info
+	       opt_LINE_COL_NMS		%% problem are named LINE_COL instead 
 	      ]).
 
 %%%%%%%%%%%%%%%%%%%% End of options %%%%%%%%%%%%%%%%%%%%
@@ -1441,7 +1442,10 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	  Syms1 = Syms0,
 	  once(fixpoint(F, [Pos1, Lev], InfKind, [P|Refs], [], Syms1, AllRefs))
 	),
-	concat_atom([Prefix,F,'__',P],Outfile),
+	(member(opt_LINE_COL_NMS, Options) ->
+	    concat_atom([Prefix,F,'__',Line,'_',Col],Outfile);	
+	    concat_atom([Prefix,F,'__',P],Outfile)
+	),
 	tell(Outfile),
 	format('% Mizar problem: ~w,~w,~w,~w ~n', [P,F,Line,Col]),
 	(member(snow_spec, Rest) ->
