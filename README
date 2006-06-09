@@ -57,6 +57,12 @@ mizar-7.6.01_4.48.930-i386-linux-mptp.tar.gz ...
 mml.lar  	... List of regular Mizar articles in the Mizar distro
 problems_nonnumeric.tar.gz     ... packed nonnumeric problems in TPTP syntax
 problems_nonnumeric_dfg.tar.gz ... packed nonnumeric problems in DFG syntax
+snow_nonnumeric.plres          ... 
+			processed results form the incremental AI-assisted
+                        ATP (E and SPASS), run on the nonnumerical problems. 
+			Can be used for comparison with the original MML
+			proofs and various data-mining. The format is:
+			proved(Theorem,File,DirectRefs,Background,Info).
 xml.tar.gz 	... packed xml directory - takes about 2GB unpacked
 utils.pl 	... Prolog utilities for generating ATP problems, etc.
 
