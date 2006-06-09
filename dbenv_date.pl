@@ -24,14 +24,14 @@ $f1 = $path[$#path];
 # get the date and author from .miz first:
 $miz = $f.".miz";
 $date1 = `head -n 10 $miz|grep Received`;
-($date1 =~ m/.*Received *(.*)/) or die "Date not found: $date1";
+($date1 =~ m/.*Received *(.*)/) or die "Date not found: $f: $date1";
 $date2 = $1;
 $date_sec = &UnixDate($date2,"%o");
 # now $date_sec contains seconds since Jan 1, 1970  in current timezone
 $date_days = $date_sec/(3600*24);
 # now $date_days contains days since Jan 1, 1970  in current timezone
 $author1 = `head -n 10 $miz|grep ":: *by" `;
-($author1 =~ m/:: +by +(.*)/) or die "Author not found: $author1";
+($author1 =~ m/:: +by +(.*)/) or die "Author not found: $f: $author1";
 $author2 = $1;
 
 $sg = $f.".sgl";
