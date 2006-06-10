@@ -4,10 +4,9 @@
 %%
 %% Author: Josef Urban
 %%
-%%  MPTP2 Prolog utilities, tested only with SWI Prolog 5.2 now.
-%%  The top-level predicate is now mk_nonnumeric/0
-%%  or mk_first100/0, see below. You also need to set the mml_dir/1
-%%  location here appropriately.
+%%  Prolog code for optimizing the MML order of articles,
+%%  tested only with SWI Prolog 5.2 now.
+%%  Top-level predicate is print_in_order/0.
 %%------------------------------------------------------------------------
 
 :- [utils].
@@ -74,9 +73,12 @@ structural(X):-
 %	member(constructors(Cs),Y),
 %	member(A,Cs), % write(trying:A:for:X),nl,
 	rec_depends(X,A),
-	structural(A),!,write(X:yes),nl,
+	structural(A),!, % write(X:yes),nl,
 	flag(X,_,1),!.
-structural(X):- flag(X,_,2),!,write(X:no),nl,fail.
+structural(X):-
+	flag(X,_,2),!,
+	% write(X:no),nl,
+	fail.
 
 
 assert_deps:-
@@ -117,6 +119,14 @@ cmp_mml(Delta,A1,A2):-
 %% otherwise do normal compare/3
 cmp_mml(Delta,A1,A2):- compare(Delta,A1,A2).
 
+
+initialize:-
+	declare_mptp_predicates,
+	load_theory_files1(evl),
+	(assert_deps;true),
+	(assert_rec_deps;true),
+	(assert_structural;true).
+
 print_in_order:-
-	all_articles(L),!,predsort(cmp_mml,L,L1),checklist(print_nl,L1).
+	initialize,all_articles(L),!,predsort(cmp_mml,L,L1),checklist(print_nl,L1).
 
