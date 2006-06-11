@@ -91,34 +91,40 @@ assert_rec_deps:-
 assert_structural:-
 	all_articles(L),!,member(A,L), once(structural(A)),fail.
 
-%% article A1 comes after A2, if it recursively depends on it
-cmp_mml(>,A1,A2):- rec_depends(A1,A2),!.
-cmp_mml(<,A1,A2):- rec_depends(A2,A1),!.
-%% otherwise structural article A1 comes after nonstructural A2
-cmp_mml(>,A1,A2):- structural(A1),not(structural(A2)),!.
-cmp_mml(<,A1,A2):- structural(A2),not(structural(A1)),!.
-
-%% otherwise article A1 comes after A2, if it is received later
-cmp_mml(Delta,A1,A2):-
-	date(A1,Date1),
-	date(A2,Date2),
-	(
-	  (Date1 > Date2, Delta = '>');
-	  (Date1 < Date2, Delta = '<')
-	),!.
-
-%% otherwise article A1 comes after A2, if it has more recursive dependecies
-cmp_mml(Delta,A1,A2):-
-	rec_dependents(A1,R1),rec_dependents(A2,R2),
-	length(R1,L1),length(R2,L2),
-	(
-	  (L1 > L2, Delta = '>');
-	  (L1 < L2, Delta = '<')
-	),!.
-
+%% article A2 comes after A1, if it recursively depends on it
+smaller1(A1,A2):- rec_dependents(A2,R1), member(A1,R1).
+%% otherwise structural article A2 comes after nonstructural A1
+smaller2(A1,A2):- structural(A2), not(structural(A1)).
+%% otherwise article A2 comes after A1, if it is received later
+smaller3(A1,A2):- date(A1,Date1), date(A2,Date2), Date1 < Date2.
+%% otherwise article A2 comes after A1, if it has more recursive dependecies
+smaller4(A1,A2):-
+	rec_dependents(A1,R1), rec_dependents(A2,R2),
+	length(R1,L1), length(R2,L2), L1 < L2.	
 %% otherwise do normal compare/3
-cmp_mml(Delta,A1,A2):- compare(Delta,A1,A2).
+smaller5(A1,A2):- compare(<,A1,A2).
 
+%% A is minimal wrt a binary Pred among members of [H|T]
+minimal(_,_,[]).
+minimal(Pred,A,[H|T]):- G=..[Pred,H,A], not(G), minimal(Pred,A,T).
+
+%% take minimal members of L1 wrt. smaller1, and put them to L2;
+%% then select from L2 the minimal members wrt. smaller2, etc.
+%% deterministic if only one element remains (this is true for smaller5)
+least(L1,X):-
+	findall(A1,(member(A1,L1),minimal(smaller1,A1,L1)),L2),!,
+	findall(A2,(member(A2,L2),minimal(smaller2,A2,L2)),L3),!,
+	findall(A3,(member(A3,L3),minimal(smaller3,A3,L3)),L4),!,
+	findall(A4,(member(A4,L4),minimal(smaller4,A4,L4)),L5),!,
+	findall(A5,(member(A5,L5),minimal(smaller5,A5,L5)),L6),!,
+%	write([L2,L3,L4,L5,L6]),nl,
+	sort(L6,L7),member(X,L7),!.
+
+order1([],[]):-!.
+order1(In,[X|Rest]):-
+	least(In,X),!, write(X),nl,
+	delete(In,X,R1),!,
+	order1(R1,Rest).
 
 initialize:-
 	declare_mptp_predicates,
@@ -128,5 +134,6 @@ initialize:-
 	(assert_structural;true).
 
 print_in_order:-
-	initialize,all_articles(L),!,predsort(cmp_mml,L,L1),checklist(print_nl,L1).
+	initialize,all_articles(L),!,order1(L,_).
+
 
