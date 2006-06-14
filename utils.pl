@@ -823,6 +823,11 @@ mk_nonnumeric:-
 	member(A,L),nonnumeric(A),
 	mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem]],[opt_REM_SCH_CONSTS]),fail.
 
+%% for creating by-explanations, use this:
+%% L=[xboole_0, boole, xboole_1, enumset1, zfmisc_1, subset_1, subset, relat_1, funct_1, grfunc_1, relat_2, ordinal1, wellord1],
+%% member(A,L),mk_article_problems(A,[[mizar_by],[theorem, top_level_lemma, sublemma]],
+%% [opt_REM_SCH_CONSTS,opt_MK_TPTP_INF,opt_LINE_COL_NMS]),fail.
+
 %% print names of theorem problems in their order into SpecFile
 %% now nonnumeric only;
 %% TODO: check why t13_aff_1 was not created by SNoW
