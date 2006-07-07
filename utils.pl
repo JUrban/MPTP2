@@ -928,6 +928,159 @@ compare_proved_by_refsnr(ProvedFile):-
 	sort(Tuples,T1),
 	checklist(print_nl,T1).
 
+%% fix_sch_ref(+,+,-)
+fix_sch_ref(Ref0,[s|Cs],Ref1):- !,
+	%% find the part before "__"
+	(append(S1,['_','_'|_],[s|Cs]) -> 
+	    atom_chars(Ref1,S1);
+	    Ref1 = Ref0
+	).
+fix_sch_ref(Ref0,_,Ref0).
+
+%% get_rec_uses - not for defs and clusters yet, just theorems, schemes and top-level lemmas
+get_rec_uses(Name,_,NN,LRec1,LRecNN1,CL1,CLNN1,Last1,LastNN1,CLast1,CLastNN1,AllRecTmpS1,AllRecTmpNNS1):-
+	atom(Name),
+	th_rec_uses(Name,NN,LRec1,LRecNN1,CL1,CLNN1,Last1,LastNN1,CLast1,CLastNN1,AllRecTmpS1,AllRecTmpNNS1),!.
+
+get_rec_uses(Name,RefCodes,NN,LRec1,LRecNN1,CL1,CLNN1,Last1,LastNN1,CLast1,CLastNN1,AllRecTmpS1,AllRecTmpNNS1):-
+	fof(Name,Role,_,file(A,Name),Info),!,
+	(nonnumeric(A) -> NN = t; NN = f),
+	Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs)],
+	once((
+	  findall(Ref,(member(Ref0,Refs),atom_chars(Ref0,[C|Cs]),
+		       member(C,RefCodes),fix_sch_ref(Ref0,[C|Cs],Ref)), Refs1),
+	  
+	  %% find recursive dependencies
+	  findall(Reff1,
+		  (member(Ref1,Refs1),get_rec_uses(Ref1,RefCodes,_,_,_,_,_,_,_,_,_,RefsAll1,_),
+		      member(Reff1,[Ref1|RefsAll1])),
+		  AllRecTmp1),
+	  sort(AllRecTmp1,AllRecTmpS1),
+	  
+	  %% find largest direct dependence (or f is none)
+	  findall([L_Dref1,DRef1],(member(DRef1,Refs1),get_rec_uses(DRef1,RefCodes,_,L_Dref1,_,_,_,_,_,_,_,_,_)),Lengths1),
+	  sort(Lengths1,SLengths1),
+	  (last(SLengths1,Last1) -> true; Last1 = f),
+
+	  %% find longest chain dependence (or f is none), update my chain length
+	  findall([LC_Dref1,C_DRef1],(member(C_DRef1,Refs1),get_rec_uses(C_DRef1,RefCodes,_,_,_,LC_Dref1,_,_,_,_,_,_,_)),C_Lengths1),
+	  sort(C_Lengths1,SCLengths1),
+	  (last(SCLengths1,CLast1) -> (CLast1 = [CLL1,_], CL1 is CLL1 + 1); (CLast1 = f, CL1 = 1)),
+	  
+	  %% find recursive nonnumeric dependencies
+	  findall(ReffNN1,
+		  (member(RefNN1,Refs1),get_rec_uses(RefNN1,RefCodes,t,_,_,_,_,_,_,_,_,_,RefsAllNN1),
+		      member(ReffNN1,[RefNN1|RefsAllNN1])),
+		  AllRecTmpNN1),
+	  sort(AllRecTmpNN1,AllRecTmpNNS1),
+
+	  %% find largest direct nonnumeric dependence (or f is none)
+	  findall([L_DRefNN1,DRefNN1],(member(DRefNN1,Refs1),get_rec_uses(DRefNN1,RefCodes,_,_,L_DRefNN1,_,_,_,_,_,_,_,_)),LengthsNN1),
+	  sort(LengthsNN1,SLengthsNN1),
+	  (last(SLengthsNN1,LastNN1) -> true; LastNN1 = f),
+
+	  %% find longest nonnumeric chain dependence (or f is none), update my nonnumeric chain length
+	  findall([LC_DRefNN1,C_DRefNN1],(member(C_DRefNN1,Refs1),get_rec_uses(C_DRefNN1,RefCodes,t,_,_,_,LC_DRefNN1,_,_,_,_,_,_)),C_LengthsNN1),
+	  sort(C_LengthsNN1,SCLengthsNN1),
+	  (last(SCLengthsNN1,CLastNN1) -> CLastNN1 = [CLLNNTmp1,_];  (CLastNN1 = f, CLLNNTmp1 = 0)),
+	  (NN = t -> CLNN1 is CLLNNTmp1 + 1; CLNN1 = CLLNNTmp1),
+
+		true,
+	  maplist(length,[AllRecTmpS1,AllRecTmpNNS1],[LRec1,LRecNN1]),
+	  assert(th_rec_uses(Name,NN,LRec1,LRecNN1,CL1,CLNN1,Last1,LastNN1,CLast1,CLastNN1,AllRecTmpS1,AllRecTmpNNS1))
+	     )), !.
+
+
+
+
+%% This is used for selecting problems for MPTP challenege:
+%% find recursive dependencies of theorems, theorems chains, and all also
+%% nonnumerical; print it on-the-fly, because for all articles it now crashes
+%% on jgraph_6; results are assrted into th_rec_uses/12
+%% th_rec_uses(Theorem,Nonnumerical,LengthAllRec,LengthAllRecNN,AllChainLength,
+%%             AllNNChainLength,LargestParent,LargestParentNN,LongestParent,
+%%             LongestParentNN,AllRecUses,AllRecNonNumUses)
+do_th_stats(File):-
+	do_th_stats(File,[]),!.
+
+do_th_stats(File,Options):-
+	declare_mptp_predicates,
+	load_theorems,
+	load_environs,
+	(member(o_ths_TL_LEMMAS, Options) -> (RefCodes1= [l], load_lemmas); RefCodes1=[]),
+	(member(o_ths_SCHEMES, Options) -> (RefCodes=[t,s|RefCodes1], load_schemes); RefCodes=[t|RefCodes1]),
+	install_index,
+	all_articles(Articles),
+%	Articles = [xboole_0,boole,xboole_1,enumset1],
+%	Articles = [jgraph_6],
+%	first100(Articles),
+	abolish(th_rec_uses/12),
+	abolish(th_rec_usedby/12),
+	dynamic(th_rec_uses/12),
+	dynamic(th_rec_usedby/12),!,
+%	tell(TrainFile),
+	%% this no longer assumes mml order of Articles
+	(
+	  member(A,[tarski|Articles]),		write(A),nl,
+%	  (nonnumeric(A) -> NN = t; NN = f),
+	  fof(Name,theorem,_,file(A,Name),Info),
+	  get_rec_uses(Name,RefCodes,_NN,_LRec1,_LRecNN1,_CL1,_CLNN1,_Last1,_LastNN1,_CLast1,_CLastNN1,_AllRecTmpS1,_AllRecTmpNNS1),
+	  fail
+	;
+	  true
+	).
+
+%% prints the nonumerical chain (actually tree) ending with LastTh,
+%% needs to run do_th_stats/1 first
+print_nn_chain(LastTh):- print_nn_chain(LastTh,[]).
+print_nn_chain(LastTh,Options):-
+	all_articles(L),
+	declare_mptp_predicates,
+	load_mml,
+	install_index,!,
+	%% abstracting will probably fail if lemmas are loaded without top-level constant types!
+	%% therefore the lemmas are loaded after abstracting;
+	%% if some fraenkel is in them, bad luck (and manual work now)
+	(member(A2,L), abstract_fraenkels(A2, _),fail; true), !,
+	(member(o_ths_TL_LEMMAS, Options) -> (RefCodes2= [l], load_lemmas); RefCodes2=[]),
+	(member(o_ths_DEFS, Options) -> RefCodes1= [d|RefCodes2]; RefCodes1=RefCodes2),
+	(member(o_ths_SCHEMES, Options) -> RefCodes=[t,s|RefCodes1]; RefCodes=[t|RefCodes1]),
+	install_index,!,
+	th_rec_uses(LastTh,_,_,_,_,_,_,_,_,_,U,_),
+	member(Name,[LastTh|U]),
+	fof(Name,_,Fla,file(A,Name),Info),
+	Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs)],
+	findall(Ref,(member(Ref0,Refs),atom_chars(Ref0,[C|Cs]),
+		       member(C,RefCodes),fix_sch_ref(Ref0,[C|Cs],Ref)), Refs1),
+	Info1 = inference(mizar_proof,[status(thm)],Refs1),
+	sort_transform_top(Fla,Fla1),
+%	Fla1 = $true,
+	numbervars(Fla1,0,_),
+	print(fof(Name,theorem,Fla1,Info1,[file(A,Name)])),
+	write('.'),nl,
+	fail.
+	  
+%% prints the graph in a .dot format
+print_nn_chain_for_dot(LastTh):- print_nn_chain_for_dot(LastTh,[]).
+print_nn_chain_for_dot(LastTh,Options):-
+	declare_mptp_predicates,
+	load_mml,
+	(member(o_ths_TL_LEMMAS, Options) -> (RefCodes2= [l], load_lemmas); RefCodes2=[]),
+	(member(o_ths_DEFS, Options) -> RefCodes1= [d|RefCodes2]; RefCodes1=RefCodes2),
+	(member(o_ths_SCHEMES, Options) -> RefCodes=[t,s|RefCodes1]; RefCodes=[t|RefCodes1]),
+	install_index,
+	format("strict digraph ~w {",[LastTh]), !,
+	th_rec_uses(LastTh,_,_,_,_,_,_,_,_,_,U,_),
+	member(Name,[LastTh|U]),
+	fof(Name,_,_,file(_,Name),Info),
+	Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs)],
+	findall(Ref,(member(Ref0,Refs),atom_chars(Ref0,[C|Cs]),
+		     member(C,RefCodes),fix_sch_ref(Ref0,[C|Cs],Ref)), Refs1),
+	once(findall(d,(member(R1,Refs1),write(R1),format(" -> "),write(Name),format(";"),nl),_)),
+	fail.
+	  
+
+
 
 %%%%%%%%%%%%%%%%%%%% Create training data for SNoW %%%%%%%%%%%%%%%%%%%%
 
@@ -1499,7 +1652,7 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 %%%%%%%%%%%%%%%%%%%% MML loading and indexing %%%%%%%%%%%%%%%%%%%%
 
 %% allowed file estensions for theory files
-theory_exts([dcl,dco,evl,sch,the]).
+theory_exts([dcl,dco,evl,sch,the,lem]).
 
 %% Kind must be in theory_exts
 load_theory_files(Kind):-
@@ -1518,7 +1671,10 @@ load_constructors:- load_theory_files(dco).
 load_environs:- load_theory_files(evl).
 load_schemes:- load_theory_files(sch).
 load_theorems:- load_theory_files(the).
+load_lemmas:- load_theory_files(lem).
 
+%% do not load top-level lemmas by default;
+%% if you do, take care of their local constants and similar stuff
 load_mml:-
 	load_clusters,load_theorems,load_schemes,
 	load_constructors,load_environs.
