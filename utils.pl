@@ -1047,18 +1047,37 @@ print_nn_chain(LastTh,Options):-
 	(member(o_ths_SCHEMES, Options) -> RefCodes=[t,s|RefCodes1]; RefCodes=[t|RefCodes1]),
 	install_index,!,
 	th_rec_uses(LastTh,_,_,_,_,_,_,_,_,_,U,_),
-	member(Name,[LastTh|U]),
-	fof(Name,_,Fla,file(A,Name),Info),
-	Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs)],
-	findall(Ref,(member(Ref0,Refs),atom_chars(Ref0,[C|Cs]),
+	%% definitions are not in th_rec_uses now, so find them
+	findall(DefRef,
+		(
+		  member(Name,[LastTh|U]),
+		  fof(Name,_,_,_,Info),
+		  Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs)],
+		  member(DefRef,Refs),atom_chars(DefRef,[d|_])
+		),
+		DefRefs1),!,
+	sort(DefRefs1, DefRefs),!,
+	(
+	  member(Name,[LastTh|U]),
+	  fof(Name,_,Fla,file(A,Name),Info),
+	  Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs)],
+	  findall(Ref,(member(Ref0,Refs),atom_chars(Ref0,[C|Cs]),
 		       member(C,RefCodes),fix_sch_ref(Ref0,[C|Cs],Ref)), Refs1),
-	Info1 = inference(mizar_proof,[status(thm)],Refs1),
-	sort_transform_top(Fla,Fla1),
-%	Fla1 = $true,
-	numbervars(Fla1,0,_),
-	print(fof(Name,theorem,Fla1,Info1,[file(A,Name)])),
-	write('.'),nl,
-	fail.
+	  Info1 = inference(mizar_proof,[status(thm)],Refs1),
+	  sort_transform_top(Fla,Fla1),
+	  numbervars(Fla1,0,_),
+	  print(fof(Name,theorem,Fla1,Info1,[file(A,Name)])),
+	  write('.'),nl,
+	  fail
+	;
+	  member(Name,DefRefs),
+	  fof(Name,_,Fla,file(A,Name),_),
+	  sort_transform_top(Fla,Fla1),
+	  numbervars(Fla1,0,_),
+	  print(fof(Name,definition,Fla1,file(A,Name))),
+	  write('.'),nl,
+	  fail
+	).
 	  
 %% prints the graph in a .dot format
 print_nn_chain_for_dot(LastTh):- print_nn_chain_for_dot(LastTh,[]).
