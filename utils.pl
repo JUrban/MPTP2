@@ -1078,7 +1078,41 @@ print_nn_chain(LastTh,Options):-
 	  write('.'),nl,
 	  fail
 	).
-	  
+
+
+cmp_in_mml_order(Delta, Name1, Name2):-
+	atom(Name1),
+	atom(Name2), 
+	get_ref_fof(Name1, fof(Name1,_,_,file(Article1,_),
+			       [mptp_info(ItemNr1, _, ItemKind1, position(Line1,Col1), _)|_])),
+	get_ref_fof(Name2, fof(Name2,_,_,file(Article2,_),
+			       [mptp_info(ItemNr2, _, ItemKind2, position(Line2,Col2), _)|_])),
+	article_nr(Article1,ANr1),
+	article_nr(Article2,ANr2),!,
+	compare(ADelta, ANr1, ANr2),
+	(ADelta == '=' ->
+	    (ItemKind1 == ItemKind2 ->
+		compare(Delta, ItemNr1, ItemNr2)
+	    ;
+		%% different kinds - have to compare by position
+		compare(Delta, [Line1,Col1], [Line2,Col2])
+	    )
+	;
+	    Delta = ADelta
+	).
+
+%% debugging
+cmp_in_mml_order(_,Name1,Name2):- throw(cmp_in_mml_order(Name1,Name2)).		    
+
+%% sort fof names, using the article ordering, item numbers, and  positions
+sort_in_mml_order(U,U1):-
+	all_articles(L1),
+	L = [tarski|L1],
+	abolish(article_nr/2),
+	dynamic(article_nr/2),!,
+	findall(foo, ( nth1(N,L,A), assert(article_nr(A,N))), _),
+	predsort(cmp_in_mml_order,U,U1).
+	       
 %% prints the graph in a .dot format
 print_nn_chain_for_dot(LastTh):- print_nn_chain_for_dot(LastTh,[]).
 print_nn_chain_for_dot(LastTh,Options):-
@@ -1090,7 +1124,17 @@ print_nn_chain_for_dot(LastTh,Options):-
 	install_index,
 	format("strict digraph ~w {",[LastTh]), !,
 	th_rec_uses(LastTh,_,_,_,_,_,_,_,_,_,U,_),
-	member(Name,[LastTh|U]),
+	sort_in_mml_order([LastTh|U],U1), !,
+	nth1(Nr,U1, Name),
+% 	(
+% 	  Nr = 1
+% 	;
+
+% 	  Nr > 1,
+% 	  PrevNr is Nr - 1,
+% 	  nth1(PrevNr,U1, PrevName),
+% 	  write(PrevName),format(" -> "),write(Name),format("[color = red];"),nl
+% 	),	
 	fof(Name,_,_,file(_,Name),Info),
 	Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs)],
 	findall(Ref,(member(Ref0,Refs),atom_chars(Ref0,[C|Cs]),
