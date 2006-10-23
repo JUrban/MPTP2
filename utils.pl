@@ -858,7 +858,28 @@ mk_nonnumeric_snow(SpecFile):-
 	member(A,L),nonnumeric(A),
 	mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem],snow_spec],[opt_REM_SCH_CONSTS]),fail.
 
+%% Create problems whose names are in the list.
+%% Names should have the form xboole_1__t40_xboole_1 (i.e.: Article__Problem)
+mk_problems_from_list(List):-
+	declare_mptp_predicates,load_mml,
+	findall([Article, Problem],
+		( member(Name,List), concat_atom([Article,Problem], '__', Name)),
+		Pairs), !,
+	maplist(nth1(1),Pairs,Articles),
+	sort(Articles, L),!,
+	member(A,L),
+	findall(P, member([A,P], Pairs), AList),
+	mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],
+			       [theorem, top_level_lemma],
+			       problem_list(AList)],
+			    [opt_REM_SCH_CONSTS,opt_MK_TPTP_INF]),fail.
 
+%% ##TEST: :- mk_problems_from_file('mptp_chall_problems').
+mk_problems_from_file(File):-
+	open(File,read,S),
+	read_lines(S,List),
+	close(S),!,
+	mk_problems_from_list(List).
 
 test_refs_first100:-
 	declare_mptp_predicates,first100(L),!,
@@ -1064,6 +1085,10 @@ expand_sch_refs([Ref|Refs], RefCodes, OutRefs):-
 %% needs to run do_th_stats/1 first
 %% Option o_ths_EXPAND_SCHREFS causes to recursively replace all references to schemes
 %% with their references.
+%% the graph for mptp challenge was generated this way:
+%% ##TEST:
+%% :- do_th_stats(_,[o_ths_SCHEMES,o_ths_TL_LEMMAS]).
+%% :- print_nn_chain(l37_yellow19,[o_ths_SCHEMES,o_ths_TL_LEMMAS,o_ths_EXPAND_SCHREFS]).
 print_nn_chain(LastTh):- print_nn_chain(LastTh,[]).
 print_nn_chain(LastTh,Options):-
 	all_articles(L),
@@ -1617,7 +1642,7 @@ get_proof_syms_and_flas(RefsIn, PLevel, PSyms, PRefs):-
 %% Kinds is a list [InferenceKinds, PropositionKinds | Rest]
 %% possible InferenceKinds are now [mizar_by, mizar_from, mizar_proof]
 %% possible PropositionKinds are now [theorem, top_level_lemma, sublemma]
-%% Rest is a list now only possibly containing snow_spec.
+%% Rest is a list now only possibly containing snow_spec or problem_list.
 mk_article_problems(Article,Kinds,Options):-
 %	declare_mptp_predicates,
 %	load_mml,
@@ -1657,10 +1682,11 @@ mk_article_problems(Article,Kinds,Options):-
 %% mk_problem(?P,+F,+Prefix,+Kinds,+Options)
 %% possible InferenceKinds are now [mizar_by, mizar_proof, mizar_from]
 %% possible PropositionKinds are now [theorem, top_level_lemma, sublemma]
-%% Rest is now checked for containing snow_refs, in that case
-%% the snow_spec of P have to be available in predicate
+%% Rest is now checked for containing snow_refs and problem_list([...]).
+%% The snow_spec of P have to be available in predicate
 %% snow_spec(P,Refs) and they are used instead of the Mizar refs,
-%% and InfKind is set to mizar_by;
+%% and InfKind is set to mizar_by. The problem_list([...]) is used for limiting
+%% the problems generated (P must be member of it).
 %% see opt_available/1 for Options.
 mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	theory(F, _Theory),
@@ -1671,6 +1697,12 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 		((PropKind = top_level_lemma,Lev = []);
 		    PropKind \= top_level_lemma))),
 	fof(P,_,_Fla,file(F,P),[Mptp_info,Inference_info]),
+	(
+	  member(problem_list(PList), Rest) ->
+	  member(P,PList)
+	;
+	  true
+	),	  
 	Mptp_info = mptp_info(_Nr,Lev,MPropKind,position(Line,Col),_),
 	(
 	  member(snow_spec, Rest) ->
