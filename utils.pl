@@ -23,6 +23,12 @@ mml_dir_atom(A):- mml_dir(S), string_to_atom(S,A).
 %% switch to fail for debug
 optimize_fraenkel. % :- fail.
 
+%% appends __Article to local constants, lemmas, etc. - use it for
+%% mixing local stuff from different articles consistently.
+%% (all atoms starting with c[0-9]+_
+absolute_locals.
+
+
 %% debugging, Flags can be: [dbg_FRAENKELS,dbg_CLUSTERS]
 dbg_flags([]).
 dbg(Flag, Goal):-
@@ -128,6 +134,7 @@ portray(? A : B):- format(' (? ~p : ~p) ',[A,B]).
 portray(A):- atom(A), constr_name(A,Name,Quote),
 	((Quote==0, write(Name));
 	    (Quote==1, write(''''),write(Name),write(''''))).
+portray(A):- atom(A), abs_name(A,Name), write(Name).
 portray(A):- compound(A), A =.. [F|L], constr_name(F,Name,Quote),
 	((Quote==0, write(Name));
 	    (Quote==1, write(''''),write(Name),write(''''))),
@@ -163,8 +170,11 @@ declare_mptp_predicates:-
  dynamic(fof_parentlevel/2),
  abolish(fof_cluster/3),
  abolish(fof_req/3),
+ abolish(abs_name/2),
+ dynamic(abs_name/2),
  index(fof(1,1,0,1,1)),
- index(fof(1,1,0,1)).
+ index(fof(1,1,0,1)),
+ index(fof_name(1,1)).
 
 %% collect subterms satisfying P with count, test by equality
 collect_with_count_top(Pred,Term,OutList,OutCounts):-
@@ -1637,6 +1647,42 @@ get_proof_syms_and_flas(RefsIn, PLevel, PSyms, PRefs):-
 	maplist(get_ref_fla, PRefs, Flas1),
 	collect_symbols_top(Flas1, PSyms).
 
+%% Create the abs_name table for all local references and constants
+%% by checking if their name ends with _Article or not.
+%% If not, __Article is appended.
+%% Local constants are done by their type declaration - so
+%% ##REQUIRE: Local constants always have their type declaration (even if trivial).
+%% ##TEST: generate problems for some articles with absolute_locals:- fail., then
+%%         generate with absolute_locals, then check with low timelimit that the results
+%%         of E prover are the same.
+absolutize_locals(Article):-
+	abolish(abs_name/2),
+	atom_concat('_',Article,ArticleSuffix),
+	atom_concat('__',Article,ArticleSuffix1),!,
+	repeat,
+	(
+	  fof_file(Article,Id),
+	  fof_name(Ref,Id),
+	  (
+	    atom_concat(_,ArticleSuffix,Ref) -> true
+	  ;
+	    atom_concat(Ref,ArticleSuffix1,AbsName),
+	    assert(abs_name(Ref,AbsName)),
+	    %% register local constants from their types
+	    (
+	      atom_concat('dt_c',Rest,Ref) ->
+	      atom_concat(c,Rest,Constant),
+	      atom_concat(Constant,ArticleSuffix1,ConstantAbsName),
+	      assert(abs_name(Constant,ConstantAbsName))
+	    ;
+	      true	      
+	    )
+	  ),
+	  fail
+	;
+	  true
+	).
+
 %%%%%%%%%%%%%%%%%%%% Problem creation %%%%%%%%%%%%%%%%%%%%
 
 %% Kinds is a list [InferenceKinds, PropositionKinds | Rest]
@@ -1662,6 +1708,8 @@ mk_article_problems(Article,Kinds,Options):-
 	install_index,
 	abstract_fraenkels(Article, _),
 	install_index,
+	%% create the table of local-to-global names if absolute_locals
+	(absolute_locals -> absolutize_locals(Article); true),
 	concat_atom(['problems/',Article,'/'],Dir),
 	(exists_directory(Dir) -> (string_concat('rm -r -f ', Dir, Command),
 				      shell(Command)); true),
@@ -1851,6 +1899,7 @@ install_index:-
 	dynamic(fof_parentlevel/2),
 	abolish(fof_cluster/3),
 	abolish(fof_req/3),
+	index(fof_name(1,1)),
 %	add_hidden,
 	logic_syms(LogicSyms),
 	repeat,
