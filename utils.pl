@@ -928,7 +928,11 @@ compare_proved_by_refsnr(ProvedFile):-
 	sort(Tuples,T1),
 	checklist(print_nl,T1).
 
-%% fix_sch_ref(+,+,-)
+%% fix_sch_ref(+SchemeRefIn,+SchChars,-SchemeRefOut)
+%%
+%% If SchChars contain '__', then they are scheme instance like s1_ordinal1__e8_6__wellord2.
+%% In that case return only the part before '__', i.e. s1_ordinal1.
+%% Otherwise return SchemeRefIn.
 fix_sch_ref(Ref0,[s|Cs],Ref1):- !,
 	%% find the part before "__"
 	(append(S1,['_','_'|_],[s|Cs]) -> 
@@ -1030,8 +1034,36 @@ do_th_stats(File,Options):-
 	  true
 	).
 
+%% expand_sch_refs(+InRefs, +RefCodes, -OutRefs)
+%%
+%% All scheme references in InRefs are recursively expanded.
+%% The result is sorted into OutRefs. Only references starting with
+%% RefCodes are used for recursive expansion.
+expand_sch_refs([], _, []).
+
+expand_sch_refs([Ref|Refs], RefCodes, OutRefs):-
+	atom_chars(Ref,[C|_]),
+	( C = s ->
+	    fof(Ref,_,_,file(_,Ref),Info),
+	    Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs1)],
+	    findall(Ref1,(member(Ref0,Refs1),atom_chars(Ref0,[C0|Cs0]),
+			  member(C0,RefCodes),fix_sch_ref(Ref0,[C0|Cs0],Ref1)), Refs2),
+	    expand_sch_refs(Refs2, RefCodes, OutRefs2),
+	    expand_sch_refs(Refs, RefCodes, OutRefs1),
+	    append(OutRefs2, OutRefs1, OutRefs)
+	;
+	    expand_sch_refs(Refs, RefCodes, OutRefs1),
+	    ( member(C,RefCodes) ->
+		OutRefs = [Ref|OutRefs1]
+	    ;
+		OutRefs = OutRefs1
+	    )
+	).
+
 %% prints the nonumerical chain (actually tree) ending with LastTh,
 %% needs to run do_th_stats/1 first
+%% Option o_ths_EXPAND_SCHREFS causes to recursively replace all references to schemes
+%% with their references.
 print_nn_chain(LastTh):- print_nn_chain(LastTh,[]).
 print_nn_chain(LastTh,Options):-
 	all_articles(L),
@@ -1063,7 +1095,12 @@ print_nn_chain(LastTh,Options):-
 	  Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs)],
 	  findall(Ref,(member(Ref0,Refs),atom_chars(Ref0,[C|Cs]),
 		       member(C,RefCodes),fix_sch_ref(Ref0,[C|Cs],Ref)), Refs1),
-	  Info1 = inference(mizar_proof,[status(thm)],Refs1),
+	  (member(o_ths_EXPAND_SCHREFS, Options) ->
+	      expand_sch_refs(Refs1, RefCodes, Refs2)
+	  ;
+	      Refs2 = Refs1
+	  ),
+	  Info1 = inference(mizar_proof,[status(thm)],Refs2),
 	  sort_transform_top(Fla,Fla1),
 	  numbervars(Fla1,0,_),
 	  print(fof(Name,theorem,Fla1,Info1,[file(A,Name)])),
