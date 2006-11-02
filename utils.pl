@@ -40,7 +40,8 @@ dbg(_,_).
 %%%%%%%%%%%%%%%%%%%% Options %%%%%%%%%%%%%%%%%%%%
 opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme instances
 	       opt_MK_TPTP_INF,		%% better tptp inference slot and no mptp_info
-	       opt_LINE_COL_NMS		%% problem are named LINE_COL instead 
+	       opt_LINE_COL_NMS,        %% problem are named LINE_COL instead
+	       opt_LEVEL_REF_INFO       %% .refspec file with immediate references is printed
 	      ]).
 
 %%%%%%%%%%%%%%%%%%%% End of options %%%%%%%%%%%%%%%%%%%%
@@ -868,7 +869,7 @@ mk_nonnumeric_snow(SpecFile):-
 	member(A,L),nonnumeric(A),
 	mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem],snow_spec],[opt_REM_SCH_CONSTS]),fail.
 
-%% Create problems whose names are in the list.
+%% Create (sub)problems whose names are in the list - should have option handling.
 %% Names should have the form xboole_1__t40_xboole_1 (i.e.: Article__Problem)
 mk_problems_from_list(List):-
 	declare_mptp_predicates,load_mml,
@@ -880,9 +881,9 @@ mk_problems_from_list(List):-
 	member(A,L),
 	findall(P, member([A,P], Pairs), AList),
 	mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],
-			       [theorem, top_level_lemma],
-			       problem_list(AList)],
-			    [opt_REM_SCH_CONSTS,opt_MK_TPTP_INF]),fail.
+			       [theorem, top_level_lemma, sublemma],
+			       subproblem_list(AList)],
+			    [opt_REM_SCH_CONSTS,opt_MK_TPTP_INF,opt_LEVEL_REF_INFO]),fail.
 
 %% ##TEST: :- mk_problems_from_file('mptp_chall_problems').
 mk_problems_from_file(File):-
@@ -1600,6 +1601,9 @@ test_refs(Article):-
 %% Shorter is an ancestor level or equal to Longer
 sublevel(Longer,Shorter) :- append(Shorter,_,Longer).
 
+%% Shorter is a (strict) ancestor level of Longer
+strict_sublevel(Longer,Shorter) :- append(Shorter,[_|_],Longer).
+
 %% filter out refs with more special level
 filter_level_refs(Lev,RefsIn,RefsOut):-
 	sort(RefsIn,Refs1),
@@ -1610,8 +1614,16 @@ filter_level_refs(Lev,RefsIn,RefsOut):-
 %	findall(Ref,(member(Ref,RefsIn),atom_chars(Ref,[C|_]),
 %		     member(C,[t,d,l])), Refs1),
 
+%% filter out refs with this or more special level
+get_superlevel_refs(Lev,RefsIn,RefsOut):-
+	sort(RefsIn,Refs1),
+	findall(Ref,(member(Ref,Refs1),
+		     get_ref_fof(Ref,fof(Ref,_,_,_,Info)),
+		     Info = [mptp_info(_,Lev1,_,_,_)|_],
+		     strict_sublevel(Lev,Lev1)), RefsOut).
 
-%% childern and decendants of a level expressed as atom (for speed)
+
+%% childern and descendants of a level expressed as atom (for speed)
 at_level_children(At1,Childs):- findall(C, fof_parentlevel(At1,C), Childs).
 at_level_descendents(At1,Descs):-
 	at_level_children(At1,Childs),
@@ -1628,6 +1640,54 @@ get_sublevel_names(Lev,Names):-
 	findall(Name,( member(L1, [At1|Descs]),
 		      fof_level(L1, Id),		     
 		      clause(fof(Name,_,_,_,_),_,Id)), Names).
+
+
+%% all fof names on this level (block); uses fof_level/2 and
+%% fof_parentlevel/2 for speed 
+get_thislevel_names(Lev,Names):-
+	level_atom(Lev, At1),
+	at_level_children(At1, Descs),
+	findall(Name,( member(L1, [At1|Descs]),
+		      fof_level(L1, Id),		     
+		      clause(fof(Name,_,_,_,_),_,Id)), Names).
+
+%% get only this-level references for Lev from RefsIn
+%% the top-level included in RefsIn, which are not references of
+%% anything below are included too (should be useful e.g. fro definitional
+%% expansions done in this level) - note that some background adding might
+%% be needed after that.
+
+%% simplified version - we cannot rely on RefsIn, since
+%% lemmas with subproofs are not there
+get_thislevel_refs_simple(Lev, _, ThisLevelRefs, []) :-
+	get_thislevel_names(Lev, ThisLevelNames),
+	findall(Ref,
+		(
+		  member(Ref,ThisLevelNames),
+		  get_ref_fof(Ref,fof(Ref,_,_,_,Info)),
+		  Info = [mptp_info(_,Lev,_,_,_),inference(_,_,_)]
+		),
+	       ThisLevelRefs).
+
+%% better (standard) version - takes ThesisExpansions into account 
+get_thislevel_refs(Lev, RefsIn, ThisLevelRefs, SuperLevelRefs):-
+	get_thislevel_names(Lev, ThisLevelNames),
+	%% select only justified, collect their references
+	findall([Ref,Refs],
+		(
+		  member(Ref,ThisLevelNames),
+		  get_ref_fof(Ref,fof(Ref,_,_,_,Info)),
+		  Info = [mptp_info(_,Lev,_,_,_),inference(_,_,Refs)]
+		),
+	       RefRefs),
+	zip(ThisLevelRefs,ThisRefRefsLists,RefRefs),
+	flatten(ThisRefRefsLists,ThisRefRefs1),
+	sort(ThisRefRefs1,ThisRefRefs),
+	get_superlevel_refs(Lev,RefsIn,SuperLevelRefs1),
+	%% remove all superlevel refs used inside ThisLevelRefs - a bit heuristical
+	subtract(SuperLevelRefs1,ThisRefRefs,SuperLevelRefs).
+
+	
 
 %% get all (also proof-local) symbols used in this proof, and all
 %% formula names in the proof. the proof
@@ -1688,7 +1748,7 @@ absolutize_locals(Article):-
 %% Kinds is a list [InferenceKinds, PropositionKinds | Rest]
 %% possible InferenceKinds are now [mizar_by, mizar_from, mizar_proof]
 %% possible PropositionKinds are now [theorem, top_level_lemma, sublemma]
-%% Rest is a list now only possibly containing snow_spec or problem_list.
+%% Rest is a list now only possibly containing snow_spec, problem_list and subproblem_list.
 mk_article_problems(Article,Kinds,Options):-
 %	declare_mptp_predicates,
 %	load_mml,
@@ -1708,13 +1768,34 @@ mk_article_problems(Article,Kinds,Options):-
 	install_index,
 	abstract_fraenkels(Article, _),
 	install_index,
+
+
+	%% now take care of possible subproblem_list option -
+	%% create a problem_list from all local references which have the inference slot
+	(
+	  member(subproblem_list(PList), Kinds) ->
+	  findall(Ref,
+		  (
+		    member(R1,PList),
+		    get_ref_fof(R1,fof(R1,_,_,_,[_,inference(_,_,LRefs)])),
+		    member(Ref, LRefs),
+		    get_ref_fof(Ref,fof(Ref,_,_,file(Article,_),[_,inference(_,_,_)]))
+		  ),
+		  AllRefs),
+	  append(PList, AllRefs, AllProbs1),
+	  sort(AllProbs1, AllProbs),
+	  append(Kinds,[problem_list(AllProbs)],Kinds1)
+	;
+	  Kinds1 = Kinds
+	),
+	
 	%% create the table of local-to-global names if absolute_locals
 	(absolute_locals -> absolutize_locals(Article); true),
 	concat_atom(['problems/',Article,'/'],Dir),
 	(exists_directory(Dir) -> (string_concat('rm -r -f ', Dir, Command),
 				      shell(Command)); true),
 	make_directory(Dir),
-	repeat,(mk_problem(_,Article,Dir,Kinds,Options),fail; !,true),
+	repeat,(mk_problem(_,Article,Dir,Kinds1,Options),fail; !,true),
 %% retract current file but return mml parts
 	retractall(fof(_,_,_,file(Article,_),_)),
 	sublist(exists_file,[DCL,DCO,THE,SCH],ToLoad),
@@ -1752,6 +1833,10 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	  true
 	),	  
 	Mptp_info = mptp_info(_Nr,Lev,MPropKind,position(Line,Col),_),
+	(member(opt_LINE_COL_NMS, Options) ->
+	    concat_atom([Prefix,F,'__',Line,'_',Col],Outfile);	
+	    concat_atom([Prefix,F,'__',P],Outfile)
+	),
 	(
 	  member(snow_spec, Rest) ->
 	  snow_spec(P, Refs0),
@@ -1767,6 +1852,16 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	(
 	  InfKind == mizar_proof,
 	  ensure(InfInfo = [proof_level(PLevel)|_], inf_info(InfInfo,PLevel)),
+	  (member(opt_LEVEL_REF_INFO, Options) ->
+	      get_thislevel_refs(PLevel, Refs0, ThisLevelRefs, SuperLevelRefs),
+	      concat_atom([Outfile,'.refspec'], RefSpecFile),
+	      tell(RefSpecFile),
+	      print(refspec(P,ThisLevelRefs,SuperLevelRefs)),
+	      write('.'),nl,
+	      told
+	  ;
+	      true
+	  ),	      
 	  get_proof_syms_and_flas([P|Refs0], PLevel, PSyms, PRefs),
 	  Syms1 = PSyms,
 	  once(fixpoint(F, [Pos1, Lev], InfKind, PRefs, [], Syms1, AllRefs0)),
@@ -1779,11 +1874,7 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	  collect_symbols_top(Flas1, Syms0),
 	  Syms1 = Syms0,
 	  once(fixpoint(F, [Pos1, Lev], InfKind, [P|Refs], [], Syms1, AllRefs))
-	),
-	(member(opt_LINE_COL_NMS, Options) ->
-	    concat_atom([Prefix,F,'__',Line,'_',Col],Outfile);	
-	    concat_atom([Prefix,F,'__',P],Outfile)
-	),
+	),	
 	tell(Outfile),
 	format('% Mizar problem: ~w,~w,~w,~w ~n', [P,F,Line,Col]),
 	(member(snow_spec, Rest) ->
