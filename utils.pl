@@ -1624,6 +1624,9 @@ get_superlevel_refs(Lev,RefsIn,RefsOut):-
 
 
 %% childern and descendants of a level expressed as atom (for speed)
+%% ###TODO: seems that for percases blocks only the level of the percases
+%% justification saves this recursion - we should have thesis for
+%% each percases block, and all subblocks, with proper levels
 at_level_children(At1,Childs):- findall(C, fof_parentlevel(At1,C), Childs).
 at_level_descendents(At1,Descs):-
 	at_level_children(At1,Childs),
@@ -1640,6 +1643,14 @@ get_sublevel_names(Lev,Names):-
 	findall(Name,( member(L1, [At1|Descs]),
 		      fof_level(L1, Id),		     
 		      clause(fof(Name,_,_,_,_),_,Id)), Names).
+
+get_sublevel_proved_names(Lev,Names):-
+	level_atom(Lev, At1),
+	at_level_descendents(At1, Descs),
+	findall(Name,( member(L1, [At1|Descs]),
+		      fof_level(L1, Id),		     
+		      clause(fof(Name,_,_,_,[_,inference(_,_,_)]),_,Id)),
+		Names).
 
 
 %% all fof names on this level (block); uses fof_level/2 and
@@ -1771,15 +1782,17 @@ mk_article_problems(Article,Kinds,Options):-
 
 
 	%% now take care of possible subproblem_list option -
-	%% create a problem_list from all local references which have the inference slot
+	%% create a problem_list from all local mizar_proof references which have the inference slot;
+	%% to get all lemmas, we cannot rely on the inference slot, since it only
+	%% contains those proved by simple justification!
 	(
 	  member(subproblem_list(PList), Kinds) ->
 	  findall(Ref,
 		  (
 		    member(R1,PList),
-		    get_ref_fof(R1,fof(R1,_,_,_,[_,inference(_,_,LRefs)])),
-		    member(Ref, LRefs),
-		    get_ref_fof(Ref,fof(Ref,_,_,file(Article,_),[_,inference(_,_,_)]))
+		    get_ref_fof(R1,fof(R1,_,_,_,[_,inference(mizar_proof,[proof_level(Lev)|_],_)])),
+		    get_sublevel_proved_names(Lev,LRefs),
+		    member(Ref, LRefs)
 		  ),
 		  AllRefs),
 	  append(PList, AllRefs, AllProbs1),
