@@ -8,6 +8,8 @@
 %%  The top-level predicate is now mk_nonnumeric/0
 %%  or mk_first100/0, see below. You also need to set the mml_dir/1
 %%  location here appropriately.
+%%  The top-level predicate for createing MPTPChallenge problems is e.g.
+%%  :- mk_problems_from_file('mptp_chall_problems').
 %%------------------------------------------------------------------------
 
 
@@ -871,7 +873,7 @@ mk_nonnumeric_snow(SpecFile):-
 
 %% Create (sub)problems whose names are in the list - should have option handling.
 %% Names should have the form xboole_1__t40_xboole_1 (i.e.: Article__Problem)
-mk_problems_from_list(List):-
+mk_sub_problems_from_list(List):-
 	declare_mptp_predicates,load_mml,
 	findall([Article, Problem],
 		( member(Name,List), concat_atom([Article,Problem], '__', Name)),
@@ -884,6 +886,22 @@ mk_problems_from_list(List):-
 			       [theorem, top_level_lemma, sublemma],
 			       subproblem_list(AList)],
 			    [opt_REM_SCH_CONSTS,opt_MK_TPTP_INF,opt_LEVEL_REF_INFO]),fail.
+
+%% Create problems whose names are in the list.
+%% Names should have the form xboole_1__t40_xboole_1 (i.e.: Article__Problem)
+mk_problems_from_list(List):-
+	declare_mptp_predicates,load_mml,
+	findall([Article, Problem],
+		( member(Name,List), concat_atom([Article,Problem], '__', Name)),
+		Pairs), !,
+	maplist(nth1(1),Pairs,Articles),
+	sort(Articles, L),!,
+	member(A,L),
+	findall(P, member([A,P], Pairs), AList),
+	mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],
+			       [theorem, top_level_lemma],
+			       problem_list(AList)],
+			    [opt_REM_SCH_CONSTS,opt_MK_TPTP_INF]),fail.
 
 %% ##TEST: :- mk_problems_from_file('mptp_chall_problems').
 mk_problems_from_file(File):-
