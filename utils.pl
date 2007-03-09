@@ -958,17 +958,28 @@ print_thms_and_defs_for_learning:-
 	  fail);
 	    told).
 
-%% mptp2tptp(+InFile,+Options,-OutFile)
+%% mptp2tptp(+InFile,+Options,+OutFile)
 %%
 %% Read InFile with theorems in MPTP syntax, translate it to
 %% TPTP syntax in OutFile.
+%% The files can be given both as atoms and strings.
 %% This outputs only the required flas, no background is added.
 %% Options is normally just [], unless local constants are present (e.g. in top-level lemmas).
 %% In that case use opt_NO_FRAENKEL_CONST_GEN, otherwise abstract_fraenkels
 %% breaks.
 mptp2tptp(InFile,Options,OutFile):-
+	(atom(InFile) ->
+	    InFile1 = InFile1
+	;
+	    string_to_atom(InFile, InFile1)
+	),
+	(atom(OutFile) ->
+	    OutFile1 = OutFile1
+	;
+	    string_to_atom(OutFile, OutFile1)
+	),
 	declare_mptp_predicates,
-	consult(InFile),
+	consult(InFile1),
 	install_index,
 	%% find all the article names for our flas -
 	%% abstract_fraenkels/4 requires it now
@@ -984,7 +995,7 @@ mptp2tptp(InFile,Options,OutFile):-
 	install_index,!,
 
 	RefCodes = [t,d,s,l],
-	tell(OutFile),
+	tell(OutFile1),
 	(
 	  fof(Name,Role,Fla,file(A,Name),Info),
 	  not(member(Name, AddedFraenkelNames)),
