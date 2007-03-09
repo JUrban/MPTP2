@@ -43,7 +43,9 @@ dbg(_,_).
 opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme instances
 	       opt_MK_TPTP_INF,		%% better tptp inference slot and no mptp_info
 	       opt_LINE_COL_NMS,        %% problem are named LINE_COL instead
-	       opt_LEVEL_REF_INFO       %% .refspec file with immediate references is printed
+	       opt_LEVEL_REF_INFO,      %% .refspec file with immediate references is printed
+	       opt_NO_FRAENKEL_CONST_GEN %% do not generalize local consts when abstracting fraenkels
+	                                 %% (useful for fast translation, when consts are not loaded)
 	      ]).
 
 %%%%%%%%%%%%%%%%%%%% End of options %%%%%%%%%%%%%%%%%%%%
@@ -520,7 +522,7 @@ mk_fraenkel_def(File, Var, Context, all(Svars1,Trm1,Frm1),
 	Def = ( ! [(X : $true)|Context] : ( InPred <=> ExFla ) ),
 	Var = FrTrm.
 
-%% NewDefs id a list of pairs [DefinedSymbol, Def] now
+%% NewDefs is a list of pairs [DefinedSymbol, Def] now
 mk_fraenkel_defs_top(File, Infos, NewFrSyms, NewDefs):-
 	mk_fraenkel_defs(File, Infos, [], [], NewFrSyms, NewDefs),!.
 
@@ -920,7 +922,7 @@ print_thms_for_cnf:-
 	declare_mptp_predicates,
 	load_mml,
 	install_index,
-	(member(A2,L), abstract_fraenkels(A2, _),fail; true), !,
+	(member(A2,L), abstract_fraenkels(A2, [], _, _),fail; true), !,
 	install_index,
 	tell('TheoremsInTPTP'),!,
 	(
@@ -955,6 +957,73 @@ print_thms_and_defs_for_learning:-
 	  write('.'),nl,
 	  fail);
 	    told).
+
+%% mptp2tptp(+InFile,+Options,-OutFile)
+%%
+%% Read InFile with theorems in MPTP syntax, translate it to
+%% TPTP syntax in OutFile.
+%% This outputs only the required flas, no background is added.
+%% Options is normally just [], unless local constants are present (e.g. in top-level lemmas).
+%% In that case use opt_NO_FRAENKEL_CONST_GEN, otherwise abstract_fraenkels
+%% breaks.
+mptp2tptp(InFile,Options,OutFile):-
+	declare_mptp_predicates,
+	consult(InFile),
+	install_index,
+	%% find all the article names for our flas -
+	%% abstract_fraenkels/4 requires it now
+	findall(AName,fof_file(AName,_),ANames1),
+	sort(ANames1, ArticleNames),
+	findall(FraenkelName,
+		(
+		  member(Article, ArticleNames),
+		  once(abstract_fraenkels(Article, Options, _, ArticleFrNames)),
+		  member(FraenkelName, ArticleFrNames)
+		),
+		AddedFraenkelNames), !,
+	install_index,!,
+
+	RefCodes = [t,d,s,l],
+	tell(OutFile),
+	(
+	  fof(Name,Role,Fla,file(A,Name),Info),
+	  not(member(Name, AddedFraenkelNames)),
+	  (Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs)] ->
+	      findall(Ref,(member(Ref0,Refs),atom_chars(Ref0,[C|Cs]),
+			   member(C,RefCodes),fix_sch_ref(Ref0,[C|Cs],Ref)), Refs2),	    
+	      sort_transform_top(Fla,Fla1),
+	      numbervars(Fla1,0,_),
+	      %% ###TODO: remove this when Geoff allows inferences without parents
+	      (Refs2 = [] ->
+		  print(fof(Name,theorem,Fla1,file(A,Name)))
+	      ;
+		  Info1 = inference(mizar_proof,[status(thm)],Refs2),
+		  print(fof(Name,theorem,Fla1,Info1,[file(A,Name)]))
+	      )
+	  ;
+	      sort_transform_top(Fla,Fla1),
+	      numbervars(Fla1,0,_),
+	      print(fof(Name,Role,Fla1,file(A,Name)))
+	  ),
+	  write('.'),nl,
+	  fail
+	;
+	  told
+	).
+
+%% thms2tptp(+OutDirectory)
+%%
+%% translate all mml theorems and top-level lemmas to TPTP,
+%% each into file Article.(lem|the|sch)3 in OutDirectory
+thms2tptp(OutDirectory):-
+	mml_dir_atom(MMLDir),
+	all_articles(List),
+	member(A,[tarski|List]),
+	member([Kind|Options],[[lem, opt_NO_FRAENKEL_CONST_GEN],[the],[sch]]),
+	concat_atom([MMLDir, A, '.', Kind, '2'], InFile),
+	concat_atom([OutDirectory, A, '.', Kind, '3'], OutFile),
+	once(mptp2tptp(InFile,Options,OutFile)),
+	fail.
 
 %% reads ProvedFile and prints comparison of the proofs there
 %% with the MML proofs; sorted by the difference between the
@@ -1127,7 +1196,7 @@ print_nn_chain(LastTh,Options):-
 	%% abstracting will probably fail if lemmas are loaded without top-level constant types!
 	%% therefore the lemmas are loaded after abstracting;
 	%% if some fraenkel is in them, bad luck (and manual work now)
-	(member(A2,L), abstract_fraenkels(A2, _),fail; true), !,
+	(member(A2,L), abstract_fraenkels(A2, [], _, _),fail; true), !,
 	(member(o_ths_TL_LEMMAS, Options) -> (RefCodes2= [l], load_lemmas); RefCodes2=[]),
 	(member(o_ths_DEFS, Options) -> RefCodes1= [d|RefCodes2]; RefCodes1=RefCodes2),
 	(member(o_ths_SCHEMES, Options) -> RefCodes=[t,s|RefCodes1]; RefCodes=[t|RefCodes1]),
@@ -1553,23 +1622,23 @@ inst_univ_fof([fof(R,R1,(! [_|Vs] : Out),R3,R4),[Cnst/Var|T]], Res):- !,
 inst_univ_fof(_,_):- throw(inst_univ_fof).
 
 %% create the fof for a given pair [NewSym, Def], and assert
-assert_fraenkel_def(File,[NewSym, Def]):-
-	concat_atom(['fraenkel_', NewSym], Name),
-	Res= fof(Name, definition, Def, file(File,NewSym),
+assert_fraenkel_def(File,[NewSym, Def], NewName):-
+	concat_atom(['fraenkel_', NewSym], NewName),
+	Res= fof(NewName, definition, Def, file(File,NewSym),
 		 [mptp_info(0,[],fraenkel,position(0,0),[])]),
 	assert(Res),!.
 
 print_clause_id(Id):- clause(X,_,Id), print(X), nl, !.
 print_nl(X):- print(X), nl, !.
 
-%% abstract_fraenkels(+Article, -NewFrSyms)
+%% abstract_fraenkels(+Article, +Options, -NewFrSyms, -NewFlaNames)
 %%
 %% create definitions for all fraenkel terms in Article,
 %% in which the possible local consts are generalized-out;
 %% assert these definitions as new fofs, erase the original clauses
 %% with fraenkel terms and assert instead of them their versions
 %% with fraenkel terms replaced by the new fraenkel functors
-abstract_fraenkels(Article, NewFrSyms):-
+abstract_fraenkels(Article, Options, NewFrSyms, NewFlaNames):-
 	findall(Id,(fof_file(Article,Id),
 		    clause(fof(_,_,Fla,file(_,_),_),_,Id),
 		    collect_symbols_top(Fla,Syms),
@@ -1577,8 +1646,14 @@ abstract_fraenkels(Article, NewFrSyms):-
 	%% collect fraenkel infos and put variables into fraenkel flas
 	findall([[fof(R,R1,Out,R3,R4),Subst],Info],
 		(member(Id,Ids), clause(fof(R,R1,R2,R3,R4),_,Id),
-		    once(generalize_consts(R2, Out1, UnivContext, Subst)),
-		    add_univ_context(UnivContext, Out1, Out2),
+		    (
+		      member(opt_NO_FRAENKEL_CONST_GEN, Options),
+		      Subst = [], Out2 = R2
+		    ;
+		      not(member(opt_NO_FRAENKEL_CONST_GEN, Options)),
+		      once(generalize_consts(R2, Out1, UnivContext, Subst)),
+		      add_univ_context(UnivContext, Out1, Out2)
+		    ),
 		    all_collect_top(Out2,Out,Info)),
 		S1),
 	zip(FofSubsts, Infos1, S1),
@@ -1599,7 +1674,7 @@ abstract_fraenkels(Article, NewFrSyms):-
 	length(Defs1, NDefs1), length(Ids, NIds),
 	format('~p flas with fraenkel terms, ~p defs created ~n',
 	       [NIds,NDefs1]),
-	checklist(assert_fraenkel_def(Article), Defs1).
+	maplist(assert_fraenkel_def(Article), Defs1, NewFlaNames).
 
 %%%%%%%%%%%% End of Installation of fraenkel definitions %%%%%%%%%%%%%%%%%%%%%
 
@@ -1795,7 +1870,7 @@ mk_article_problems(Article,Kinds,Options):-
 	install_index,
 	once(assert_sch_instances(Article,Options)),
 	install_index,
-	abstract_fraenkels(Article, _),
+	abstract_fraenkels(Article, [], _, _),
 	install_index,
 
 
@@ -2013,10 +2088,15 @@ strip_univ_quant(X,X).
 %% declare_mptp_predicates,assert_sch_instances(File), install_index
 install_index:-
 	abolish(fof_name/2),
+	dynamic(fof_name/2),
 	abolish(fof_file/2),
+	dynamic(fof_file/2),
 	abolish(fof_eq_def/2),
+	dynamic(fof_eq_def/2),
 	abolish(fof_section/2),
+	dynamic(fof_section/2),
 	abolish(fof_level/2),
+	dynamic(fof_level/2),
 	abolish(fof_parentlevel/2),
 	dynamic(fof_parentlevel/2),
 	abolish(fof_cluster/3),
