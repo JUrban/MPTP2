@@ -958,6 +958,22 @@ print_thms_and_defs_for_learning:-
 	  fail);
 	    told).
 
+%% number all available fofs in their order in the prolog database
+%% storing the numbering in fof_pcl_id (yes, this is used for the pcl protocol)
+number_fofs:-
+	abolish(fof_pcl_id/2),
+	dynamic(fof_pcl_id/2),
+	findall(NRef1,fof(NRef1,_,_,_,_),Refs),!,
+	repeat,
+	(
+	  nth1(N,Refs,Ref),
+	  assert(fof_pcl_id(Ref, N)),
+	  fail
+	;
+	  true
+	).
+
+
 %% mptp2tptp(+InFile,+Options,+OutFile)
 %%
 %% Read InFile with theorems in MPTP syntax, translate it to
@@ -967,6 +983,14 @@ print_thms_and_defs_for_learning:-
 %% Options is normally just [], unless local constants are present (e.g. in top-level lemmas).
 %% In that case use opt_NO_FRAENKEL_CONST_GEN, otherwise abstract_fraenkels
 %% breaks.
+%% Option opt_PRUNE_TREE_FOR_FILE(+File) causes to include all fofs coming from File,
+%% and only those other fofs which are needed for the inference parents of those fofs.
+%% This can be used to make the OutFile's size significantly smaller for apps like AgInt.
+%% Option opt_PCL prints the inference infos in the PCL format, and therefore
+%% also numbers the formulas, assuming that in the input file, parents come before children.
+%%
+%% ##TEST: :- mptp2tptp("matrix11.agin",[opt_PCL,opt_PRUNE_TREE_FOR_FILE(matrix11),opt_NO_FRAENKEL_CONST_GEN],"matrix11.agin13").
+%% ##TEST: :- mptp2tptp("matrix11.agin",[opt_PRUNE_TREE_FOR_FILE(matrix11),opt_NO_FRAENKEL_CONST_GEN],"matrix11.agin13").
 mptp2tptp(InFile,Options,OutFile):-
 	(atom(InFile) ->
 	    InFile1 = InFile1
@@ -980,6 +1004,11 @@ mptp2tptp(InFile,Options,OutFile):-
 	),
 	declare_mptp_predicates,
 	consult(InFile1),
+	(member(opt_PCL, Options) ->
+	    number_fofs
+	;
+	    true
+	),
 	install_index,
 	%% find all the article names for our flas -
 	%% abstract_fraenkels/4 requires it now
@@ -995,9 +1024,32 @@ mptp2tptp(InFile,Options,OutFile):-
 	install_index,!,
 
 	RefCodes = [t,d,s,l],
+	(member(opt_PRUNE_TREE_FOR_FILE(PFile), Options) ->
+	    findall(ARef2,
+		    (
+		      fof_file(PFile,AId),
+		      clause(fof(ARef1,_,_,file(_,_),AInfo),_,AId),
+		      AInfo = [mptp_info(_,_,_,_,_), inference(_,_,ARefs0)],
+		      member(ARef0,[ARef1|ARefs0]),
+		      atom_chars(ARef0,[C1|Cs1]),
+		      member(C1,RefCodes),
+		      fix_sch_ref(ARef0,[C1|Cs1],ARef2)
+		    ),
+		    PrintedNames1),
+	    sort(PrintedNames1, PrintedNames)
+	;
+	    PrintedNames = []  %% just a suitable value
+	),
+	
 	tell(OutFile1),
 	(
 	  fof(Name,Role,Fla,file(A,Name),Info),
+	  (
+	    PrintedNames \= [],
+	    member(Name,PrintedNames)
+	  ;
+	    PrintedNames = []
+	  ),
 	  not(member(Name, AddedFraenkelNames)),
 	  (Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs)] ->
 	      findall(Ref,(member(Ref0,Refs),atom_chars(Ref0,[C|Cs]),
@@ -1006,17 +1058,46 @@ mptp2tptp(InFile,Options,OutFile):-
 	      numbervars(Fla1,0,_),
 	      %% ###TODO: remove this when Geoff allows inferences without parents
 	      (Refs2 = [] ->
-		  print(fof(Name,theorem,Fla1,file(A,Name)))
+		  (member(opt_PCL, Options) ->
+		      fof_pcl_id(Name,NId),
+		      write(NId), write(' : : '),
+		      print(Fla1), write(' : '),
+		      string_to_atom(A1,A),
+		      print(initial(A1,Name))
+		  ;
+		      print(fof(Name,theorem,Fla1,file(A,Name))),
+		      write('.')
+		  )
 	      ;
-		  Info1 = inference(mizar_proof,[status(thm)],Refs2),
-		  print(fof(Name,theorem,Fla1,Info1,[file(A,Name)]))
+		  (member(opt_PCL, Options) ->
+		      fof_pcl_id(Name,NId),
+		      write(NId), write(' : : '),
+		      print(Fla1), write(' : '),
+		      maplist(fof_pcl_id,Refs2,Ids2),
+		      Info1 =.. [foreign_gen|Ids2],
+		      print(Info1), write(' : '), print(Name)
+		      
+		  ;
+		      Info1 = inference(mizar_proof,[status(thm)],Refs2),
+		      print(fof(Name,theorem,Fla1,Info1,[file(A,Name)])),
+		      write('.')
+		  )
 	      )
 	  ;
 	      sort_transform_top(Fla,Fla1),
 	      numbervars(Fla1,0,_),
-	      print(fof(Name,Role,Fla1,file(A,Name)))
+	      (member(opt_PCL, Options) ->
+		  fof_pcl_id(Name,NId),
+		  write(NId), write(' : : '),
+		  print(Fla1), write(' : '),
+		  string_to_atom(A1,A),
+		  print(initial(A1,Name))
+	      ;
+		  print(fof(Name,Role,Fla1,file(A,Name))),
+		  write('.')
+	      )
 	  ),
-	  write('.'),nl,
+	  nl,
 	  fail
 	;
 	  told
