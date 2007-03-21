@@ -31,7 +31,7 @@ optimize_fraenkel. % :- fail.
 absolute_locals.
 
 
-%% debugging, Flags can be: [dbg_FRAENKELS,dbg_CLUSTERS]
+%% debugging, Flags can be: [dbg_FRAENKELS,dbg_CLUSTERS,dbg_LEVEL_REFS]
 dbg_flags([]).
 dbg(Flag, Goal):-
 	dbg_flags(Flags), member(Flag, Flags), !, Goal.
@@ -79,7 +79,7 @@ eqclasses(_,[],[]).
 eqclasses(P,[H|T],[E_h|O_t]):-
 	eqcl1(P,H,[H|T],E_h,N_h),
 	eqclasses(P,N_h,O_t).
-	
+
 % eqcl1(EquivalencePredicate, Member, InputList, Equivalent, NonEquivalent)
 eqcl1(_,_,[],[],[]).
 eqcl1(P,H1,[H2|I],[H2|O],R):-
@@ -146,7 +146,7 @@ portray(A):- compound(A), A =.. [F|L], constr_name(F,Name,Quote),
 	write('('), print_many(L), write(')').
 
 print_many([X]):- print(X).
-print_many([X|Y]):- print(X), write(','), print_many(Y). 
+print_many([X|Y]):- print(X), write(','), print_many(Y).
 
 % explain tstp parsing
 d2l(X,X):- atomic(X);var(X).
@@ -209,7 +209,7 @@ eselect(A, [C|B], B):- A == C,!.
 eselect(A, [B|C], [B|D]):- eselect(A, C, D).
 %% exact nth1
 enth1(A, B, C):- var(A), !, enth_gen(B, C, 1, A).
-enth_gen([A|_], A1, C, C):- A == A1. 
+enth_gen([A|_], A1, C, C):- A == A1.
 enth_gen([_|B], C, D, E) :-
         succ(D, F),
         enth_gen(B, C, F, E).
@@ -219,7 +219,7 @@ enth_gen([_|B], C, D, E) :-
 %    list that remains when the K'th element is removed from L.
 %    (element,list,integer,list) (?,?,+,?)
 remove_at(X,[X|Xs],1,Xs).
-remove_at(X,[Y|Xs],K,[Y|Ys]) :- K > 1, 
+remove_at(X,[Y|Xs],K,[Y|Ys]) :- K > 1,
    K1 is K - 1, remove_at(X,Xs,K1,Ys).
 
 % Insert an element at a given position into a list (1-based)
@@ -324,7 +324,7 @@ sort_transform(? Svars : Y, Result):-
 	  )
 	).
 % This clause is redundant now, sort trafo can be done only after 'all' removal
-sort_transform(all(Svars,Trm,Frm),all(Qvars,Trm1,RelatFrm1)):-	
+sort_transform(all(Svars,Trm,Frm),all(Qvars,Trm1,RelatFrm1)):-
 	sort_transform_qlist(Svars,Qvars,Preds),
 	sort_transform(Trm,Trm1),
 	sort_transform(Frm,Frm1), !,
@@ -343,7 +343,7 @@ sort_transform(sort(X,Y1 & Y2),SortPreds):-
 	  )
 	).
 sort_transform(sort(X,~Y),~Z):-
-	sort_transform(sort(X,Y),Z). 
+	sort_transform(sort(X,Y),Z).
 sort_transform(sort(_,$true),$true).
 sort_transform(sort(_,$false),$false).
 sort_transform(sort(X,Y),Z):-
@@ -385,7 +385,7 @@ sort_transform(A <=> B, Result):-
 	    B1== $true -> Result = A1;
 	    Result = (A1 <=> B1)
 	  )
-	).	
+	).
 % functor traversal
 sort_transform(X1,X2):-
 	X1 =.. [H1|T1],
@@ -497,7 +497,7 @@ real_context(InVars, BigC, RealC):-
 % where GroundCopy is cretaed in all_collect by following:
 % copy_term([RContext,all(Svars,Trm,Frm)],GroundCopy),
 % numbervars(GroundCopy,0,_),
-% which means that two fraenkels with the same GroundCopy are 
+% which means that two fraenkels with the same GroundCopy are
 % the same (because the RContext is complete, and all symbol names
 % are absolute inside one article)
 % +FrInfo, -NewFrInfo ... unordered list of
@@ -515,7 +515,7 @@ mk_fraenkel_def(File, Var, Context, all(Svars1,Trm1,Frm1),
 		FrInfo, NewFrInfo, NewSym, Def) :-
 	split_svars(Vars, _, Context),
 	length(Vars, Arity),
-	new_fr_sym(File, Arity, FrInfo, NewFrInfo, NewSym),	
+	new_fr_sym(File, Arity, FrInfo, NewFrInfo, NewSym),
 	FrTrm =.. [NewSym|Vars],
 	InPred =.. [r2_hidden, X, FrTrm],
 	ExFla = ( ? Svars1 : ( ( X = Trm1 ) & Frm1)),
@@ -587,7 +587,7 @@ get_types(RefsIn,SymsIn,AddedRefs):-
 	get_sec_info_refs(RefsIn, SymsIn,
 			  [mptp_info(_,_,constant,_,[_,type])|_], Refs2),
 	get_sec_info_refs(RefsIn, SymsIn,
-			  [mptp_info(_,_,functor,_,[scheme,type])|_], Refs3),
+			  [mptp_info(_,_,functor,_,[scheme,type|_])|_], Refs3),
 	flatten([Refs1, Refs2, Refs3], AddedRefs).
 
 get_equalities(RefsIn,SymsIn,AddedRefs):-
@@ -645,12 +645,12 @@ one_pass(F,Pos,mizar_from,RefsIn,OldSyms,NewSyms,AddedRefs):-
 %% add symbol references until nothing added
 fixpoint(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
 	one_pass(F, Pos, InfKind, RefsIn, OldSyms, NewSyms, Refs1), !,
-	(Refs1 = [] -> RefsOut = RefsIn;	    
+	(Refs1 = [] -> RefsOut = RefsIn;
 	    union(Refs1, RefsIn, Refs2),
 	    union(OldSyms, NewSyms, OldSyms1),
 	    maplist(get_ref_fla, Refs1, Flas1),
 	    collect_symbols_top(Flas1, Syms1),
-	    subtract(Syms1, OldSyms1, NewSyms1), 
+	    subtract(Syms1, OldSyms1, NewSyms1),
 	    fixpoint(F, Pos, InfKind, Refs2, OldSyms1, NewSyms1, RefsOut)).
 
 %% antecedent symbols needed for fcluster or ccluster
@@ -689,7 +689,7 @@ check_cluster_position(F,[Pos1,Lev1],F,Ref2):- !,
 	dbg(dbg_CLUSTERS, format('Cluster proof level: ~w', [Lev2])),
 	not(sublevel(Lev1, Lev2)),
 	dbg(dbg_CLUSTERS, format('cluster succeeded ~n')).
-	
+
 check_cluster_position(F,P,F,_):- throw(check_cluster_position(F,P)).
 check_cluster_position(_,_,_,_).
 
@@ -773,7 +773,7 @@ hard_wired_req(boole,t7_boole,[r2_hidden]).
 %% t1_subset: b1 in b2 implies b1 is Element of b2
 hard_wired_req(subset,t1_subset,[r2_hidden]).
 
-%% t2_subset: b1 is Element of b2 implies (b2 is empty or b1 in b2) 
+%% t2_subset: b1 is Element of b2 implies (b2 is empty or b1 in b2)
 hard_wired_req(subset,t2_subset,[m1_subset_1,v1_xboole_0]).
 
 %% t3_subset: b1 is Subset of b2 iff b1 c= b2
@@ -810,7 +810,7 @@ first100([
 nonnumeric(Article):-
 	theory(Article,T),
 	member(requirements(Req),T),
-	subset(Req,[hidden, boole, subset]). 
+	subset(Req,[hidden, boole, subset]).
 
 all_articles(List):-
 	mml_dir(Dir),
@@ -863,7 +863,7 @@ mk_ordered_th_problem_list(SpecFile):-
 	;
 	  told
 	).
-	
+
 %% Create problems from the recommendations given by SNoW
 %% in SpecFile (it contains snow_spec(Conjecture, Refs) clauses.
 %% Now limited to nonnumeric articles.
@@ -935,7 +935,7 @@ print_thms_for_cnf:-
 	  told
 	).
 
-%% print defs and thms, with only top-level references 
+%% print defs and thms, with only top-level references
 print_thms_and_defs_for_learning:-
 	declare_mptp_predicates,
 	load_theorems,
@@ -1040,7 +1040,7 @@ mptp2tptp(InFile,Options,OutFile):-
 	;
 	    PrintedNames = []  %% just a suitable value
 	),
-	
+
 	tell(OutFile1),
 	(
 	  fof(Name,Role,Fla,file(A,Name),Info),
@@ -1053,7 +1053,7 @@ mptp2tptp(InFile,Options,OutFile):-
 	  not(member(Name, AddedFraenkelNames)),
 	  (Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs)] ->
 	      findall(Ref,(member(Ref0,Refs),atom_chars(Ref0,[C|Cs]),
-			   member(C,RefCodes),fix_sch_ref(Ref0,[C|Cs],Ref)), Refs2),	    
+			   member(C,RefCodes),fix_sch_ref(Ref0,[C|Cs],Ref)), Refs2),
 	      sort_transform_top(Fla,Fla1),
 	      numbervars(Fla1,0,_),
 	      %% ###TODO: remove this when Geoff allows inferences without parents
@@ -1076,7 +1076,7 @@ mptp2tptp(InFile,Options,OutFile):-
 		      maplist(fof_pcl_id,Refs2,Ids2),
 		      Info1 =.. [foreign_gen|Ids2],
 		      print(Info1), write(' : '), print(Name)
-		      
+
 		  ;
 		      Info1 = inference(mizar_proof,[status(thm)],Refs2),
 		      print(fof(Name,theorem,Fla1,Info1,[file(A,Name)])),
@@ -1146,7 +1146,7 @@ compare_proved_by_refsnr(ProvedFile):-
 %% Otherwise return SchemeRefIn.
 fix_sch_ref(Ref0,[s|Cs],Ref1):- !,
 	%% find the part before "__"
-	(append(S1,['_','_'|_],[s|Cs]) -> 
+	(append(S1,['_','_'|_],[s|Cs]) ->
 	    atom_chars(Ref1,S1);
 	    Ref1 = Ref0
 	).
@@ -1164,14 +1164,14 @@ get_rec_uses(Name,RefCodes,NN,LRec1,LRecNN1,CL1,CLNN1,Last1,LastNN1,CLast1,CLast
 	once((
 	  findall(Ref,(member(Ref0,Refs),atom_chars(Ref0,[C|Cs]),
 		       member(C,RefCodes),fix_sch_ref(Ref0,[C|Cs],Ref)), Refs1),
-	  
+
 	  %% find recursive dependencies
 	  findall(Reff1,
 		  (member(Ref1,Refs1),get_rec_uses(Ref1,RefCodes,_,_,_,_,_,_,_,_,_,RefsAll1,_),
 		      member(Reff1,[Ref1|RefsAll1])),
 		  AllRecTmp1),
 	  sort(AllRecTmp1,AllRecTmpS1),
-	  
+
 	  %% find largest direct dependence (or f is none)
 	  findall([L_Dref1,DRef1],(member(DRef1,Refs1),get_rec_uses(DRef1,RefCodes,_,L_Dref1,_,_,_,_,_,_,_,_,_)),Lengths1),
 	  sort(Lengths1,SLengths1),
@@ -1181,7 +1181,7 @@ get_rec_uses(Name,RefCodes,NN,LRec1,LRecNN1,CL1,CLNN1,Last1,LastNN1,CLast1,CLast
 	  findall([LC_Dref1,C_DRef1],(member(C_DRef1,Refs1),get_rec_uses(C_DRef1,RefCodes,_,_,_,LC_Dref1,_,_,_,_,_,_,_)),C_Lengths1),
 	  sort(C_Lengths1,SCLengths1),
 	  (last(SCLengths1,CLast1) -> (CLast1 = [CLL1,_], CL1 is CLL1 + 1); (CLast1 = f, CL1 = 1)),
-	  
+
 	  %% find recursive nonnumeric dependencies
 	  findall(ReffNN1,
 		  (member(RefNN1,Refs1),get_rec_uses(RefNN1,RefCodes,t,_,_,_,_,_,_,_,_,_,RefsAllNN1),
@@ -1334,7 +1334,7 @@ print_nn_chain(LastTh,Options):-
 
 cmp_in_mml_order(Delta, Name1, Name2):-
 	atom(Name1),
-	atom(Name2), 
+	atom(Name2),
 	get_ref_fof(Name1, fof(Name1,_,_,file(Article1,_),
 			       [mptp_info(ItemNr1, _, ItemKind1, position(Line1,Col1), _)|_])),
 	get_ref_fof(Name2, fof(Name2,_,_,file(Article2,_),
@@ -1354,7 +1354,7 @@ cmp_in_mml_order(Delta, Name1, Name2):-
 	).
 
 %% debugging
-cmp_in_mml_order(_,Name1,Name2):- throw(cmp_in_mml_order(Name1,Name2)).		    
+cmp_in_mml_order(_,Name1,Name2):- throw(cmp_in_mml_order(Name1,Name2)).
 
 %% sort fof names, using the article ordering, item numbers, and  positions
 sort_in_mml_order(U,U1):-
@@ -1364,7 +1364,7 @@ sort_in_mml_order(U,U1):-
 	dynamic(article_nr/2),!,
 	findall(foo, ( nth1(N,L,A), assert(article_nr(A,N))), _),
 	predsort(cmp_in_mml_order,U,U1).
-	       
+
 %% prints the graph in a .dot format
 print_nn_chain_for_dot(LastTh):- print_nn_chain_for_dot(LastTh,[]).
 print_nn_chain_for_dot(LastTh,Options):-
@@ -1386,14 +1386,14 @@ print_nn_chain_for_dot(LastTh,Options):-
 % 	  PrevNr is Nr - 1,
 % 	  nth1(PrevNr,U1, PrevName),
 % 	  write(PrevName),format(" -> "),write(Name),format("[color = red];"),nl
-% 	),	
+% 	),
 	fof(Name,_,_,file(_,Name),Info),
 	Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs)],
 	findall(Ref,(member(Ref0,Refs),atom_chars(Ref0,[C|Cs]),
 		     member(C,RefCodes),fix_sch_ref(Ref0,[C|Cs],Ref)), Refs1),
 	once(findall(d,(member(R1,Refs1),write(R1),format(" -> "),write(Name),format(";"),nl),_)),
 	fail.
-	  
+
 
 
 
@@ -1410,7 +1410,7 @@ get_snow_symnr(Ref,Nr):- snow_symnr(Ref,Nr),!.
 get_snow_symnr(Ref,Nr):- flag(snow_symnr,N,N+1), Nr is N+1,
 	assert(snow_symnr(Ref,Nr)),!.
 
-%% print defs and thms, with only top-level references 	      
+%% print defs and thms, with only top-level references
 %% now prints in the article order, and also respects
 %% the order of defs and theorems in the article -
 %% needed for incremental learning
@@ -1465,7 +1465,7 @@ mk_snow_input_for_learning(File):-
 
 %% translate numerical spec into Refs and assert them
 %% not used any more, implementing the translation in perl
-%% with an array is much faster 
+%% with an array is much faster
 snow_nr_spec_translate(Nr,Nrs):-
 	maplist(snow_refnr, [Ref | Refs], [Nr | Nrs]),
 	assert(snow_spec( Ref, Refs)), !,
@@ -1473,7 +1473,7 @@ snow_nr_spec_translate(Nr,Nrs):-
 
 % snow_nr_spec_translate(R,Rs):- throw(snow_nr_spec_translate(R,Rs)).
 
-	      
+
 %% parse snow specification
 %% not used any more, the prolog translation was very slow
 %% use just consult(Specfile) instead now!!
@@ -1511,7 +1511,7 @@ parse_snow_specs(File):-
 % 	;
 % 	  true
 % 	).
-	
+
 
 
 
@@ -1550,14 +1550,14 @@ apply_sch_substs(Substs,X1,X2):- atomic(X1), sch_symbol(X1), !,
 	get_sym_subst(X1,Substs,Subst),
 	apply_sch_subst0(X1,Subst,X2).
 
-apply_sch_substs(_,X,X):- atomic(X),!.	
+apply_sch_substs(_,X,X):- atomic(X),!.
 
 apply_sch_substs(Substs,X1,X2):- X1 =.. [H1|T1], sch_symbol(H1), !,
 	maplist(apply_sch_substs(Substs),T1,T2),
 	get_sym_subst(H1,Substs,Subst),
 	apply_sch_subst1([H1|T2],Subst,X2).
-	
-apply_sch_substs(Substs,X1,X2):- 
+
+apply_sch_substs(Substs,X1,X2):-
 	X1 =.. [H1|T1],
 	maplist(apply_sch_substs(Substs),T1,T2),
 	X2 =.. [H1|T2].
@@ -1591,7 +1591,7 @@ gen_sch_instance(SI_Name,F,Res,Options):-
 assert_sch_instances(File,Options):-
 	repeat,
 	( gen_sch_instance(_,File,Res,Options), assert(Res), fail; true).
-	
+
 
 %%%%%%%%%%%% Constant generalization (abstraction) %%%%%%%%%%%%%%%%%%%%
 
@@ -1644,7 +1644,7 @@ sort_by_const_names([], Sorted, Sorted).
 sort_by_const_names([H|T], Sorted, Res):-
 	insrt_by_info(H, Sorted, Sorted1),
 	sort_by_const_names(T, Sorted1, Res).
-	
+
 
 
 %% find the corresponding subst for X, throw exception if not
@@ -1665,8 +1665,8 @@ apply_const_substs(_,X,X):- var(X),!.
 apply_const_substs(Substs,X1,Var1):- atomic(X1), mptp_local_const(X1), !,
 	get_const_subst(X1,Substs,X1/Var1).
 
-apply_const_substs(_,X,X):- atomic(X),!.	
-apply_const_substs(Substs,X1,X2):- 
+apply_const_substs(_,X,X):- atomic(X),!.
+apply_const_substs(Substs,X1,X2):-
 	X1 =.. [H1|T1],
 	maplist(apply_const_substs(Substs),T1,T2),
 	X2 =.. [H1|T2].
@@ -1694,8 +1694,8 @@ generalize_consts(In, Out, UnivContext, NewConstSubst):-
 	zip_s(':', SortedConsts, Sorts, Context1),
 	once(make_const_var_substs(SortedConsts, NewConstSubst)),
 	apply_const_substs(NewConstSubst, [In,Context1], [Out,UnivContext]).
-	
-%%%%%%%%%%%% End of constant generalization %%%%%%%%%%%%%%%%%%%%%%%%%%%	
+
+%%%%%%%%%%%% End of constant generalization %%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%% Installation of fraenkel definitions %%%%%%%%%%%%%%%%%%%%%
 
@@ -1706,7 +1706,7 @@ generalize_consts(In, Out, UnivContext, NewConstSubst):-
 inst_univ_fof([X,[]],X):- !.
 inst_univ_fof([fof(R,R1,(! [_] : Out),R3,R4),[Cnst/Var]], Res):- !,
 	Var = Cnst,
-	Res = fof(R,R1,Out,R3,R4).	
+	Res = fof(R,R1,Out,R3,R4).
 inst_univ_fof([fof(R,R1,(! [_|Vs] : Out),R3,R4),[Cnst/Var|T]], Res):- !,
 	Var = Cnst,
 	inst_univ_fof([fof(R,R1,(! Vs : Out),R3,R4), T], Res).
@@ -1821,30 +1821,30 @@ at_level_descendents(At1,Descs):-
 	    flatten([Childs|Ds1], Descs)).
 
 %% all fof names on this level (block) and below, uses fof_level/2 and
-%% fof_parentlevel/2 for speed 
+%% fof_parentlevel/2 for speed
 get_sublevel_names(Lev,Names):-
 	level_atom(Lev, At1),
 	at_level_descendents(At1, Descs),
 	findall(Name,( member(L1, [At1|Descs]),
-		      fof_level(L1, Id),		     
+		      fof_level(L1, Id),
 		      clause(fof(Name,_,_,_,_),_,Id)), Names).
 
 get_sublevel_proved_names(Lev,Names):-
 	level_atom(Lev, At1),
 	at_level_descendents(At1, Descs),
 	findall(Name,( member(L1, [At1|Descs]),
-		      fof_level(L1, Id),		     
+		      fof_level(L1, Id),
 		      clause(fof(Name,_,_,_,[_,inference(_,_,_)]),_,Id)),
 		Names).
 
 
 %% all fof names on this level (block); uses fof_level/2 and
-%% fof_parentlevel/2 for speed 
+%% fof_parentlevel/2 for speed
 get_thislevel_names(Lev,Names):-
 	level_atom(Lev, At1),
 	at_level_children(At1, Descs),
 	findall(Name,( member(L1, [At1|Descs]),
-		      fof_level(L1, Id),		     
+		      fof_level(L1, Id),
 		      clause(fof(Name,_,_,_,_),_,Id)), Names).
 
 %% get only this-level references for Lev from RefsIn
@@ -1865,7 +1865,7 @@ get_thislevel_refs_simple(Lev, _, ThisLevelRefs, []) :-
 		),
 	       ThisLevelRefs).
 
-%% better (standard) version - takes ThesisExpansions into account 
+%% better (standard) version - takes ThesisExpansions into account
 get_thislevel_refs(Lev, RefsIn, ThisLevelRefs, SuperLevelRefs):-
 	get_thislevel_names(Lev, ThisLevelNames),
 	%% select only justified, collect their references
@@ -1883,7 +1883,7 @@ get_thislevel_refs(Lev, RefsIn, ThisLevelRefs, SuperLevelRefs):-
 	%% remove all superlevel refs used inside ThisLevelRefs - a bit heuristical
 	subtract(SuperLevelRefs1,ThisRefRefs,SuperLevelRefs).
 
-	
+
 
 %% get all (also proof-local) symbols used in this proof, and all
 %% formula names in the proof. the proof
@@ -1931,7 +1931,7 @@ absolutize_locals(Article):-
 	      atom_concat(Constant,ArticleSuffix1,ConstantAbsName),
 	      assert(abs_name(Constant,ConstantAbsName))
 	    ;
-	      true	      
+	      true
 	    )
 	  ),
 	  fail
@@ -1940,6 +1940,94 @@ absolutize_locals(Article):-
 	).
 
 %%%%%%%%%%%%%%%%%%%% Problem creation %%%%%%%%%%%%%%%%%%%%
+/*
+  Master plan for the TSTP export and ATP cross-verification
+  of large proofs:
+
+ Example:
+  for X1 being T1 st P1(X1) holds
+  for X2 being T2 of X1 ex X3 being T3 of X1 st P3(X3,X2)
+proof
+  let c1 be T1;
+  assume A1: P1(c1);
+  let c2 be T2 of c1;
+  A2: Q1(c1,c2) by Th1;
+  reconsider c3 = F1(c1,c2) as T4 of c1 by A2;
+  consider c4 being T5 of c3 by Def1;
+  A3: Q2(c4) by Th2;
+  A4: Q3(c4) by A1,A3, Th3;
+  reconsider c5 = c4 as T3 of c1 by A4;
+  take c5;
+  A5: for X4 being T6 of c1,c2 holds Q4(X4,c5)
+  proof
+    let c6 be T6 of c1,c2;
+    A6: Q5(c6, c5) by Th4;
+    thus A7: Q4(c6,c5) by A4,A6, Th5;
+  end;
+  thus A8: P3(c5,c2) by A5,Th6;
+end;
+
+translation:
+proof
+  fof(dc_c1,henkin_ax1, ((sort(c1,t1) => p1(c1)) => ![X2:t2(c1)]:(?[X3:t3(c1)]:p3(X3,X2))) =>
+                        (![X1:t1]:(p1(X1) => ![X2:t2(X1)]:(?[X3:t3(X1)]:p3(X3,X2))))).
+
+  fof(a11, assumption, (sort(c1,t1) => p1(c1))).
+  fof(dt_c1,assumption, sort(t1,c1)).
+  fof(a1, lemma, p1(c1), a11,dt_c1).
+  for(dc_c2,henkin_ax2, (ex X3 being T3 of c1 st P3(X3,c2)) =>
+                        (![X2:t2(c1)]:(?[X3:t3(c1)]:p3(X3,X2)))).
+  fof(a2,lemma, q1(c1,c2), th1).
+  fof(e1,lemma, sort(f1(c1,c2),t4(c1)), a2).
+  fof(dc_c3,def, c3 = f1(c1,c2)).
+  fof(e2,lemma, ?([X], sort(X,t5(c3))), def1).
+  for(dc_c4,henkin_ax4, ?([X], sort(X,t5(c3))) => sort(c4,t5(c3))).
+  fof(dt_c4,lemma,sort(c4,t5(c3)),e2,dc_c4).
+  fof(a3,lemma, q2(c4), th2).
+  fof(a4,lemma, q3(c4), a1,a3,th3).
+  fof(e3,lemma, sort(c4,t3(c1)), a4).
+  fof(dc_c5,def, c5 = c4).
+  take ... just changing thesis
+  fof(a5, (![X4:t6(c1,c2)]: q4(X4,c5)), proof(1)).
+  proof
+    fof(dc_c6,henkin_ax6, q4(c6,c5) => (![X4:t6(c1,c2)]: q4(X4,c5))).
+    fof(a6,lemma, q5(c6,c5), th4).
+    fof(a7,lemma, q4(c6,c5), a4,a6).
+    ... now eliminating the const:
+    fof(a5, (![X4:t6(c1,c2)]: q4(X4,c5)), dc_c6,a7).
+  end;
+  fof(a8, p3(c5,c2), a5,th6).
+  ... now justifing the subsequent theses bottom-up:
+  fof(r_take, ?[X3:t3(c1)]:p3(X3,c2), e3,a8).
+  fof(r_dc_c2, ![X2:t2(c1)]:(?[X3:t3(c1)]:p3(X3,X2)), r_take, dc_c2).
+  fof(r_a1, p1(c1) => ![X2:t2(c1)]:(?[X3:t3(c1)]:p3(X3,X2)), discharge(a1), r_dc_c2).
+  fof(r_dc_c1, ![X1:t1]:(p1(X1) => ![X2:t2(X1)]:(?[X3:t3(X1)]:p3(X3,X2))), ra_a1, dc_c1).
+end;
+
+inference DAG:
+  axioms:    th2 th3 th4 dc_c6 th6  dc_c2   dc_c1 def1 dc_c4 dc_c3 dc_c5 dc_c6
+              |   |   /   /     /      /      /    |     /
+      ass:a1  a3 /  a6   /     /      /      /     e2   /        
+            \ | /  /    /     /      /      /        \ /
+              a4  /    /     /      /      /        dt_c4
+              | \/    /     /      /      /
+             e3 a7   /     /      /      /
+              \   \ /     /      /      /
+               \  a5     /      /      /
+                \   \   /      /      /
+                 \   a8       /      /
+                  \   |      /      /
+                   r_take   /      /
+                         \ /      /
+                       r_dc_c2   /
+                          |     /
+              disch(a1): r_a1  /
+                          |   /
+                        r_dc_c1
+
+*/
+
+
 
 %% Kinds is a list [InferenceKinds, PropositionKinds | Rest]
 %% possible InferenceKinds are now [mizar_by, mizar_from, mizar_proof]
@@ -1986,7 +2074,7 @@ mk_article_problems(Article,Kinds,Options):-
 	;
 	  Kinds1 = Kinds
 	),
-	
+
 	%% create the table of local-to-global names if absolute_locals
 	(absolute_locals -> absolutize_locals(Article); true),
 	concat_atom(['problems/',Article,'/'],Dir),
@@ -2019,20 +2107,29 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	theory(F, _Theory),
 	member(InfKind0,InferenceKinds),
 	member(PropKind,PropositionKinds),
-	((PropKind = theorem, MPropKind = theorem);
-	    (PropKind \= theorem,MPropKind = proposition,
-		((PropKind = top_level_lemma,Lev = []);
-		    PropKind \= top_level_lemma))),
+	(
+	  member(PropKind,[theorem,scheme]),
+	  MPropKind = PropKind
+	;
+	  not(member(PropKind,[theorem,scheme])),
+	  MPropKind = proposition,
+	  (
+	    PropKind = top_level_lemma,
+	    Lev = []
+	  ;
+	    PropKind \= top_level_lemma
+	  )
+	),
 	fof(P,_,_Fla,file(F,P),[Mptp_info,Inference_info]),
 	(
 	  member(problem_list(PList), Rest) ->
 	  member(P,PList)
 	;
 	  true
-	),	  
+	),
 	Mptp_info = mptp_info(_Nr,Lev,MPropKind,position(Line,Col),_),
 	(member(opt_LINE_COL_NMS, Options) ->
-	    concat_atom([Prefix,F,'__',Line,'_',Col],Outfile);	
+	    concat_atom([Prefix,F,'__',Line,'_',Col],Outfile);
 	    concat_atom([Prefix,F,'__',P],Outfile)
 	),
 	(
@@ -2045,7 +2142,7 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	),
 	fof_name(P, Id1),
 	%% this is used to limit clusters to preceding
-	nth_clause(_, Pos1, Id1), 
+	nth_clause(_, Pos1, Id1),
 %	filter_level_refs(Lev,Refs0,Refs),
 	(
 	  InfKind == mizar_proof,
@@ -2059,12 +2156,15 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	      told
 	  ;
 	      true
-	  ),	      
+	  ),
 	  get_proof_syms_and_flas([P|Refs0], PLevel, PSyms, PRefs),
+	  dbg(dbg_LEVEL_REFS, format('Refs for ~w bef. filtering: ~w~n', [P,PRefs])),
 	  Syms1 = PSyms,
 	  once(fixpoint(F, [Pos1, Lev], InfKind, PRefs, [], Syms1, AllRefs0)),
+	  dbg(dbg_LEVEL_REFS, format('Refs for ~w after fixpoint: ~w~n', [P,AllRefs0])),
 	  %% incorrect, but needs handling of fraenkels and sch_insts
-	  filter_level_refs(Lev,AllRefs0,AllRefs)
+	  filter_level_refs(Lev,AllRefs0,AllRefs),
+	  dbg(dbg_LEVEL_REFS, format('Refs for ~w after level filtering: ~w~n', [P,AllRefs]))
 	;
 	  InfKind \== mizar_proof,
 	  Refs = Refs0,
@@ -2072,7 +2172,7 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	  collect_symbols_top(Flas1, Syms0),
 	  Syms1 = Syms0,
 	  once(fixpoint(F, [Pos1, Lev], InfKind, [P|Refs], [], Syms1, AllRefs))
-	),	
+	),
 	tell(Outfile),
 	format('% Mizar problem: ~w,~w,~w,~w ~n', [P,F,Line,Col]),
 	(member(snow_spec, Rest) ->
