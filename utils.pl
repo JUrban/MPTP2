@@ -807,6 +807,42 @@ first100([
 	  seq_4,real_2,margrel1,prob_2,rcomp_1,multop_1,mcart_2,mcart_3,mcart_4,
 	  mcart_5,mcart_6,finseq_4,finseqop,finsop_1,setwop_2]).
 
+%% articles in which at least one scheme is proved
+scheme_articles([
+		 abcmiz_0, afinsq_1, algseq_1, altcat_1, altcat_2,
+		 ami_3, ami_4, armstrng, arytm_3, asympt_0, bhsp_4, binarith, binom,
+		 binop_1, binop_2, bintree1, bintree2, birkhoff, borsuk_2, borsuk_6,
+		 bvfunc_1, card_1, card_3, card_4, card_fil, cat_3, cat_5, catalg_1,
+		 cfcont_1, chain_1, circcmb2, circcmb3, circcomb, circtrm1, clopban4,
+		 closure1, clvect_3, cohsp_1, complsp1, comptrig, comput_1, comseq_1,
+		 cqc_lang, cqc_sim1, dickson, domain_1, dtconstr, eqrel_1, facirc_1,
+		 fdiff_2, fib_num2, fib_num, filter_1, finseq_1, finseq_2, finseq_5,
+		 finset_1, fin_topo, fraenkel, frechet2, funct_1, funct_2, funct_3,
+		 funct_5, funct_7, functor0, glib_000, goboard1, goboard2, graph_1,
+		 graph_2, graph_5, grcat_1, group_4, group_5, hallmar1, heyting3,
+		 hilbert2, index_1, instalg1, int_1, int_2, irrat_1, jct_misc,
+		 jgraph_2, jgraph_3, jgraph_4, jordan1a, knaster, kurato_2, lattice3,
+		 lattice5, lattice7, lfuzzy_0, lmod_7, lopban_4, margrel1, matrix_1,
+		 measure1, measure5, membered, metric_3, midsp_3, modal_1, monoid_0,
+		 monoid_1, msafree1, msaterm, mssubfam, msualg_6, msualg_8, msualg_9,
+		 multop_1, nat_1, nat_2, nattra_1, necklace, orders_1, orders_3,
+		 ordinal1, ordinal2, ordinal4, partfun1, partfun2, pboole, pcomps_1,
+		 pcomps_2, pencil_2, pnproc_1, polynom2, polynom3, pre_circ, prob_4,
+		 prvect_1, pscomp_1, pua2mss1, qc_lang1, qc_lang3, qc_lang4, quantal1,
+		 rcomp_1, real_1, recdef_1, recdef_2, relat_1, relset_1, rewrite1,
+		 rlvect_4, scheme1, schems_1, scmfsa6a, scmfsa_7, scmfsa9a, scmfsa_9,
+		 scmpds_4, scmpds_8, scpinvar, scpisort, seq_1, seqfunc, setwiseo,
+		 sgraph1, sin_cos, sppol_1, square_1, stirl2_1, sublemma, subset_1,
+		 substut1, substut2, supinf_1, tarski, tex_2, toler_1, topgen_3,
+		 topgen_4, topgen_5, topreal1, toprns_1, transgeo, trees_1, trees_2,
+		 trees_4, trees_9, triang_1, uniroots, uproots, valuat_1, waybel_0,
+		 waybel10, waybel11, waybel17, waybel19, waybel24, waybel_2, waybel30,
+		 waybel31, waybel_4, waybel_6, wellfnd1, wellord2, wellset1, xboole_0,
+		 yellow_0, yellow15, yellow16, yellow17, yellow18, yellow20, yellow21,
+		 yellow_3, yellow_9, zf_lang1, zf_lang, zf_model, zfrefle1, zf_refle
+		]).
+
+
 nonnumeric(Article):-
 	theory(Article,T),
 	member(requirements(Req),T),
@@ -837,6 +873,12 @@ mk_nonnumeric:-
 	declare_mptp_predicates,load_mml,all_articles(L),!,
 	member(A,L),nonnumeric(A),
 	mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem]],[opt_REM_SCH_CONSTS]),fail.
+
+%% Create scheme problems for nonumeric articles 
+mk_nonnumeric_schemes:-
+	declare_mptp_predicates,load_mml,scheme_articles(L),!,
+	member(A,L),nonnumeric(A),
+	mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[scheme]],[opt_REM_SCH_CONSTS,opt_MK_TPTP_INF]),fail.
 
 %% for creating by-explanations, use this:
 %% L=[xboole_0, boole, xboole_1, enumset1, zfmisc_1, subset_1, subset, relat_1, funct_1, grfunc_1, relat_2, ordinal1, wellord1],
