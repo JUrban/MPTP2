@@ -1559,19 +1559,35 @@ parse_snow_specs(File):-
 
 %%%%%%%%%%%%%%% generating scheme instances  %%%%%%%%%%%%%%%%%%%%%%%
 
+%% get_sym_subst(+SchemeSymbol,+SubstitutionList,-Substitution)
+%%
 %% find the corresponding subst for X, throw exception if not;
 %% X is assumed to be a scheme functor or predicate
+%% note that copy_term is used here to always refresh the
+%% possible "unification" variables, which will later get
+%% instantiated to different arguments
 get_sym_subst(X,[],_):- !, throw(sch_subst(X)).
 get_sym_subst(X,[Z/Y|_],Subst):- X == Z, !, copy_term(X/Y, Subst).
 get_sym_subst(X,[_|T],Subst):- get_sym_subst(X,T,Subst).
 
-%% apply one substitution to Sym
-%% Sym is assumed to be a scheme functor or predicate
+%% apply_sch_subst0(+SchemeSymbol,+Substitution,-Value)
+%%
+%% Apply one substitution to SchemeSymbol, yielding Value.
+%% 
+%% SchemeSymbol is assumed to be a scheme functor or predicate,
+%% without any arguments.
 apply_sch_subst0(Sym,Sym/([]:Val),Val):- !.
 apply_sch_subst0(Sym,Sym/([H|T]:Val),Val):- !,throw(sch_subst(Sym,[H|T]:Val)).
 apply_sch_subst0(Sym,Sym/Val,Val):-!.
 apply_sch_subst0(Sym,Subst,_):- throw(sch_subst(Sym,Subst)).
 
+%% apply_sch_subst1([+SchemeSymbol|+Args],+Substitution,-Value)
+%%
+%% Apply  one Substitution to a SchemeSymbol with Args, yielding
+%% Value. Args must be unifiable with the parameter list of
+%% Substitution if given. If the parameter list is not given, we
+%% assume that the SchemeSymbol corresponds directly to other
+%% constructor, and apply the constructor directly to the Args.
 apply_sch_subst1([Sym|Args],Sym/(Vars:Val),Val):- !,
 	(Vars = Args,!; throw(sch_subst(Sym,Vars:Val))).
 
@@ -1580,8 +1596,9 @@ apply_sch_subst1(Sym,Subst,_):- throw(sch_subst(Sym,Subst)).
 
 
 %% apply_sch_substs(+Substs,+Fla,-Fla1)
+%%
 %% applies scheme substitutions to Fla, throwing exception
-%% if no substitution for any scheme symbol does not exist
+%% if no substitution for any scheme symbol in Fla does not exist
 
 apply_sch_substs_top(Substs,Fla,Fla1):-
 	apply_sch_substs(Substs,Fla,Fla1), !.
@@ -1608,8 +1625,19 @@ apply_sch_substs(Substs,X1,X2):-
 add_univ_context([],Fla,Fla).
 add_univ_context([H|T], Fla, ( ! [H|T] : ( Fla) )).
 
-%% gen_sch_instance(?SchInstName,?File,-Res)
-%% - generate instance of SchName as fof with the same level
+%% gen_sch_instance(?SchInstName,?File,-Res,+Options)
+%%
+%% Generate a scheme instance SchInstNam as fof with the same
+%% level (that is []) as the original scheme.
+%% If opt_REM_SCH_CONSTS is passed in Options, all local
+%% constants inside the instance are generalized to universally
+%% quantified variables.
+%% Why does generalizing of local constants yield a valid theorem
+%% in this case:
+%% - the constants never appear in the original scheme, and what we
+%%   have is its instance (which involves only type checking, no 
+%%   special knowledge about the constant); therefore any object 
+%%   (with the same type) can be used at the place of the constant.
 gen_sch_instance(SI_Name,F,Res,Options):-
 	fof(Ref,_,_,file(F,_),
 	    [MPTPInfo,inference(mizar_from,[InstInfo],_Refs)]),
@@ -1629,6 +1657,31 @@ gen_sch_instance(SI_Name,F,Res,Options):-
 		  [mptp_info(0,Lev1,scheme_instance,Pos,[]),
 		   inference(mizar_sch_instance,[InstInfo],[S_Name])]).
 
+%% How to generate a proof of the scheme instance from the original scheme
+%% proof:
+%% method I:
+%% 1. generate the instance without generalization
+%% 2. replace the scheme symbols everywhere in the original proof by their
+%%    instances (the same process as for the instance)
+%% 3. generalize the instance - this yields a constant-to-var substitution,
+%%    and a universal context
+%% 4. apply the substitution (apply_const_substs) to all proof references
+%%    (actually first collect all other local consts from the references,
+%%     and enrich the substitution by identity on them, otherwise
+%%     get_const_subst will throw exception on them),
+%% 5. add the universal context to all the proof references (can be optimized,
+%%    to add only the needed subcontext)
+%%
+%% method II.
+%% 1. generate the instance without generalization
+%% 2. generalize it, yielding the constant substitution, and the univ context
+%% 3. compose the scheme instance subst with the constant subst
+%% 4. apply just this composed subst (i.e. pass only once), and also add the context
+%%
+%% Note: tricky business, be sure to do copy_term on the substitution each time
+%%       before using it
+
+
 %% create and assert all scheme instances for a given article
 assert_sch_instances(File,Options):-
 	repeat,
@@ -1638,6 +1691,7 @@ assert_sch_instances(File,Options):-
 %%%%%%%%%%%% Constant generalization (abstraction) %%%%%%%%%%%%%%%%%%%%
 
 %% add_const_vars(+RefsIn, +ConstsIn, +AddedConsts, -RefsOut, -ConstsOut)
+%%
 %% collect all constants together with their type definitions
 add_consts(RefsIn, ConstsIn, AddedConsts, RefsOut, ConstsOut):-
 	get_sec_info_refs(RefsIn, AddedConsts,
@@ -1696,10 +1750,9 @@ get_const_subst(X,[Z/Y|_],Z/Y):- X == Z, !.
 get_const_subst(X,[_|T],Subst):- get_const_subst(X,T,Subst).
 
 %% apply_const_substs(+Substs,+Fla,-Fla1)
+%%
 %% applies local constant substitutions to Fla, throwing exception
 %% if no substitution for any local const exists
-apply_const_substs_top(Substs,Fla,Fla1):-
-	apply_const_substs(Substs,Fla,Fla1), !.
 
 %% end of traversal
 apply_const_substs(_,X,X):- var(X),!.
@@ -1718,11 +1771,13 @@ make_const_var_substs([], []).
 make_const_var_substs([H|T], [(H/_NewVar)|NewVars]):-
 	make_const_var_substs(T, NewVars).
 
-%% generalize local constants into universally bound variables
 %% generalize_consts(+In, -Out, -UnivContext, -Subst)
-%% all local consts in -Out are replaced with new vars, these vars
+%%
+%% generalize local constants into universally bound variables
+%% all local consts in +In are replaced with new vars in Out, these vars
 %% are collected in UnivContext (with their sorts),
 %% -Subst is the substitution which turns -Out into +In again
+%% (actually vice versa - it has format: [Constant1/Var1,...])
 generalize_consts(In, Out, UnivContext, NewConstSubst):-
 	collect_symbols_top(In, Syms0),
 	sublist(mptp_local_const, Syms0, Consts0),
