@@ -1680,6 +1680,24 @@ gen_sch_instance(SI_Name,F,Res,Options):-
 %%
 %% Note: tricky business, be sure to do copy_term on the substitution each time
 %%       before using it
+%%
+%% Technicalities:
+%% - the nasmespace for local constants from different articles is now not
+%%   separated - this makes loading of the "scheme article" on demand impossible,
+%%   while the "scheme instance article" is loaded;
+%% - solution: when creating article problems ...
+%% - are there problems with computing background?:
+%%   - yes, if we only loaded the 
+%%   "scheme article's BG, then we cannot first instantiate, 
+%%   and then compute BG, because the instantiation possibly contains constructors
+%%   which are not in the BG; however, we always load full MML; this leaves
+%%   out BG info only for the "scheme instance article" (if local consts are
+%%   generalized);
+%%   - if we first compute BG, it may be smaller, since the instances symbols will
+%%   not interact with the set of symbols involved in the scheme's proof;
+%%   however, we'll need to remove the facts about the original scheme functors and
+%%   preds, and add typing BG for the instances symbols instead
+
 
 
 %% create and assert all scheme instances for a given article
