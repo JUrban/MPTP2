@@ -2236,6 +2236,7 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	  )
 	),
 	fof(P,_,_Fla,file(F,P),[Mptp_info,Inference_info]),
+	%% filter if problem_list given
 	(
 	  member(problem_list(PList), Rest) ->
 	  member(P,PList)
@@ -2256,9 +2257,13 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	  InfKind = InfKind0
 	),
 	fof_name(P, Id1),
-	%% this is used to limit clusters to preceding
+	%% this is used to limit clusters to preceding clauses from the nitial file;
+	%% note that using the ordering of clauses in the initial file
+	%% can be quite fragile (e.g. adding of frankels and scheme instances,...)
 	nth_clause(_, Pos1, Id1),
 %	filter_level_refs(Lev,Refs0,Refs),
+	
+	%% compute references into AllRefs
 	(
 	  InfKind == mizar_proof,
 	  ensure(InfInfo = [proof_level(PLevel)|_], inf_info(InfInfo,PLevel)),
@@ -2288,48 +2293,90 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	  Syms1 = Syms0,
 	  once(fixpoint(F, [Pos1, Lev], InfKind, [P|Refs], [], Syms1, AllRefs))
 	),
-	tell(Outfile),
-	format('% Mizar problem: ~w,~w,~w,~w ~n', [P,F,Line,Col]),
-	(member(snow_spec, Rest) ->
-	    format('% Using references advised by SNoW ~n', [])
-	; true
-	),
+	
 	%% collect fraenkel infos and put variables into fraenkel flas
 	findall([fof(R,R1,Out,R3,R4),Info],
-		(member(R,AllRefs), get_ref_fof(R,fof(R,R1,R2,R3,R4)),
-		    all_collect_top(R2,Out,Info)),
+		(
+		  member(R,AllRefs),
+		  get_ref_fof(R,fof(R,R1,R2,R3,R4)),
+		  all_collect_top(R2,Out,Info)
+		),
 		S1),
 	zip(Flas, Infos1, S1),
 	append_l(Infos1,Infos),
+	
 	%% instantiate fraenkels with their defs, create the defs
 	%% this is now needed only for the remaining fraenkels not contained
 	%% in the current article; ###TODO: it will currently break with opt_MK_TPTP_INF
 	concat_atom([F,'_spc'],FSpec),
 	mk_fraenkel_defs_top(FSpec, Infos, NewFrSyms, Defs0),
 	zip(_NewSyms, Defs, Defs0),
-	findall(dummy,(nth1(Pos,Defs,D),
-		       sort_transform_top(D,D1), numbervars(D1,0,_),
-		       print(fof(Pos,axiom,D1,file(F,Pos),[fraenkel])),write('.'),nl),_),
 
-	( member(_,Defs) -> Refs1 = [t2_tarski|AllRefs]; Refs1 = AllRefs),
+	print_problem(P,F,[InferenceKinds,PropositionKinds|Rest],Options,
+	      Outfile,Line,Col,Defs,AllRefs,Flas).
+
+
+%% print_problem(+ProblemName,+Article,[+InferenceKinds,+PropositionKinds|+Rest],+Options,
+%%               +Outfile,+Line,+Column,+FraenkelDefs,+AllRefs,+AllFofs)
+%%
+%% Print problem ProblemName into OutFile, doing sort transformation.
+print_problem(P,F,[_InferenceKinds,_PropositionKinds|Rest],Options,
+	      Outfile,Line,Col,Defs,AllRefs,AllFofs):-
+	
+	tell(Outfile),
+	format('% Mizar problem: ~w,~w,~w,~w ~n', [P,F,Line,Col]),
+	(member(snow_spec, Rest) ->
+	    format('% Using references advised by SNoW ~n', [])
+	;
+	    true
+	),
+	
+	%% print sort-transformed fraenkel defs
+	findall(dummy,
+		(
+		  nth1(Pos,Defs,D),
+		  sort_transform_top(D,D1),
+		  numbervars(D1,0,_),
+		  print(fof(Pos,axiom,D1,file(F,Pos),[fraenkel])),
+		  write('.'),nl
+		),
+		_),
+	
+	%% add Extensionality axiom if fraenkel defs introduced
+	((member(_,Defs),not(member(t2_tarski,AllRefs))) ->
+	    Refs1 = [t2_tarski|AllRefs],
+	    get_ref_fof(t2_tarski, Extensionality),
+	    Fofs1 = [Extensionality | AllFofs]
+	;
+	    Refs1 = AllRefs,
+	    Fofs1 = AllFofs
+	),
 	delete(Refs1, P, ProperRefs1),
-	findall(dummy,(member(Q,Refs1), (member(fof(Q,Q1,Q2,Q3,Q4),Flas);
-					    (Q=t2_tarski,fof(Q,Q1,Q2,Q3,Q4))),
-		       sort_transform_top(Q2,SR2), numbervars([SR2,Q3,Q4],0,_),
-		       (Q=P ->
-			   Status = conjecture,
-			   QQ3 = inference(mizar_bg_added,[status(thm)],ProperRefs1),
-			   QQ4 = [Q3];
-			   Status = axiom, QQ3 = Q3, QQ4= []),
-		       (member(opt_MK_TPTP_INF,Options) ->
-			   print(fof(Q,Status,SR2,QQ3,QQ4));
-			   print(fof(Q,Status,SR2,Q3,Q4))),
-		       write('.'),nl),_),
-%	fof(P,_,P2,file(F,P),P4),
-%	member(fof(P,_,P2,file(F,P),P4),Flas),
-%	sort_transform_top(P2,SP2), numbervars(SP2,0,_),
-%	print(fof(P,conjecture,SP2,file(F,P),[P4])), write('.'),nl,
+
+	%% print sort-transformed axioms and conjecture
+	findall(dummy,
+		(
+		  member(Q,Refs1),
+		  member(fof(Q,_Q1,Q2,Q3,Q4), Fofs1),
+		  sort_transform_top(Q2,SR2),
+		  numbervars([SR2,Q3,Q4],0,_),
+		  (Q=P ->
+		      Status = conjecture,
+		      QQ3 = inference(mizar_bg_added,[status(thm)],ProperRefs1),
+		      QQ4 = [Q3]
+		  ;
+		      Status = axiom, QQ3 = Q3, QQ4= []
+		  ),
+		  (member(opt_MK_TPTP_INF,Options) ->
+		      print(fof(Q,Status,SR2,QQ3,QQ4))
+		  ;
+		      print(fof(Q,Status,SR2,Q3,Q4))
+		  ),
+		  write('.'),nl
+		),
+		_),
 	told.
+
 
 
 
