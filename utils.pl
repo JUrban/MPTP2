@@ -880,6 +880,13 @@ mk_nonnumeric_schemes:-
 	member(A,L),nonnumeric(A),
 	mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[scheme]],[opt_REM_SCH_CONSTS,opt_MK_TPTP_INF]),fail.
 
+%% Create cluster problems for nonumeric articles 
+mk_nonnumeric_clusters:-
+	declare_mptp_predicates,load_mml,all_articles(L),!,
+	member(A,L),nonnumeric(A),
+	mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[cluster]],[opt_REM_SCH_CONSTS,opt_MK_TPTP_INF]),fail.
+
+
 %% for creating by-explanations, use this:
 %% L=[xboole_0, boole, xboole_1, enumset1, zfmisc_1, subset_1, subset, relat_1, funct_1, grfunc_1, relat_2, ordinal1, wellord1],
 %% member(A,L),mk_article_problems(A,[[mizar_by],[theorem, top_level_lemma, sublemma]],
@@ -2146,7 +2153,7 @@ inference DAG:
 
 %% Kinds is a list [InferenceKinds, PropositionKinds | Rest]
 %% possible InferenceKinds are now [mizar_by, mizar_from, mizar_proof]
-%% possible PropositionKinds are now [theorem, top_level_lemma, sublemma]
+%% possible PropositionKinds are now [theorem, scheme,cluster,fcluster,ccluster,rcluster,top_level_lemma, sublemma]
 %% Rest is a list now only possibly containing snow_spec, problem_list and subproblem_list.
 mk_article_problems(Article,Kinds,Options):-
 %	declare_mptp_predicates,
@@ -2190,13 +2197,23 @@ mk_article_problems(Article,Kinds,Options):-
 	  Kinds1 = Kinds
 	),
 
+	%% expand cluster into fcluster,ccluster,rcluster
+	Kinds1 = [InferenceKinds,PropositionKinds|Rest],
+	(member(cluster,PropositionKinds) ->
+	    delete(PropositionKinds,cluster,PKinds1),
+	    union([fcluster,ccluster,rcluster],PKinds1,PKinds2),
+	    Kinds2 = [InferenceKinds,PKinds2|Rest]
+	;
+	    Kinds2 = Kinds1
+	),
+	
 	%% create the table of local-to-global names if absolute_locals
 	(absolute_locals -> absolutize_locals(Article); true),
 	concat_atom(['problems/',Article,'/'],Dir),
 	(exists_directory(Dir) -> (string_concat('rm -r -f ', Dir, Command),
 				      shell(Command)); true),
 	make_directory(Dir),
-	repeat,(mk_problem(_,Article,Dir,Kinds1,Options),fail; !,true),
+	repeat,(mk_problem(_,Article,Dir,Kinds2,Options),fail; !,true),
 %% retract current file but return mml parts
 	retractall(fof(_,_,_,file(Article,_),_)),
 	sublist(exists_file,[DCL,DCO,THE,SCH],ToLoad),
@@ -2211,7 +2228,8 @@ mk_article_problems(Article,Kinds,Options):-
 %% - otherwise change their naming
 %% mk_problem(?P,+F,+Prefix,+Kinds,+Options)
 %% possible InferenceKinds are now [mizar_by, mizar_proof, mizar_from]
-%% possible PropositionKinds are now [theorem, top_level_lemma, sublemma]
+%% possible PropositionKinds are now: [theorem,scheme,fcluster,ccluster,rcluster,
+%% top_level_lemma, sublemma] (not that just cluster is not allowed here - has to be expanded above).
 %% Rest is now checked for containing snow_refs and problem_list([...]).
 %% The snow_spec of P have to be available in predicate
 %% snow_spec(P,Refs) and they are used instead of the Mizar refs,
@@ -2223,10 +2241,10 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	member(InfKind0,InferenceKinds),
 	member(PropKind,PropositionKinds),
 	(
-	  member(PropKind,[theorem,scheme]),
+	  member(PropKind,[theorem,scheme,fcluster,ccluster,rcluster]),
 	  MPropKind = PropKind
 	;
-	  not(member(PropKind,[theorem,scheme])),
+	  not(member(PropKind,[theorem,scheme,fcluster,ccluster,rcluster])),
 	  MPropKind = proposition,
 	  (
 	    PropKind = top_level_lemma,
@@ -2235,7 +2253,18 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	    PropKind \= top_level_lemma
 	  )
 	),
-	fof(P,_,_Fla,file(F,P),[Mptp_info,Inference_info]),
+	fof(P,_,_Fla,file(F,P),[Mptp_info|Rest_of_info]),
+	Mptp_info = mptp_info(_Nr,Lev,MPropKind,position(Line,Col),Item_Info),
+
+	(member(MPropKind,[fcluster,ccluster,rcluster]) ->
+	    Item_Info = [proof_level(_), correctness_conditions([Correctness_Proposition1|_])|_],
+	    Correctness_Proposition1 =.. [_Correctness_Condition_Name1, Corr_Proposition_Ref1],
+	    fof(Corr_Proposition_Ref1,_,_CPFla,file(F,Corr_Proposition_Ref1),
+		[_CP_Mptp_info, Inference_info|_])
+	    ;
+	    Rest_of_info = [Inference_info|_]
+	),
+
 	%% filter if problem_list given
 	(
 	  member(problem_list(PList), Rest) ->
@@ -2243,7 +2272,6 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	;
 	  true
 	),
-	Mptp_info = mptp_info(_Nr,Lev,MPropKind,position(Line,Col),_),
 	(member(opt_LINE_COL_NMS, Options) ->
 	    concat_atom([Prefix,F,'__',Line,'_',Col],Outfile);
 	    concat_atom([Prefix,F,'__',P],Outfile)
@@ -2263,7 +2291,10 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	nth_clause(_, Pos1, Id1),
 %	filter_level_refs(Lev,Refs0,Refs),
 	
-	%% compute references into AllRefs
+	%% Compute references into AllRefs.
+	%% This gets a bit tricky for cluster registrations - we need the original
+	%% formula (P), but use the PLevel for collecting the refs, and finally filter
+	%% using the original cluster's level (Lev).
 	(
 	  InfKind == mizar_proof,
 	  ensure(InfInfo = [proof_level(PLevel)|_], inf_info(InfInfo,PLevel)),
@@ -2291,7 +2322,14 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	  maplist(get_ref_fla, [P|Refs], Flas1),
 	  collect_symbols_top(Flas1, Syms0),
 	  Syms1 = Syms0,
-	  once(fixpoint(F, [Pos1, Lev], InfKind, [P|Refs], [], Syms1, AllRefs))
+	  once(fixpoint(F, [Pos1, Lev], InfKind, [P|Refs], [], Syms1, AllRefs1)),
+	  %% if we used the correctness proposition for computing references of cluster 
+	  %% registrations, we have to filter using the cluster's level
+	  (member(MPropKind,[fcluster,ccluster,rcluster]) ->
+	      filter_level_refs(Lev,AllRefs1,AllRefs)
+	  ;
+	      AllRefs = AllRefs1
+	  )
 	),
 	
 	%% collect fraenkel infos and put variables into fraenkel flas
