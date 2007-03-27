@@ -2257,10 +2257,16 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	Mptp_info = mptp_info(_Nr,Lev,MPropKind,position(Line,Col),Item_Info),
 
 	(member(MPropKind,[fcluster,ccluster,rcluster]) ->
-	    Item_Info = [proof_level(_), correctness_conditions([Correctness_Proposition1|_])|_],
-	    Correctness_Proposition1 =.. [_Correctness_Condition_Name1, Corr_Proposition_Ref1],
-	    fof(Corr_Proposition_Ref1,_,_CPFla,file(F,Corr_Proposition_Ref1),
-		[_CP_Mptp_info, Inference_info|_])
+	    ensure(Item_Info = [proof_level(_), Justification |_], cluster(Item_Info)),
+	    (Justification = correctness_conditions([Correctness_Proposition1|_]) ->
+		Correctness_Proposition1 =.. [_Correctness_Condition_Name1, Corr_Proposition_Ref1],
+		fof(Corr_Proposition_Ref1,_,_CPFla,file(F,Corr_Proposition_Ref1),
+		    [_CP_Mptp_info, Inference_info|_])
+	    ;
+		%% forged inference for "strict" rcluster justified by the aggregate type
+		ensure(Justification = inference(mizar_by,_,_), cluster(Justification)),
+		Inference_info = Justification
+	    )
 	    ;
 	    Rest_of_info = [Inference_info|_]
 	),
