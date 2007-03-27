@@ -2236,6 +2236,9 @@ mk_article_problems(Article,Kinds,Options):-
 %% and InfKind is set to mizar_by. The problem_list([...]) is used for limiting
 %% the problems generated (P must be member of it).
 %% see opt_available/1 for Options.
+%% ###TODO: currently does not handle reconsidered const's type proof, since
+%%          the item_kind is not proposition (but constant)
+%%          also not that fixpoint is hardly needed for that inference
 mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	theory(F, _Theory),
 	member(InfKind0,InferenceKinds),
@@ -2253,8 +2256,8 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	    PropKind \= top_level_lemma
 	  )
 	),
-	fof(P,_,_Fla,file(F,P),[Mptp_info|Rest_of_info]),
-	Mptp_info = mptp_info(_Nr,Lev,MPropKind,position(Line,Col),Item_Info),
+	fof(P,_,_Fla,file(F,_),[mptp_info(_Nr,Lev,MPropKind,position(Line,Col),Item_Info)
+			       |Rest_of_info]),
 
 	(member(MPropKind,[fcluster,ccluster,rcluster]) ->
 	    ensure(Item_Info = [proof_level(_), Justification |_], cluster(Item_Info)),
@@ -2267,7 +2270,7 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 		ensure(Justification = inference(mizar_by,_,_), cluster(Justification)),
 		Inference_info = Justification
 	    )
-	    ;
+	;
 	    Rest_of_info = [Inference_info|_]
 	),
 
@@ -2328,6 +2331,8 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	  maplist(get_ref_fla, [P|Refs], Flas1),
 	  collect_symbols_top(Flas1, Syms0),
 	  Syms1 = Syms0,
+	  %% ###TODO: for reconsidered type, following is enough instead of fixpoint
+%	  AllRefs1 = [P|Refs]
 	  once(fixpoint(F, [Pos1, Lev], InfKind, [P|Refs], [], Syms1, AllRefs1)),
 	  %% if we used the correctness proposition for computing references of cluster 
 	  %% registrations, we have to filter using the cluster's level
