@@ -585,14 +585,14 @@ get_types(RefsIn,SymsIn,AddedRefs):-
 	get_sec_info_refs(RefsIn, SymsIn,
 			  [mptp_info(_,_,_,_,[ctype])|_], Refs1),
 	get_sec_info_refs(RefsIn, SymsIn,
-			  [mptp_info(_,_,constant,_,[_,type])|_], Refs2),
+			  [mptp_info(_,_,constant,_,[_,type|_])|_], Refs2),
 	get_sec_info_refs(RefsIn, SymsIn,
 			  [mptp_info(_,_,functor,_,[scheme,type|_])|_], Refs3),
 	flatten([Refs1, Refs2, Refs3], AddedRefs).
 
 get_equalities(RefsIn,SymsIn,AddedRefs):-
 	get_sec_info_refs(RefsIn, SymsIn,
-			  [mptp_info(_,_,constant,_,[_,equality])], AddedRefs).
+			  [mptp_info(_,_,constant,_,[_,equality|_])], AddedRefs).
 
 %% get functor definitions by 'equals' but only for articles
 %% mentioned in the 'definitions' env. declaration
@@ -1720,7 +1720,7 @@ assert_sch_instances(File,Options):-
 %% collect all constants together with their type definitions
 add_consts(RefsIn, ConstsIn, AddedConsts, RefsOut, ConstsOut):-
 	get_sec_info_refs(RefsIn, AddedConsts,
-			  [mptp_info(_,_,constant,_,[_,type])|_], NewRefs),
+			  [mptp_info(_,_,constant,_,[_,type|_])|_], NewRefs),
 	([] = NewRefs ->
 	    (RefsOut = RefsIn, ConstsOut = ConstsIn)
 	;
@@ -2091,12 +2091,11 @@ end;
 
 translation:
 proof
-  fof(dc_c1,henkin_ax1, ((sort(c1,t1) => p1(c1)) => ![X2:t2(c1)]:(?[X3:t3(c1)]:p3(X3,X2))) =>
+  fof(dc_c1,henkin_ax1, (sort(c1,t1) => (p1(c1) => ![X2:t2(c1)]:(?[X3:t3(c1)]:p3(X3,X2))) =>
                         (![X1:t1]:(p1(X1) => ![X2:t2(X1)]:(?[X3:t3(X1)]:p3(X3,X2))))).
 
-  fof(a11, assumption, (sort(c1,t1) => p1(c1))).
   fof(dt_c1,assumption, sort(t1,c1)).
-  fof(a1, lemma, p1(c1), a11,dt_c1).
+  fof(a1, assumption, p1(c1)).
   for(dc_c2,henkin_ax2, (ex X3 being T3 of c1 st P3(X3,c2)) =>
                         (![X2:t2(c1)]:(?[X3:t3(c1)]:p3(X3,X2)))).
   fof(a2,lemma, q1(c1,c2), th1).
@@ -2123,7 +2122,8 @@ proof
   fof(r_take, ?[X3:t3(c1)]:p3(X3,c2), e3,a8).
   fof(r_dc_c2, ![X2:t2(c1)]:(?[X3:t3(c1)]:p3(X3,X2)), r_take, dc_c2).
   fof(r_a1, p1(c1) => ![X2:t2(c1)]:(?[X3:t3(c1)]:p3(X3,X2)), discharge(a1), r_dc_c2).
-  fof(r_dc_c1, ![X1:t1]:(p1(X1) => ![X2:t2(X1)]:(?[X3:t3(X1)]:p3(X3,X2))), ra_a1, dc_c1).
+  fof(r_dt_c1, sort(c1,t1) => (p1(c1) => ![X2:t2(c1)]:(?[X3:t3(c1)]:p3(X3,X2))), discharge(dt_c1), r_a1).
+  fof(r_dc_c1, ![X1:t1]:(p1(X1) => ![X2:t2(X1)]:(?[X3:t3(X1)]:p3(X3,X2))), r_dt_c1, dc_c1).
 end;
 
 inference DAG:
