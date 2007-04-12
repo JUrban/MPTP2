@@ -961,6 +961,7 @@ mk_problems_from_file(File):-
 	close(S),!,
 	mk_problems_from_list(List).
 
+%% this takes time, better do the simple versions for all
 %% ##TEST: :- test_refs_first100.
 test_refs_first100:-
 	declare_mptp_predicates,load_mml,first100(L),!,
@@ -1089,7 +1090,7 @@ mptp2tptp(InFile,Options,OutFile):-
 		    (
 		      fof_file(PFile,AId),
 		      clause(fof(ARef1,_,_,file(_,_),AInfo),_,AId),
-		      AInfo = [mptp_info(_,_,_,_,_), inference(_,_,ARefs0)],
+		      AInfo = [mptp_info(_,_,_,_,_), inference(_,_,ARefs0) |_],
 		      member(ARef0,[ARef1|ARefs0]),
 		      atom_chars(ARef0,[C1|Cs1]),
 		      member(C1,RefCodes),
@@ -1111,7 +1112,7 @@ mptp2tptp(InFile,Options,OutFile):-
 	    PrintedNames = []
 	  ),
 	  not(member(Name, AddedFraenkelNames)),
-	  (Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs)] ->
+	  (Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs) | _] ->
 	      findall(Ref,(member(Ref0,Refs),atom_chars(Ref0,[C|Cs]),
 			   member(C,RefCodes),fix_sch_ref(Ref0,[C|Cs],Ref)), Refs2),
 	      sort_transform_top(Fla,Fla1),
@@ -1188,7 +1189,7 @@ compare_proved_by_refsnr(ProvedFile):-
 	findall([Diff,R1,Refs0,Refs1,BG],
 		(
 		  proved(R1,_F,Refs0,BG,_I),
-		  get_ref_fof(R1,fof(R1,_,_,_,[_,inference(_,_,I3)])),
+		  get_ref_fof(R1,fof(R1,_,_,_,[_,inference(_,_,I3)|_])),
 		  findall(Ref, (member(Ref,I3), atom_chars(Ref,[C|_]),
 				   member(C,[t,d])),
 			  Refs11),
@@ -1220,7 +1221,7 @@ get_rec_uses(Name,_,NN,LRec1,LRecNN1,CL1,CLNN1,Last1,LastNN1,CLast1,CLastNN1,All
 get_rec_uses(Name,RefCodes,NN,LRec1,LRecNN1,CL1,CLNN1,Last1,LastNN1,CLast1,CLastNN1,AllRecTmpS1,AllRecTmpNNS1):-
 	fof(Name,Role,_,file(A,Name),Info),!,
 	(nonnumeric(A) -> NN = t; NN = f),
-	Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs)],
+	Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs) |_],
 	once((
 	  findall(Ref,(member(Ref0,Refs),atom_chars(Ref0,[C|Cs]),
 		       member(C,RefCodes),fix_sch_ref(Ref0,[C|Cs],Ref)), Refs1),
@@ -1316,7 +1317,7 @@ expand_sch_refs([Ref|Refs], RefCodes, OutRefs):-
 	atom_chars(Ref,[C|_]),
 	( C = s ->
 	    fof(Ref,_,_,file(_,Ref),Info),
-	    Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs1)],
+	    Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs1) |_],
 	    findall(Ref1,(member(Ref0,Refs1),atom_chars(Ref0,[C0|Cs0]),
 			  member(C0,RefCodes),fix_sch_ref(Ref0,[C0|Cs0],Ref1)), Refs2),
 	    expand_sch_refs(Refs2, RefCodes, OutRefs2),
@@ -1359,7 +1360,7 @@ print_nn_chain(LastTh,Options):-
 		(
 		  member(Name,[LastTh|U]),
 		  fof(Name,_,_,_,Info),
-		  Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs)],
+		  Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs) |_],
 		  member(DefRef,Refs),atom_chars(DefRef,[d|_])
 		),
 		DefRefs1),!,
@@ -1367,7 +1368,7 @@ print_nn_chain(LastTh,Options):-
 	(
 	  member(Name,[LastTh|U]),
 	  fof(Name,_,Fla,file(A,Name),Info),
-	  Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs)],
+	  Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs) |_],
 	  findall(Ref,(member(Ref0,Refs),atom_chars(Ref0,[C|Cs]),
 		       member(C,RefCodes),fix_sch_ref(Ref0,[C|Cs],Ref)), Refs1),
 	  (member(o_ths_EXPAND_SCHREFS, Options) ->
@@ -1448,7 +1449,7 @@ print_nn_chain_for_dot(LastTh,Options):-
 % 	  write(PrevName),format(" -> "),write(Name),format("[color = red];"),nl
 % 	),
 	fof(Name,_,_,file(_,Name),Info),
-	Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs)],
+	Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs) |_],
 	findall(Ref,(member(Ref0,Refs),atom_chars(Ref0,[C|Cs]),
 		     member(C,RefCodes),fix_sch_ref(Ref0,[C|Cs],Ref)), Refs1),
 	once(findall(d,(member(R1,Refs1),write(R1),format(" -> "),write(Name),format(";"),nl),_)),
@@ -1491,6 +1492,7 @@ mk_snow_input_for_learning(File):-
 	concat_atom([File,'.symnr'], SymFile),
 	tell(TrainFile),
 	%% print definitions - they have no proof
+	%% ###TODO: this might be a bit fragile
 	(
 	  member(A,[tarski|Articles]),
 	  fof(Name,Kind,Fla,file(A,Name),Info),
@@ -1499,8 +1501,7 @@ mk_snow_input_for_learning(File):-
 	    Refs1 = []
 	  ;
 	    Kind = theorem,
-	    Info = [mptp_info(_,[],theorem,_,_),
-		    inference(_,_,Refs)],
+	    Info = [mptp_info(_,[],theorem,_,_), inference(_,_,Refs) |_],
 	    findall(Ref,(member(Ref,Refs),atom_chars(Ref,[C|_]),
 			 member(C,[t,d])), Refs1)
 	  ),
@@ -1658,7 +1659,7 @@ add_univ_context([H|T], Fla, ( ! [H|T] : ( Fla) )).
 %%   (with the same type) can be used at the place of the constant.
 gen_sch_instance(SI_Name,F,Res,Options):-
 	fof(Ref,_,_,file(F,_),
-	    [MPTPInfo,inference(mizar_from,[InstInfo],_Refs)]),
+	    [MPTPInfo,inference(mizar_from,[InstInfo],_Refs)|_]),
 	InstInfo = scheme_instance(SI_Name,S_Name,Ref,_,Substs),
 	MPTPInfo= mptp_info(_Nr,Lev,_Kind,Pos,_Args),
 	once(fof(S_Name,theorem,Fla,_,_)),
@@ -1996,7 +1997,7 @@ get_sublevel_proved_names(Lev,Names):-
 	at_level_descendents(At1, Descs),
 	findall(Name,( member(L1, [At1|Descs]),
 		      fof_level(L1, Id),
-		      clause(fof(Name,_,_,_,[_,inference(_,_,_)]),_,Id)),
+		      clause(fof(Name,_,_,_,[_,inference(_,_,_)|_]),_,Id)),
 		Names).
 
 
@@ -2023,7 +2024,7 @@ get_thislevel_refs_simple(Lev, _, ThisLevelRefs, []) :-
 		(
 		  member(Ref,ThisLevelNames),
 		  get_ref_fof(Ref,fof(Ref,_,_,_,Info)),
-		  Info = [mptp_info(_,Lev,_,_,_),inference(_,_,_)]
+		  Info = [mptp_info(_,Lev,_,_,_),inference(_,_,_) |_]
 		),
 	       ThisLevelRefs).
 
@@ -2035,7 +2036,7 @@ get_thislevel_refs(Lev, RefsIn, ThisLevelRefs, SuperLevelRefs):-
 		(
 		  member(Ref,ThisLevelNames),
 		  get_ref_fof(Ref,fof(Ref,_,_,_,Info)),
-		  Info = [mptp_info(_,Lev,_,_,_),inference(_,_,Refs)]
+		  Info = [mptp_info(_,Lev,_,_,_),inference(_,_,Refs)|_]
 		),
 	       RefRefs),
 	zip(ThisLevelRefs,ThisRefRefsLists,RefRefs),
@@ -2225,7 +2226,7 @@ mk_article_problems(Article,Kinds,Options):-
 	  findall(Ref,
 		  (
 		    member(R1,PList),
-		    get_ref_fof(R1,fof(R1,_,_,_,[_,inference(mizar_proof,[proof_level(Lev)|_],_)])),
+		    get_ref_fof(R1,fof(R1,_,_,_,[_,inference(mizar_proof,[proof_level(Lev)|_],_) |_])),
 		    get_sublevel_proved_names(Lev,LRefs),
 		    member(Ref, LRefs)
 		  ),
@@ -2501,8 +2502,10 @@ load_mml:-
 
 
 % should fail - load with theorems and propositions first
+%% ##NOTE: this can fail depending on wjther preprocessing stages
+%%         (scheme instances, henkin axioms, ...) have been performed
 check_refs:-
-	fof(_,_,_,_,[mptp_info(_,_,_,_,_),inference(mizar_by,_,I)]),
+	fof(_,_,_,_,[mptp_info(_,_,_,_,_),inference(mizar_by,_,I) |_]),
 	member(P,I),
 	not(fof(P,_,_,_,_)).
 
