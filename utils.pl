@@ -961,9 +961,20 @@ mk_problems_from_file(File):-
 	close(S),!,
 	mk_problems_from_list(List).
 
+%% ##TEST: :- test_refs_first100.
 test_refs_first100:-
-	declare_mptp_predicates,first100(L),!,
+	declare_mptp_predicates,load_mml,first100(L),!,
 	member(A,L),test_refs(A),fail.
+
+%% ##TEST: :- test_refs_simple_first100.
+test_refs_simple_first100:-
+	declare_mptp_predicates,first100(L),!,
+	member(A,L),test_refs_simple(A),fail.
+
+%% ##TEST: :- test_refs_simple_all.
+test_refs_simple_all:-
+	declare_mptp_predicates,all_articles(L),!,
+	member(A,L),test_refs_simple(A),fail.
 
 %% print all theorems in standard TPTP, so that it can be cnf-ed by E
 print_thms_for_cnf:-
@@ -1892,9 +1903,38 @@ abstract_fraenkels(Article, Options, NewFrSyms, NewFlaNames):-
 
 %%%%%%%%%%%% End of Installation of fraenkel definitions %%%%%%%%%%%%%%%%%%%%%
 
+%% test uniqueness of references inside Article, 
+%% creating also scheme instances and abstracting fraenkels
+test_refs(Article):-	
+	mml_dir_atom(MMLDir),
+	concat_atom([MMLDir, Article, '.xml2'],File),
+	concat_atom([MMLDir, Article, '.dcl2'],DCL),
+	concat_atom([MMLDir, Article, '.dco2'],DCO),
+	concat_atom([MMLDir, Article, '.the2'],THE),
+	concat_atom([MMLDir, Article, '.sch2'],SCH),
+	%% remove the ovelapping mml parts first
+	retractall(fof(_,_,_,file(Article,_),_)),
+	sublist(exists_file,[DCO],ToLoad1),
+	load_files(ToLoad1,[silent(true)]),
+	consult(File),
+	install_index,
+	once(assert_sch_instances(Article,Options)),
+	install_index,
+	abstract_fraenkels(Article, [], _, _),
+	install_index,!,
 
-%% test uniqueness of references inside Article
-test_refs(Article):-
+	findall([Fof1,Fof2], (fof_file(Article, Id1),fof_name(X,Id1),fof_name(X,Id2),
+				 Id1 < Id2, 
+				 clause(Fof1,_,Id1),
+				 clause(Fof2,_,Id2)),S),
+	print(S),nl,length(S,N),print(N),
+	retractall(fof(_,_,_,file(Article,_),_)),
+	sublist(exists_file,[DCL,DCO,THE,SCH],ToLoad),
+	load_files(ToLoad,[silent(true)]),!.
+
+
+%% test uniqueness of references inside Article (simple version)
+test_refs_simple(Article):-
 	mml_dir_atom(MMLDir),
 	concat_atom([MMLDir, Article,'.xml2'],File),
 	consult(File),
@@ -1903,7 +1943,7 @@ test_refs(Article):-
 				 Id1 < Id2, clause(Fof1,_,Id1),
 				 clause(Fof2,_,Id2)),S),
 	print(S),nl,length(S,N),print(N),
-	retractall(fof(_,_,_,file(Article,_),_)).
+	retractall(fof(_,_,_,file(Article,_),_)),!.
 
 %% Shorter is an ancestor level or equal to Longer
 sublevel(Longer,Shorter) :- append(Shorter,_,Longer).
@@ -2238,7 +2278,7 @@ mk_article_problems(Article,Kinds,Options):-
 %% see opt_available/1 for Options.
 %% ###TODO: currently does not handle reconsidered const's type proof, since
 %%          the item_kind is not proposition (but constant)
-%%          also not that fixpoint is hardly needed for that inference
+%%          also note that fixpoint is hardly needed for that inference
 mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	theory(F, _Theory),
 	member(InfKind0,InferenceKinds),
