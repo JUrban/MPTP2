@@ -1727,82 +1727,104 @@ assert_sch_instances(File,Options):-
 
 
 %%%%%%%%%%%% Creating henkin axioms %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% create and assert all henkin axioms for a given article
+assert_henkin_axioms(File,_Options):-
+	repeat,
+	(
+	  fof_file(File,Id),
+	  clause(fof(Ref,_,_,file(File,Ref),[Mptp_info|Rest]),_,Id),
+	  (member(mizar_nd(inference(let,_,Refs0)), Rest) ->
+	      append(Defs,[T],Refs0),
+	      %% remove possible thesisexpansions
+	      findall(Hax,(member(Hax,Defs),atom_prefix(Hax,'dh_')),Henkin_Refs),
+	      create_henkin_axioms_let_top(Henkin_Refs,T,HaFofs)
+	  ;
+	      Mptp_info = mptp_info(_,_,_,_,[_,_,considered_constants(HC)|_]),
+	      maplist(atom_concat('dh_'),HC,Henkin_Refs),	    
+	      create_henkin_axioms_consider_top(Henkin_Refs,Ref,HaFofs)
+	  ),
+	  checklist(assert,HaFofs),
+	  fail
+	;
+	  true
+	).
 /*
-  example:
-  fof(t2_abcmiz_0,theorem,![B1: l1_abcmiz_0]: ![B2: l1_abcmiz_0]: ( ( ( u1_abcmiz_0(B1) = u1_abcmiz_0(B2) ) & sort(B1,v4_abcmiz_0) ) => ( sort(B2,v4_abcmiz_0) ) ),file(abcmiz_0,t2_abcmiz_0),[mptp_info(2,[],theorem,position(257,37),[0,mizar_item(justifiedtheorem)]),inference(mizar_proof,[proof_level([14])],[d4_abcmiz_0,e2_14,e1_14,d4_abcmiz_0]),mizar_nd(inference(let,[],[dh_c1_14,dh_c2_14,i1_14]))]).
-fof(dt_c1_14,assumption,sort(c1_14,l1_abcmiz_0),file(abcmiz_0,c1_14),[mptp_info(1,[14],constant,position(0,0),[let,type])]).
-fof(dt_c2_14,assumption,sort(c2_14,l1_abcmiz_0),file(abcmiz_0,c2_14),[mptp_info(2,[14],constant,position(0,0),[let,type])]).
-fof(i1_14,thesis,( ( ( u1_abcmiz_0(c1_14) = u1_abcmiz_0(c2_14) ) & sort(c1_14,v4_abcmiz_0) ) => ( sort(c2_14,v4_abcmiz_0) ) ),file(abcmiz_0,i1_14),[mptp_info(1,[14],thesis,position(0,0),[]),mizar_nd(inference(discharge_asm,[discharged([e1_14])],[i2_14]))]).
+   example:
+   fof(t2_abcmiz_0,theorem,![B1: l1_abcmiz_0]: ![B2: l1_abcmiz_0]: ( ( ( u1_abcmiz_0(B1) = u1_abcmiz_0(B2) ) & sort(B1,v4_abcmiz_0) ) => ( sort(B2,v4_abcmiz_0) ) ),file(abcmiz_0,t2_abcmiz_0),[mptp_info(2,[],theorem,position(257,37),[0,mizar_item(justifiedtheorem)]),inference(mizar_proof,[proof_level([14])],[d4_abcmiz_0,e2_14,e1_14,d4_abcmiz_0]),mizar_nd(inference(let,[],[dh_c1_14,dh_c2_14,i1_14]))]).
+ fof(dt_c1_14,assumption,sort(c1_14,l1_abcmiz_0),file(abcmiz_0,c1_14),[mptp_info(1,[14],constant,position(0,0),[let,type])]).
+ fof(dt_c2_14,assumption,sort(c2_14,l1_abcmiz_0),file(abcmiz_0,c2_14),[mptp_info(2,[14],constant,position(0,0),[let,type])]).
+ fof(i1_14,thesis,( ( ( u1_abcmiz_0(c1_14) = u1_abcmiz_0(c2_14) ) & sort(c1_14,v4_abcmiz_0) ) => ( sort(c2_14,v4_abcmiz_0) ) ),file(abcmiz_0,i1_14),[mptp_info(1,[14],thesis,position(0,0),[]),mizar_nd(inference(discharge_asm,[discharged([e1_14])],[i2_14]))]).
 
-algo for "let":
-1. get the ND inference references, i.e. [dh_c1_14,dh_c2_14,i1_14]
-2. look up the used referred thesis, i.e. i1_14
-   (cannot use the orig. thesis, i.e. t2_abcmiz_0, because of thesis expansions)
-3. look up the sort declaration, i.e.  dt_c1_14,dt_c2_14  
-4. create henkin axiom for the last constant, i.e.
-4a. replace the last (n-th) constant everywhere with a new variable V_n (V2),
-    yielding GenThes_, i.e.:
-    GenThes_n = ( ( u1_abcmiz_0(c1_14) = u1_abcmiz_0(V2) ) & sort(c1_14,v4_abcmiz_0) )
-    => ( sort(V2,v4_abcmiz_0) )
-4b. add the universal quantifier, with the n-th constant's sort,
-    yielding UnivGenThes_n,i.e.:
-    UnivGenThes_ = ![V2:  l1_abcmiz_0] : GenThes1
-4c. create the implication (Sort => Thesis) => UnivGenThes_n, i.e.:
-    (sort(c1_14,l1_abcmiz_0)
-     =>
-     ( ( ( u1_abcmiz_0(c1_14) = u1_abcmiz_0(c2_14) ) & sort(c1_14,v4_abcmiz_0) )
-        => sort(c2_14,v4_abcmiz_0) )
-    )
-    => ![V2:  l1_abcmiz_0] : GenThes_n
-4d. the result ((Sort => Thesis) => UnivGenThes_n) is the henkin axiom for the last (n-th) constant,
-    here for c2_14, i.e dh_c2_14
-5.  iterate for the rest of the constants, taking UnivGenThes_{n+1} instead of
-    thesis for n-th constant
-
-
-fof(dt_c1_25_1_1,lemma_conjecture,sort(c1_25_1_1,( ~ v3_struct_0 & v3_realset2 & v2_orders_2 & l1_orders_2 )),file(abcmiz_0,c1_25_1_1),[mptp_info(1,[25,1,1],constant,position(0,0),[consider,type]),mizar_nd(inference(consider,[],[dh_c1_25_1_1,e1_25_1_1]))]).
-fof(dt_c2_25_1_1,lemma_conjecture,sort(c2_25_1_1,( ~ v4_abcmiz_0 & v5_abcmiz_0 & v6_abcmiz_0 & l1_abcmiz_0 )),file(abcmiz_0,c2_25_1_1),[mptp_info(2,[25,1,1],constant,position(0,0),[consider,type]),mizar_nd(inference(consider,[],[dh_c1_25_1_1,dh_c2_25_1_1,e1_25_1_1]))]).
-fof(dt_c3_25_1_1,lemma_conjecture,sort(c3_25_1_1,( v1_funct_1 & v1_funct_2(u1_struct_0(c1_25_1_1),k5_finsub_1(u1_abcmiz_0(c2_25_1_1))) & m2_relset_1(u1_struct_0(c1_25_1_1),k5_finsub_1(u1_abcmiz_0(c2_25_1_1)))
-)),file(abcmiz_0,c3_25_1_1),[mptp_info(3,[25,1,1],constant,position(0,0),[consider,type]),mizar_nd(inference(consider,[],[dh_c1_25_1_1,dh_c2_25_1_1,dh_c3_25_1_1,e1_25_1_1]))]).
-
-fof(e1_25_1_1,lemma_conjecture,?[B1: ( ~ v3_struct_0 & v3_realset2 & v2_orders_2 & l1_orders_2 )]: ?[B2: ( ~ v4_abcmiz_0 & v5_abcmiz_0 & v6_abcmiz_0 & l1_abcmiz_0 )]: ?[B3: ( v1_funct_1 & v1_funct_2(u1_struct_0(B1),k5_finsub_1(u1_abcmiz_0(B2))) & m2_relset_1(u1_struct_0(B1),k5_finsub_1(u1_abcmiz_0(B2))) )]: $true,file(abcmiz_0,e1_25_1_1),[mptp_info(1,[25,1,1],proposition,position(408,68),[0,mizar_item(consider_justification),considered_constants([c1_25_1_1,c2_25_1_1,c3_25_1_1])]),inference(mizar_by,[],[])]).
+ algo for "let":
+ 1. get the ND inference references, i.e. [dh_c1_14,dh_c2_14,i1_14]
+ 2. look up the used referred thesis, i.e. i1_14
+    (cannot use the orig. thesis, i.e. t2_abcmiz_0, because of thesis expansions)
+ 3. look up the sort declaration, i.e.  dt_c1_14,dt_c2_14  
+ 4. create henkin axiom for the last constant, i.e.
+ 4a. replace the last (n-th) constant everywhere with a new variable V_n (V2),
+     yielding GenThes_, i.e.:
+     GenThes_n = ( ( u1_abcmiz_0(c1_14) = u1_abcmiz_0(V2) ) & sort(c1_14,v4_abcmiz_0) )
+     => ( sort(V2,v4_abcmiz_0) )
+ 4b. add the universal quantifier, with the n-th constant's sort,
+     yielding UnivGenThes_n,i.e.:
+     UnivGenThes_ = ![V2:  l1_abcmiz_0] : GenThes1
+ 4c. create the implication (Sort => Thesis) => UnivGenThes_n, i.e.:
+     (sort(c1_14,l1_abcmiz_0)
+      =>
+      ( ( ( u1_abcmiz_0(c1_14) = u1_abcmiz_0(c2_14) ) & sort(c1_14,v4_abcmiz_0) )
+         => sort(c2_14,v4_abcmiz_0) )
+     )
+     => ![V2:  l1_abcmiz_0] : GenThes_n
+ 4d. the result ((Sort => Thesis) => UnivGenThes_n) is the henkin axiom for the last (n-th) constant,
+     here for c2_14, i.e dh_c2_14
+ 5.  iterate for the rest of the constants, taking UnivGenThes_{n+1} instead of
+     thesis for n-th constant
 
 
-algo for "consider":
-1. get the ND inference references, i.e. [dh_c1_25_1_1,e1_25_1_1]
-2. complete the constant list, using the considered_constants slot of the last reference (Just)
-    (i.e. e1_25_1_1) to the full list, i.e. c1_25_1_1,c2_25_1_1,c3_25_1_1
-3. look up the sort declaration, i.e.   dt_c1_25_1_1,dt_c2_25_1_1,dt_c3_25_1_1
-4. create henkin axiom for the first constant, i.e.
-4a. instantiate the first variable everywhere with the first constant,
-    yielding ExRes_1, i.e.:
-    ExRes_1 = ?[c1_25_1_1: ( ~ v3_struct_0 & v3_realset2 & v2_orders_2 & l1_orders_2 )]:
-              ?[B2: ( ~ v4_abcmiz_0 & v5_abcmiz_0 & v6_abcmiz_0 & l1_abcmiz_0 )]:
-	      ?[B3: ( v1_funct_1 & v1_funct_2(u1_struct_0(c1_25_1_1),k5_finsub_1(u1_abcmiz_0(B2)))
-		    & m2_relset_1(u1_struct_0(c1_25_1_1),k5_finsub_1(u1_abcmiz_0(B2))) )]: $true    
-4b. strip the exist. quantifier, yielding the 1st constant's sort (Srt_1 - note that we do
-    not copy it from the sort declaration, to be independent for verification), and Res_1:
-    Srt1 = sort(c1_25_1_1: ( ~ v3_struct_0 & v3_realset2 & v2_orders_2 & l1_orders_2 ))
-    Res_1 = ?[B2: ( ~ v4_abcmiz_0 & v5_abcmiz_0 & v6_abcmiz_0 & l1_abcmiz_0 )]:
+ fof(dt_c1_25_1_1,lemma_conjecture,sort(c1_25_1_1,( ~ v3_struct_0 & v3_realset2 & v2_orders_2 & l1_orders_2 )),file(abcmiz_0,c1_25_1_1),[mptp_info(1,[25,1,1],constant,position(0,0),[consider,type]),mizar_nd(inference(consider,[],[dh_c1_25_1_1,e1_25_1_1]))]).
+ fof(dt_c2_25_1_1,lemma_conjecture,sort(c2_25_1_1,( ~ v4_abcmiz_0 & v5_abcmiz_0 & v6_abcmiz_0 & l1_abcmiz_0 )),file(abcmiz_0,c2_25_1_1),[mptp_info(2,[25,1,1],constant,position(0,0),[consider,type]),mizar_nd(inference(consider,[],[dh_c1_25_1_1,dh_c2_25_1_1,e1_25_1_1]))]).
+ fof(dt_c3_25_1_1,lemma_conjecture,sort(c3_25_1_1,( v1_funct_1 & v1_funct_2(u1_struct_0(c1_25_1_1),k5_finsub_1(u1_abcmiz_0(c2_25_1_1))) & m2_relset_1(u1_struct_0(c1_25_1_1),k5_finsub_1(u1_abcmiz_0(c2_25_1_1)))
+ )),file(abcmiz_0,c3_25_1_1),[mptp_info(3,[25,1,1],constant,position(0,0),[consider,type]),mizar_nd(inference(consider,[],[dh_c1_25_1_1,dh_c2_25_1_1,dh_c3_25_1_1,e1_25_1_1]))]).
+
+ fof(e1_25_1_1,lemma_conjecture,?[B1: ( ~ v3_struct_0 & v3_realset2 & v2_orders_2 & l1_orders_2 )]: ?[B2: ( ~ v4_abcmiz_0 & v5_abcmiz_0 & v6_abcmiz_0 & l1_abcmiz_0 )]: ?[B3: ( v1_funct_1 & v1_funct_2(u1_struct_0(B1),k5_finsub_1(u1_abcmiz_0(B2))) & m2_relset_1(u1_struct_0(B1),k5_finsub_1(u1_abcmiz_0(B2))) )]: $true,file(abcmiz_0,e1_25_1_1),[mptp_info(1,[25,1,1],proposition,position(408,68),[0,mizar_item(consider_justification),considered_constants([c1_25_1_1,c2_25_1_1,c3_25_1_1])]),inference(mizar_by,[],[])]).
+
+
+ algo for "consider":
+ 1. get the ND inference references, i.e. [dh_c1_25_1_1,e1_25_1_1]
+ 2. complete the constant list, using the considered_constants slot of the last reference (Just)
+     (i.e. e1_25_1_1) to the full list, i.e. c1_25_1_1,c2_25_1_1,c3_25_1_1
+ 3. look up the sort declaration, i.e.   dt_c1_25_1_1,dt_c2_25_1_1,dt_c3_25_1_1
+ 4. create henkin axiom for the first constant, i.e.
+ 4a. instantiate the first variable everywhere with the first constant,
+     yielding ExRes_1, i.e.:
+     ExRes_1 = ?[c1_25_1_1: ( ~ v3_struct_0 & v3_realset2 & v2_orders_2 & l1_orders_2 )]:
+               ?[B2: ( ~ v4_abcmiz_0 & v5_abcmiz_0 & v6_abcmiz_0 & l1_abcmiz_0 )]:
+ 	      ?[B3: ( v1_funct_1 & v1_funct_2(u1_struct_0(c1_25_1_1),k5_finsub_1(u1_abcmiz_0(B2)))
+ 		    & m2_relset_1(u1_struct_0(c1_25_1_1),k5_finsub_1(u1_abcmiz_0(B2))) )]: $true    
+ 4b. strip the exist. quantifier, yielding the 1st constant's sort (Srt_1 - note that we do
+     not copy it from the sort declaration, to be independent for verification), and Res_1:
+     Srt1 = sort(c1_25_1_1: ( ~ v3_struct_0 & v3_realset2 & v2_orders_2 & l1_orders_2 ))
+     Res_1 = ?[B2: ( ~ v4_abcmiz_0 & v5_abcmiz_0 & v6_abcmiz_0 & l1_abcmiz_0 )]:
+             ?[B3: ( v1_funct_1 & v1_funct_2(u1_struct_0(c1_25_1_1),k5_finsub_1(u1_abcmiz_0(B2)))
+                   & m2_relset_1(u1_struct_0(c1_25_1_1),k5_finsub_1(u1_abcmiz_0(B2))) )]: $true
+
+ 4c. create the implication Just => (Srt_1 & Res1), i.e.:
+     ( ?[B1: ( ~ v3_struct_0 & v3_realset2 & v2_orders_2 & l1_orders_2 )]:
+       ?[B2: ( ~ v4_abcmiz_0 & v5_abcmiz_0 & v6_abcmiz_0 & l1_abcmiz_0 )]:
+       ?[B3: ( v1_funct_1 & v1_funct_2(u1_struct_0(B1),k5_finsub_1(u1_abcmiz_0(B2)))
+             & m2_relset_1(u1_struct_0(B1),k5_finsub_1(u1_abcmiz_0(B2))) )]: $true )
+     => sort(c1_25_1_1: ( ~ v3_struct_0 & v3_realset2 & v2_orders_2 & l1_orders_2 ))
+        & ( ?[B2: ( ~ v4_abcmiz_0 & v5_abcmiz_0 & v6_abcmiz_0 & l1_abcmiz_0 )]:
             ?[B3: ( v1_funct_1 & v1_funct_2(u1_struct_0(c1_25_1_1),k5_finsub_1(u1_abcmiz_0(B2)))
-                  & m2_relset_1(u1_struct_0(c1_25_1_1),k5_finsub_1(u1_abcmiz_0(B2))) )]: $true
+                  & m2_relset_1(u1_struct_0(c1_25_1_1),k5_finsub_1(u1_abcmiz_0(B2))) )]: $true)
 
-4c. create the implication Just => (Srt_1 & Res1), i.e.:
-    ( ?[B1: ( ~ v3_struct_0 & v3_realset2 & v2_orders_2 & l1_orders_2 )]:
-      ?[B2: ( ~ v4_abcmiz_0 & v5_abcmiz_0 & v6_abcmiz_0 & l1_abcmiz_0 )]:
-      ?[B3: ( v1_funct_1 & v1_funct_2(u1_struct_0(B1),k5_finsub_1(u1_abcmiz_0(B2)))
-            & m2_relset_1(u1_struct_0(B1),k5_finsub_1(u1_abcmiz_0(B2))) )]: $true )
-    => sort(c1_25_1_1: ( ~ v3_struct_0 & v3_realset2 & v2_orders_2 & l1_orders_2 ))
-       & ( ?[B2: ( ~ v4_abcmiz_0 & v5_abcmiz_0 & v6_abcmiz_0 & l1_abcmiz_0 )]:
-           ?[B3: ( v1_funct_1 & v1_funct_2(u1_struct_0(c1_25_1_1),k5_finsub_1(u1_abcmiz_0(B2)))
-                 & m2_relset_1(u1_struct_0(c1_25_1_1),k5_finsub_1(u1_abcmiz_0(B2))) )]: $true)
+ 4d. the result (Just => (Srt_1 & Res1)) is the henkin axiom for the first constant,
+     here for c1_25_1_1, i.e dh_c1_25_1_1
+ 5.  iterate for the rest of the constants, taking Res_{n-1} instead of
+     Just for n-th constant
 
-4d. the result (Just => (Srt_1 & Res1)) is the henkin axiom for the first constant,
-    here for c1_25_1_1, i.e dh_c1_25_1_1
-5.  iterate for the rest of the constants, taking Res_{n-1} instead of
-    Just for n-th constant
 */
-
 
 %% apply_const_subst(+(Const/Var),+Fla,-Fla1)
 %%
@@ -1829,7 +1851,7 @@ make_const_var_subst(Const, (Const/_NewVar)).
 create_henkin_axioms_let_top(Henkin_Refs0,Thesis_Ref,Henkin_Fofs0):-
 	reverse(Henkin_Refs0, Henkin_Refs),
 	ensure(get_ref_fla(Thesis_Ref,Thesis), henkin(Thesis_Ref)),
-	ensure(maplist(atom_concat('dh_'),Consts,Henkin_Refs),henkin(Thesis_Ref)),
+	ensure(maplist(atom_concat('dh_'),Consts,Henkin_Refs),henkin_bad_refs(Henkin_Refs0)),
 	maplist(atom_concat('dt_'),Consts,Sort_Refs),
 	create_henkin_axioms_let(Henkin_Refs,Consts,Sort_Refs,Thesis,_,Henkin_Fofs),
 	reverse(Henkin_Fofs, Henkin_Fofs0), !.
@@ -1847,20 +1869,76 @@ create_henkin_axioms_let([HRef|HRefs],[Const|Consts],[SRef|SRefs],Instance,UnivI
 %% create_henkin_axiom_let(+Henkin_Ref,+Const,+Sort_Ref,+Instance,-UnivGenInst,-Henkin_Fof)
 %%
 %% note that the processing order of constants guarantees
-%% that only the rght constants are present in the new quantification
+%% that only the right constants are present in the new quantification
 create_henkin_axiom_let(Henkin_Ref,Const,Sort_Ref,Instance,UnivGenInst,Henkin_Fof):-	
 	copy_term(Instance, Tmp0),
 	make_const_var_subst(Const, (Const/NewVar)),
 	apply_const_subst((Const/NewVar), Tmp0, Tmp),
 	ensure(get_ref_fof(Sort_Ref, fof(_,_,Sort_Fla,FileInfo,[mptp_info(Nr,Lev,constant,Pos,[Kind,type|_])|_])),
-	       henkin(Sort_Ref)),
-	ensure( (Sort_Fla = sort(Const, Sort)), henkin(Sort_Fla)),
+	       henkin_noref(Sort_Ref)),
+	ensure( (Sort_Fla = sort(Const, Sort)), henkin_bad_sort(Sort_Fla)),
 	copy_term(Sort, Sort1),
 	UnivGenInst = ( ! [NewVar : Sort1] : ( Tmp) ),
 	copy_term((Sort_Fla => Instance), Tmp1),
 	Henkin_Ax = ( Tmp1 => UnivGenInst ),
 	Henkin_Fof = fof(Henkin_Ref, axiom, Henkin_Ax, FileInfo,
 			 [mptp_info(Nr,Lev,constant,Pos,[Kind,henkin_axiom])]),!.
+
+
+%% create_henkin_axioms_consider_top(+Henkin_Refs,+Thesis_Ref,-Henkin_Fofs)
+%%
+%% this assumes that the Henkin_Refs come in the right order, i.e.
+%% from first constant to the last (if not they need to be sorted)
+create_henkin_axioms_consider_top(Henkin_Refs,Thesis_Ref,Henkin_Fofs):-
+	ensure(get_ref_fla(Thesis_Ref,Thesis), henkin(Thesis_Ref)),
+	ensure(maplist(atom_concat('dh_'),Consts,Henkin_Refs),henkin(Thesis_Ref)),
+	maplist(atom_concat('dt_'),Consts,Sort_Refs),
+	create_henkin_axioms_consider(Henkin_Refs,Consts,Sort_Refs,Thesis,_,Henkin_Fofs),!.
+
+
+%% create_henkin_axioms_consider(+Henkin_Refs,+Constants,+Sort_Refs,+ExFla,-ExInstance,-Henkin_Fofs)
+%%
+%% the loop - needed for passing the instance along
+create_henkin_axioms_consider([],[],[],Inst,Inst,[]).
+create_henkin_axioms_consider([HRef|HRefs],[Const|Consts],[SRef|SRefs],ExFla,ExInstance,[HFof|HFofs]):-
+	create_henkin_axiom_consider(HRef,Const,SRef,ExFla,ExInst1,HFof),
+	create_henkin_axioms_consider(HRefs,Consts,SRefs,ExInst1,ExInstance,HFofs).
+
+%% create_henkin_axiom_consider(+Henkin_Ref,+Const,+Sort_Ref,+ExFla,-ExInstance,-Henkin_Fof)
+%%
+%% Note that the processing order of constants guarantees
+%% that only the right constants are present in the new quantification.
+%% Also note that the Sort_Ref is only used for getting the  mptp_info
+%% when creating the new fof, not for copying the sort from its formula.
+create_henkin_axiom_consider(Henkin_Ref,Const,Sort_Ref,ExFla,ExInstance,Henkin_Fof):-	
+	copy_term(ExFla, Tmp0),
+	%% Sort is without external variables at this point
+	%% (there still can be some inside fraenkels though -
+	%% that's why we do copy_term below)
+	ensure(strip_exist(Tmp0, ExVar, Sort, Body), henkin(Const)),
+	ExVar = Const,
+	copy_term(Sort, Sort1),
+	copy_term((ExFla => (sort(Const,Sort1) & Body)), Henkin_Ax),
+	copy_term(Body, ExInstance),
+	ensure(get_ref_fof(Sort_Ref, fof(_,_,sort(Const,_),FileInfo,
+					 [mptp_info(Nr,Lev,constant,Pos,[Kind,type|_])|_])),
+	       henkin(Sort_Ref)),
+	Henkin_Fof = fof(Henkin_Ref, axiom, Henkin_Ax, FileInfo,
+			 [mptp_info(Nr,Lev,constant,Pos,[Kind,henkin_axiom])]),!.
+
+
+%% strip_exist(+ExFla, -ExVar, -Sort, -Body)
+%%
+%% Strip existential quantifier, and return the parts.
+%% Handle also negated universal formulas, and top double negations.
+%% Throw exception if failure.
+strip_exist( ? [(ExVar : Sort) | Srts ] : Fla, ExVar, Sort, Body):- !,
+	(Srts = [] -> Body = Fla ; Body = ( ? Srts : Fla )).
+strip_exist( ~(~( Fla)), ExVar, Sort, Body):- !, strip_exist( Fla, ExVar, Sort, Body).
+strip_exist( ~( ! Q : ( ~( Fla))), ExVar, Sort, Body):- !, strip_exist( ? Q : Fla, ExVar, Sort, Body).
+strip_exist( ~( ! Q : Fla), ExVar, Sort, Body):- !, strip_exist( ? Q : ( ~( Fla)), ExVar, Sort, Body).
+strip_exist(Fla, _, _, _) :- throw(strip_exist(Fla)).
+
 
 
 %%%%%%%%%%%% Constant generalization (abstraction) %%%%%%%%%%%%%%%%%%%%
@@ -2688,12 +2766,14 @@ install_index:-
 	index(fof_name(1,1)),
 %	add_hidden,
 	logic_syms(LogicSyms),
+%	repeat,
+%	( clause(fof(Ref,_,_,_,_),_,Id),
+%	    assert(fof_name(Ref, Id)), fail; true),
 	repeat,
-	( clause(fof(Ref,_,_,_,_),_,Id),
-	    assert(fof_name(Ref, Id)), fail; true),
-	repeat,
-	( clause(fof(_,_,_,file(File1,_), _),_,Id),
-	    assert(fof_file(File1, Id)), fail; true),
+	( clause(fof(Ref,_,_,file(File1,Sec1), _),_,Id),
+	    assert(fof_name(Ref, Id)),
+	    assert(fof_file(File1, Id)),
+	    assert(fof_section(Sec1, Id)), fail; true),
 	repeat,
 	( clause(fof(_,definition,KDef,_,
 		     [mptp_info(_,[],definition,_,_)|_]),_,Id),
@@ -2702,9 +2782,9 @@ install_index:-
 	    KTerm =..[KFun|_],
 	    atom_chars(KFun,[k|_]),
 	    assert(fof_eq_def(KFun, Id)), fail; true),
-	repeat,
-	( clause(fof(_,_,_,file(_,Sec1), _),_,Id),
-	    assert(fof_section(Sec1, Id)), fail; true),
+%	repeat,
+%	( clause(fof(_,_,_,file(_,Sec1), _),_,Id),
+%	    assert(fof_section(Sec1, Id)), fail; true),
 	findall(L_l, (
 		       clause(fof(_,_,_,_,[mptp_info(_,L_l,_,_,_)|_]),_,Id),
 		       L_l = [_|_],
