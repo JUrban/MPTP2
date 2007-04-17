@@ -177,6 +177,8 @@ declare_mptp_predicates:-
  abolish(fof_req/3),
  abolish(abs_name/2),
  dynamic(abs_name/2),
+ abolish(fraenkel_cached/3),
+ dynamic(fraenkel_cached/3),
  index(fof(1,1,0,1,1)),
  index(fof(1,1,0,1)),
  index(fof_name(1,1)).
@@ -272,6 +274,25 @@ union1([],In,In).
 union1([H|T],In,Out):-
 	union(H,In,R1),
 	union1(T,R1,Out).
+
+
+%% check_if_symbol(+Term,+Symbol)
+%%
+%% faster check for a symbol than collecting
+%% e.g. check_if_symbol(Fla,all) checks for a fraenkel term
+check_if_symbol(X,_):- var(X),!,fail.
+check_if_symbol(X, S):- atomic(X),!, X == S.
+check_if_symbol(X1,S):-
+	X1 =.. [H1|T1],
+	(
+	  H1 = S,!
+	;
+	  check_if_symbol_l(T1,S)
+	).
+
+check_if_symbol_l([H|_],S):- check_if_symbol(H,S),!.
+check_if_symbol_l([_|T],S):- check_if_symbol_l(T,S),!.	
+
 
 %%%%%%%%%%%%%%%%%%%% Sort relativization %%%%%%%%%%%%%%%%%%%%
 
@@ -511,18 +532,37 @@ new_fr_sym(File, Arity, FrInfo, NewFrInfo, NewSym):-
 	concat_atom([a,Arity,Nr,File], '_', NewSym),
 	select([Arity,NewSym|FrSyms], NewFrInfo, TmpInfo), ! .
 
+%% now also allows re-creating the def from a cached symbol name,
+%% if NewSym is not a variable
 mk_fraenkel_def(File, Var, Context, all(Svars1,Trm1,Frm1),
 		FrInfo, NewFrInfo, NewSym, Def) :-
 	split_svars(Vars, _, Context),
 	length(Vars, Arity),
-	new_fr_sym(File, Arity, FrInfo, NewFrInfo, NewSym),
+	(var(NewSym) ->
+	    new_fr_sym(File, Arity, FrInfo, NewFrInfo, NewSym)
+	;
+	    NewFrInfo = FrInfo
+	),
 	FrTrm =.. [NewSym|Vars],
 	InPred =.. [r2_hidden, X, FrTrm],
 	ExFla = ( ? Svars1 : ( ( X = Trm1 ) & Frm1)),
 	Def = ( ! [(X : $true)|Context] : ( InPred <=> ExFla ) ),
 	Var = FrTrm.
 
+%% mk_fraenkel_defs_top(+File, +Infos, -NewFrSyms, -NewDefs)
+%%
+%% Using Infos created by all_collect_top, fraenkels are defined
+%% and instantiated in the formulas (sharing vars with infos).
+%% The NewSym and GroundCopy of already created defs are passed in the loop,
+%% and the GroundCopy is checked first for being in the list when
+%% creating a new fraenkel def. If it already exists, the old symbol is
+%% used. This can hopefully be used to keep the naming of
+%% fraenkels stable across various invocations (e.g. when working only
+%% with article's exported items vs. when working with the full article) -
+%% remembering of these pairs across such invocations seems to be enough.
 %% NewDefs is a list of pairs [DefinedSymbol, Def] now
+
+/* old noncaching version to be removed after checks
 mk_fraenkel_defs_top(File, Infos, NewFrSyms, NewDefs):-
 	mk_fraenkel_defs(File, Infos, [], [], NewFrSyms, NewDefs),!.
 
@@ -538,6 +578,57 @@ mk_fraenkel_defs(File, [[V,C,Trm,GrC]|T], GrCopies, FrSyms,
 	mk_fraenkel_def(File, V, C, Trm, FrSyms, FrSyms1, NewSym, D),
 	mk_fraenkel_defs(File, T, [[NewSym,GrC]|GrCopies],
 			 FrSyms1, NewFrSyms, Defs).
+*/
+
+
+
+%% updates the fraenkel_cached predicate
+%% note that NewFrSyms is the new cached version, and does not
+%% necessarily correspond to NewDefs (i.e. some defs might
+%% not be created)
+mk_fraenkel_defs_top(File, Infos, NewFrSyms, NewDefs):-
+	(fraenkel_cached(File, CachedGround0, CachedFrSyms0) ->
+	    CachedGround = CachedGround0,
+	    CachedFrSyms = CachedFrSyms0
+	;
+	    CachedGround = [],
+	    CachedFrSyms = []
+	),
+	%% GrCopiesOut and CachedGround will generally overlap after this,
+	%% doing union is OK
+	mk_fraenkel_defs(File, Infos, [], GrCopiesOut, CachedFrSyms, CachedGround, NewFrSyms, NewDefs),!,
+	union(CachedGround, GrCopiesOut, NewCachedGround),
+	retractall(fraenkel_cached(File, _, _)),
+	assert(fraenkel_cached(File, NewCachedGround, NewFrSyms)).
+
+mk_fraenkel_defs(_, [], GrCopiesIn, GrCopiesIn, FrSyms, _, FrSyms, []).
+
+%% first check for being "totally processed"
+mk_fraenkel_defs(File, [[V,C,_,GrC]|T], GrCopiesIn, GrCopiesOut, FrSyms, CachedGround, NewFrSyms, Defs):-
+	member([FoundSym,GrC], GrCopiesIn), !,
+	split_svars(Vars, _, C),
+	V =.. [FoundSym|Vars],
+	mk_fraenkel_defs(File, T, GrCopiesIn, GrCopiesOut, FrSyms, CachedGround, NewFrSyms, Defs).
+
+%% if cached, create the def and put the GroundCopy into normal GrCopies,
+%% so that the def is not created again (it will get caught by the previous clause).
+%% FrSyms are unchenged, because they contain CachedSym already
+mk_fraenkel_defs(File, [[V,C,Trm,GrC]|T], GrCopiesIn, GrCopiesOut, FrSyms, CachedGround, 
+		 NewFrSyms, [[CachedSym,D]|Defs]):-
+	member([CachedSym,GrC], CachedGround), !,
+	mk_fraenkel_def(File, V, C, Trm, FrSyms, FrSyms, CachedSym, D),
+	mk_fraenkel_defs(File, T, [[CachedSym,GrC]|GrCopiesIn],
+			 GrCopiesOut, FrSyms, CachedGround, NewFrSyms, Defs).
+
+%% otherwise create the new def, update both GrCopies and FrSyms
+mk_fraenkel_defs(File, [[V,C,Trm,GrC]|T], GrCopiesIn, GrCopiesOut, FrSyms, CachedGround, 
+		 NewFrSyms, [[NewSym,D]|Defs]):-
+	mk_fraenkel_def(File, V, C, Trm, FrSyms, FrSyms1, NewSym, D),
+	mk_fraenkel_defs(File, T, [[NewSym,GrC]|GrCopiesIn], GrCopiesOut,
+			 FrSyms1, CachedGround, NewFrSyms, Defs).
+
+
+
 
 %%%%%%%%%%%%%%%%%%%% FOF accessors %%%%%%%%%%%%%%%%%%%%
 
@@ -2083,8 +2174,7 @@ print_nl(X):- print(X), nl, !.
 abstract_fraenkels(Article, Options, NewFrSyms, NewFlaNames):-
 	findall(Id,(fof_file(Article,Id),
 		    clause(fof(_,_,Fla,file(_,_),_),_,Id),
-		    collect_symbols_top(Fla,Syms),
-		    memberchk(all,Syms)),Ids), !,
+		    check_if_symbol(Fla, all)),Ids), !,
 	%% collect fraenkel infos and put variables into fraenkel flas
 	findall([[fof(R,R1,Out,R3,R4),Subst],Info],
 		(member(Id,Ids), clause(fof(R,R1,R2,R3,R4),_,Id),
@@ -2683,8 +2773,92 @@ print_problem(P,F,[_InferenceKinds,_PropositionKinds|Rest],Options,
 		_),
 	told.
 
+%%%%%%%%%%%%%%%%%%% ND problem creation %%%%%%%%%%%%%%%%%%%%%%%%%
 
+%% mk_nd_tree(F,_Prefix,_Options,P)
+%%
+%% Print all prerequisities for P and then P.
+%% Prerequisities are limited to what is inside a proof of a theorem
+%% top-level lemmas are not expanded.
+%% That means:
+%% get references of P, call mk_nd_tree on them, then print P.
+%% the recursion stops for things outside of P's prooflevel,
+%% and for assumptions.
+%% This is a tree traversal, and we want to print every node only once
+%% and at the earliest position. So we proceed depth-first, keep a list 
+%% of things that were requested to be printed, and a list of things
+%% that already were printed.
 
+%% the end of recursion
+
+mk_nd_tree(_,_,_,_,PrintedIn,PrintedIn,P):-
+	atom(P),
+	member(P,PrintedIn), !.
+
+mk_nd_tree(F,Lev,_Prefix,_Options,PrintedIn,[P|PrintedIn],P):-
+	atom(P),
+	get_ref_fof(P,fof(P,Role,_,file(F1,_),Info)),
+	(
+	  F \= F1
+	;
+	  Role = assumption
+	;
+	  member( mptp_info(_Nr,Lev1,MPropKind,_,_), Info),
+	  strict_sublevel(Lev,Lev1)
+	), !,
+	print_for_nd(P).
+
+mk_nd_tree(F,Lev,_Prefix,_Options,PrintedIn,PrintedOut,P):-
+	atom(P),
+	get_ref_fof(P,fof(P,Role,Fla,file(F,_),[mptp_info(_Nr,Lev1,MPropKind,position(Line,Col),Item_Info)
+					       |Rest_of_info])),
+	member( mizar_nd( inference(NDKind,NDOpts,NDRefs)), Rest_of_info), !,
+	(
+	  NDKind = discharge_asm,!,
+	  ensure( member( discharged(Discharged), NDOpts), mk_nd_tree(Rest_of_info)),
+	  %% ###TODO: make the discharging syntax better
+	  append(Discharged, NDRefs, AllRefs)
+	;
+	  NDKind = take,!,
+	  get_mizar_from_refs([P|NDRefs], AllRefs1),
+	  delete(AllRefs1, P, AllRefs)
+	;
+	  member(NDKind, [let, conclusion, consider, iterative_eq, trivial, percases]),
+	  (member( thesis_expansions(ThesExps), NDOpts) ->
+	      get_mizar_from_refs([P|NDRefs], AllRefs1),
+	      delete(AllRefs1, P, AllRefs)
+	  ;
+	      AllRefs = NDRefs
+	  )
+	),
+	subtract(AllRefs, PrintedIn, NewRefs),
+	mk_nd_tree_l(F,Lev,_Prefix,_Options,PrintedIn,PrintedTmp,NewRefs),
+	print_for_nd(P),
+	PrintedOut = [P | PrintedTmp].
+
+mk_nd_tree(F,Lev,_Prefix,_Options,PrintedIn,PrintedOut,P):-
+	atom(P),
+	get_ref_fof(P,fof(P,Role,Fla,file(F,_),[mptp_info(_Nr,Lev1,MPropKind,position(Line,Col),Item_Info)
+					       |Rest_of_info])),
+	member( inference(InfKind,InfOpts,InfRefs), Rest_of_info),
+	(
+	  InfKind = mizar_from,!,
+	  get_mizar_from_refs([P | InfRefs], AllRefs1),
+	  delete(AllRefs1, P, AllRefs)
+	;
+	  InfKind = mizar_by,!,
+	  get_mizar_by_refs([P | InfRefs], AllRefs1),
+	  delete(AllRefs1, P, AllRefs)
+	),
+	subtract(AllRefs, PrintedIn, NewRefs),
+	mk_nd_tree_l(F,Lev,_Prefix,_Options,PrintedIn,PrintedTmp,NewRefs),
+	print_for_nd(P),
+	PrintedOut = [P | PrintedTmp].
+
+mk_nd_tree_l(_,_,_,_,PrintedIn,PrintedIn,[]).
+mk_nd_tree_l(F,Lev,_Prefix,_Options,PrintedIn,PrintedOut,[H|T]):-
+	mk_nd_tree(F,Lev,_Prefix,_Options,PrintedIn,PrintedTmp,H),
+	mk_nd_tree_l(F,Lev,_Prefix,_Options,PrintedTmp,PrintedOut,T).
 
 %%%%%%%%%%%%%%%%%%%% MML loading and indexing %%%%%%%%%%%%%%%%%%%%
 
