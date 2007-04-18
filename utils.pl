@@ -2725,34 +2725,16 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	  )
 	),
 	
-	%% collect fraenkel infos and put variables into fraenkel flas
-	findall([fof(R,R1,Out,R3,R4),Info],
-		(
-		  member(R,AllRefs),
-		  get_ref_fof(R,fof(R,R1,R2,R3,R4)),
-		  all_collect_top(R2,Out,Info)
-		),
-		S1),
-	zip(Flas, Infos1, S1),
-	append_l(Infos1,Infos),
-	
-	%% instantiate fraenkels with their defs, create the defs
-	%% this is now needed only for the remaining fraenkels not contained
-	%% in the current article; ###TODO: it will currently break with opt_MK_TPTP_INF
-	concat_atom([F,'_spc'],FSpec),
-	mk_fraenkel_defs_top(FSpec, Infos, NewFrSyms, Defs0),
-	zip(_NewSyms, Defs, Defs0),
-
 	print_problem(P,F,[InferenceKinds,PropositionKinds|Rest],Options,
-	      Outfile,Line,Col,Defs,AllRefs,Flas).
+	      Outfile,Line,Col,AllRefs).
 
 
 %% print_problem(+ProblemName,+Article,[+InferenceKinds,+PropositionKinds|+Rest],+Options,
-%%               +Outfile,+Line,+Column,+FraenkelDefs,+AllRefs,+AllFofs)
+%%               +Outfile,+Line,+Column,+AllRefs)
 %%
 %% Print problem ProblemName into OutFile, doing sort transformation.
 print_problem(P,F,[_InferenceKinds,_PropositionKinds|Rest],Options,
-	      Outfile,Line,Col,Defs,AllRefs,AllFofs):-
+	      Outfile,Line,Col,AllRefs):-
 	
 	tell(Outfile),
 	format('% Mizar problem: ~w,~w,~w,~w ~n', [P,F,Line,Col]),
@@ -2762,33 +2744,13 @@ print_problem(P,F,[_InferenceKinds,_PropositionKinds|Rest],Options,
 	    true
 	),
 	
-	%% print sort-transformed fraenkel defs
-	findall(dummy,
-		(
-		  nth1(Pos,Defs,D),
-		  sort_transform_top(D,D1),
-		  numbervars(D1,0,_),
-		  print(fof(Pos,axiom,D1,file(F,Pos),[fraenkel])),
-		  write('.'),nl
-		),
-		_),
-	
-	%% add Extensionality axiom if fraenkel defs introduced
-	((member(_,Defs),not(member(t2_tarski,AllRefs))) ->
-	    Refs1 = [t2_tarski|AllRefs],
-	    get_ref_fof(t2_tarski, Extensionality),
-	    Fofs1 = [Extensionality | AllFofs]
-	;
-	    Refs1 = AllRefs,
-	    Fofs1 = AllFofs
-	),
-	delete(Refs1, P, ProperRefs1),
+	delete(AllRefs, P, ProperRefs1),
 
 	%% print sort-transformed axioms and conjecture
 	findall(dummy,
 		(
-		  member(Q,Refs1),
-		  member(fof(Q,_Q1,Q2,Q3,Q4), Fofs1),
+		  member(Q,AllRefs),
+		  get_ref_fof(Q, fof(Q,_Q1,Q2,Q3,Q4)),
 		  sort_transform_top(Q2,SR2),
 		  numbervars([SR2,Q3,Q4],0,_),
 		  (Q=P ->
