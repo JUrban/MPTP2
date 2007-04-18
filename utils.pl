@@ -28,7 +28,7 @@ optimize_fraenkel. % :- fail.
 %% appends __Article to local constants, lemmas, etc. - use it for
 %% mixing local stuff from different articles consistently.
 %% (all atoms starting with c[0-9]+_
-absolute_locals.
+absolute_locals. %%:- fail.
 
 
 %% debugging, Flags can be: [dbg_FRAENKELS,dbg_CLUSTERS,dbg_LEVEL_REFS]
@@ -179,9 +179,13 @@ declare_mptp_predicates:-
  dynamic(abs_name/2),
  abolish(fraenkel_cached/3),
  dynamic(fraenkel_cached/3),
- index(fof(1,1,0,1,1)),
- index(fof(1,1,0,1)),
- index(fof_name(1,1)).
+ abolish(fraenkels_loaded/1),
+ dynamic(fraenkels_loaded/1).
+% index(fof(1,1,0,1,1)),
+% index(fof(1,1,0,1)).
+
+%% this makes things very slow, do not use it
+% index(fof_name(1,1)).
 
 %% collect subterms satisfying P with count, test by equality
 collect_with_count_top(Pred,Term,OutList,OutCounts):-
@@ -633,9 +637,9 @@ mk_fraenkel_defs(File, [[V,C,Trm,GrC]|T], GrCopiesIn, GrCopiesOut, FrSyms, Cache
 %%%%%%%%%%%%%%%%%%%% FOF accessors %%%%%%%%%%%%%%%%%%%%
 
 % should be unique for Ref
-get_ref_fla(Ref,Fla):- fof_name(Ref,Id),clause(fof(Ref,_,Fla,_,_),_,Id),!.
+get_ref_fla(Ref,Fla):- fof_name(Ref,Id),!,clause(fof(Ref,_,Fla,_,_),_,Id),!.
 get_ref_fof(Ref,fof(Ref,R1,R2,R3,R4)):-
-	fof_name(Ref,Id),
+	fof_name(Ref,Id),!,
 	clause(fof(Ref,R1,R2,R3,R4),_,Id),!.
 
 % not unique for Sec and Info
@@ -760,7 +764,7 @@ cl_needed_syms(_,_):- throw(cluster).
 
 %% return the level on which cluster must not be used
 get_cluster_proof_level(Ref,Lev):-
-	fof_name(Ref, Id),
+	fof_name(Ref, Id),!,
 	clause(fof(Ref,_,_,_,[Info|_]), _, Id),
 	Info = mptp_info(_,[],_,_,[proof_level(Lev)|_]), ! .
 
@@ -2208,6 +2212,11 @@ abstract_fraenkels(Article, Options, NewFrSyms, NewFlaNames):-
 	       [NIds,NDefs1]),
 	maplist(assert_fraenkel_def(Article), Defs1, NewFlaNames).
 
+abstract_fraenkels_if(Article):- fraenkels_loaded(Article),!.
+abstract_fraenkels_if(Article):-
+	abstract_fraenkels(Article, [], _, _),
+	assert(fraenkels_loaded(Article)),!.
+
 %%%%%%%%%%%% End of Installation of fraenkel definitions %%%%%%%%%%%%%%%%%%%%%
 
 %% test uniqueness of references inside Article, 
@@ -2387,7 +2396,9 @@ absolutize_locals(Article):-
 	repeat,
 	(
 	  fof_file(Article,Id),
-	  fof_name(Ref,Id),
+	  %% ##NOTE: indexing fof_name on second param makes things very slow,
+	  %% hence use clause/3 instead of fof_name/2 here
+	  clause( fof(Ref,_,_,_,_),_,Id),
 	  (
 	    atom_concat(_,ArticleSuffix,Ref) -> true
 	  ;
@@ -2497,11 +2508,29 @@ inference DAG:
 */
 
 
+%% ensure that fraenkels are abstracted in all prerequisities
+%% of Article (changes the fraenkels_loaded/1 predicate).
+%% calling install_index after this is a good idea
+abstract_prereq_fraenkels(Article):-
+	theory(Article, Theory),
+	member(constructors(Constrs),Theory),
+	member(registrations(Regs),Theory),
+	member(requirements(Reqs),Theory),
+	member(definitions(Defs),Theory),
+	member(theorems(Thms),Theory),
+	member(schemes(Schms),Theory),
+	union1([Constrs,Regs,Reqs,Defs,Thms,Schms],[],Prereqs),
+	checklist(abstract_fraenkels_if, Prereqs).
+	
 
 %% Kinds is a list [InferenceKinds, PropositionKinds | Rest]
 %% possible InferenceKinds are now [mizar_by, mizar_from, mizar_proof]
 %% possible PropositionKinds are now [theorem, scheme,cluster,fcluster,ccluster,rcluster,top_level_lemma, sublemma]
 %% Rest is a list now only possibly containing snow_spec, problem_list and subproblem_list.
+%%
+%% The fraenkeldef creation for the loaded MML is done on demand,
+%% by looking at article's theory, and remembering which fraenkels
+%% are done at a special predicate fraenkels_loaded/1.
 mk_article_problems(Article,Kinds,Options):-
 %	declare_mptp_predicates,
 %	load_mml,
@@ -2513,6 +2542,7 @@ mk_article_problems(Article,Kinds,Options):-
 	concat_atom([MMLDir, Article, '.sch2'],SCH),
 	%% remove the ovelapping mml parts first
 	retractall(fof(_,_,_,file(Article,_),_)),
+	retractall(fraenkels_loaded(Article)),
 	sublist(exists_file,[DCO],ToLoad1),
 	load_files(ToLoad1,[silent(true)]),
 	consult(File),
@@ -2520,6 +2550,7 @@ mk_article_problems(Article,Kinds,Options):-
 	once(assert_sch_instances(Article,Options)),
 	install_index,
 	abstract_fraenkels(Article, [], _, _),
+	abstract_prereq_fraenkels(Article),
 	install_index,
 
 
@@ -2561,10 +2592,14 @@ mk_article_problems(Article,Kinds,Options):-
 				      shell(Command)); true),
 	make_directory(Dir),
 	repeat,(mk_problem(_,Article,Dir,Kinds2,Options),fail; !,true),
-%% retract current file but return mml parts
+	%% retract current file but return mml parts,
 	retractall(fof(_,_,_,file(Article,_),_)),
 	sublist(exists_file,[DCL,DCO,THE,SCH],ToLoad),
 	load_files(ToLoad,[silent(true)]).
+	%% abstracting here would not work, since the index is broken
+	%% at this moment
+%	abstract_fraenkels(Article, [], _, _),
+%	assert(fraenkels_loaded(Article)).
 %	retractall(fof(_,_,_,file(Article,_),[mptp_info(_,_,proposition,_,_)|_])),
 %	retractall(fof(_,_,_,file(Article,_),[mptp_info(_,_,constant,_,_)|_])),!.
 
@@ -2937,57 +2972,69 @@ install_index:-
 	dynamic(fof_parentlevel/2),
 	abolish(fof_cluster/3),
 	abolish(fof_req/3),
-	index(fof_name(1,1)),
+%	index(fof_name(1,1)),
 %	add_hidden,
 	logic_syms(LogicSyms),
-%	repeat,
-%	( clause(fof(Ref,_,_,_,_),_,Id),
-%	    assert(fof_name(Ref, Id)), fail; true),
 	repeat,
-	( clause(fof(Ref,_,_,file(File1,Sec1), _),_,Id),
-	    assert(fof_name(Ref, Id)),
-	    assert(fof_file(File1, Id)),
-	    assert(fof_section(Sec1, Id)), fail; true),
+	(
+	  clause(fof(Ref1,Role1,Fla1,file(File1,Sec1), [mptp_info(_,L_1,MKind,_,_)|_]),_,Id),
+	  assert(fof_name(Ref1, Id)),
+	  assert(fof_file(File1, Id)),
+	  assert(fof_section(Sec1, Id)),
+	  assert_level(L_1,Id),
+	  assert_syms(MKind,Ref1,Role1,L_1,Fla1,File1,Id,LogicSyms),
+	  fail
+	;
+	  true
+	),
+	findall(Llev1, fof_level(Llev1, _), Levs),
+	sort(Levs, Levs1),!,
 	repeat,
-	( clause(fof(_,definition,KDef,_,
-		     [mptp_info(_,[],definition,_,_)|_]),_,Id),
-	    strip_univ_quant(KDef, ( KTerm = _)),
-	    nonvar(KTerm),
-	    KTerm =..[KFun|_],
-	    atom_chars(KFun,[k|_]),
-	    assert(fof_eq_def(KFun, Id)), fail; true),
-%	repeat,
-%	( clause(fof(_,_,_,file(_,Sec1), _),_,Id),
-%	    assert(fof_section(Sec1, Id)), fail; true),
-	findall(L_l, (
-		       clause(fof(_,_,_,_,[mptp_info(_,L_l,_,_,_)|_]),_,Id),
-		       L_l = [_|_],
-		       level_atom(L_l,Lev1),
-		       assert(fof_level(Lev1, Id))), Levs),
-	sort(Levs,Levs1),
-	repeat,
-	( member(L_l1,Levs1),
-	    L_l1 = [_,_|_],
-	    level_atom(L_l1,Lev1),
-	    append(L2, [_], L_l1),
-	    level_atom(L2,Lev2),
-	    assert(fof_parentlevel(Lev2,Lev1)), fail; true),
-	findall(d, (
-		     member(Cl,[fcluster,ccluster]),
-		     fof(Ref,_,Fla,file(F,_),[mptp_info(_,_,Cl,_,_)|_]),
-		     cl_needed_syms_top(Fla,AnteSyms),
-		     assert(fof_cluster(F,Ref,AnteSyms))), _),
-	findall(d, (
-		     fof(Ref,_,Fla,file(F,_),[mptp_info(_,_,rcluster,_,_)|_]),
-		     collect_symbols_top(Fla,AllSyms),
-		     subtract(AllSyms,LogicSyms,Syms),
-		     assert(fof_cluster(F,Ref,AnteSyms))), _),
-	findall(d, (
-		     member(F,[numerals, boole, subset, arithm, real]),
-		     fof(Ref,_,Fla,file(F,_),[mptp_info(_,_,theorem,_,_)|_]),
-		     collect_symbols_top(Fla,AllSyms),
-		     subtract(AllSyms,LogicSyms,Syms),
-		     assert(fof_req(F,Ref,Syms))), _).
+	(
+	  member(Lev1,Levs1),
+	  level_atom(L_l1,Lev1),
+	  L_l1 = [_,_|_],
+	  append(L2, [_], L_l1),
+	  level_atom(L2, Lev2),
+	  assert(fof_parentlevel(Lev2,Lev1)),
+	  fail
+	;
+	  true
+	),!.
+	
+
+
+assert_level([H|T],Id):- !,level_atom([H|T],Lev1), assert(fof_level(Lev1, Id)).
+assert_level(_,_).
+
+
+assert_syms(rcluster,Ref1,_,_,Fla1,File1,_,LogicSyms):- !,
+	    collect_symbols_top(Fla1,AllSyms),
+	    subtract(AllSyms,LogicSyms,Syms),
+	    assert(fof_cluster(File1,Ref1,Syms)).
+
+assert_syms(definition,_,definition,[],Fla1,_,Id,_):-
+	strip_univ_quant(Fla1, ( KTerm = _)),
+	nonvar(KTerm),
+	KTerm =..[KFun|_],
+	atom_chars(KFun,[k|_]),
+	assert(fof_eq_def(KFun, Id)),!.
+
+assert_syms(fcluster,Ref1,_,_,Fla1,File1,_,_):- !,
+	cl_needed_syms_top(Fla1,AnteSyms),
+	assert(fof_cluster(File1,Ref1,AnteSyms)).
+
+assert_syms(ccluster,Ref1,_,_,Fla1,File1,_,_):- !,
+	cl_needed_syms_top(Fla1,AnteSyms),
+	assert(fof_cluster(File1,Ref1,AnteSyms)).
+
+assert_syms(theorem,Ref1,_,_,Fla1,File1,_,LogicSyms):-
+	member(File1,[numerals, boole, subset, arithm, real]),!,
+	collect_symbols_top(Fla1,AllSyms),
+	subtract(AllSyms,LogicSyms,Syms),
+	assert(fof_req(File1,Ref1,Syms)).
+
+assert_syms(_,_,_,_,_,_,_,_) :- !.
 
 
 fraenkel_ths(S):-
