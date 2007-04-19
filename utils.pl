@@ -2552,7 +2552,12 @@ mk_article_problems(Article,Kinds,Options):-
 	abstract_fraenkels(Article, [], _, _),
 	abstract_prereq_fraenkels(Article),
 	install_index,
-
+	%% create the table of local-to-global names if absolute_locals
+	(absolute_locals -> absolutize_locals(Article); true),
+	concat_atom(['problems/',Article,'/'],Dir),
+	(exists_directory(Dir) -> (string_concat('rm -r -f ', Dir, Command),
+				      shell(Command)); true),
+	make_directory(Dir),
 
 	%% now take care of possible subproblem_list option -
 	%% create a problem_list from all local mizar_proof references which have the inference slot;
@@ -2584,14 +2589,9 @@ mk_article_problems(Article,Kinds,Options):-
 	;
 	    Kinds2 = Kinds1
 	),
-	
-	%% create the table of local-to-global names if absolute_locals
-	(absolute_locals -> absolutize_locals(Article); true),
-	concat_atom(['problems/',Article,'/'],Dir),
-	(exists_directory(Dir) -> (string_concat('rm -r -f ', Dir, Command),
-				      shell(Command)); true),
-	make_directory(Dir),
+		
 	repeat,(mk_problem(_,Article,Dir,Kinds2,Options),fail; !,true),
+	
 	%% retract current file but return mml parts,
 	retractall(fof(_,_,_,file(Article,_),_)),
 	sublist(exists_file,[DCL,DCO,THE,SCH],ToLoad),
@@ -2786,76 +2786,122 @@ print_problem(P,F,[_InferenceKinds,_PropositionKinds|Rest],Options,
 %% of things that were requested to be printed, and a list of things
 %% that already were printed.
 
+
+mk_nd_problem(P,F,Prefix,Options):-
+	fof_file(F,Id),
+	clause(fof(P,theorem,_,file(F,P),[mptp_info(_,_,_,position(Line,Col),_),
+					  inference(mizar_proof,[proof_level(Lev)|_],_)|_]),_,Id),
+	(member(opt_LINE_COL_NMS, Options) ->
+	    concat_atom([Prefix,F,'__',Line,'_',Col],Outfile)
+	;
+	    concat_atom([Prefix,F,'__',P],Outfile)
+	),
+	tell(Outfile),
+	format('% Mizar ND problem: ~w,~w,~w,~w ~n', [P,F,Line,Col]),
+	mk_nd_tree1(F,Lev,[],_,P),
+	told.
+
+
 %% the end of recursion
 
-mk_nd_tree(_,_,_,_,PrintedIn,PrintedIn,P):-
-	atom(P),
-	member(P,PrintedIn), !.
+mk_nd_tree(_,_,PrintedIn,PrintedIn,P):- memberchk(P,PrintedIn), !.
 
-mk_nd_tree(F,Lev,_Prefix,_Options,PrintedIn,[P|PrintedIn],P):-
-	atom(P),
-	get_ref_fof(P,fof(P,Role,_,file(F1,_),Info)),
+mk_nd_tree(F,Lev,PrintedIn,[P|PrintedIn],P):-
+	get_ref_fof(P,fof(P,Role,_,file(F1,_),[ mptp_info(_Nr,Lev1,_MPropKind,_,Spc)|_Info])),
 	(
-	  F \= F1
+	  F \= F1,!
 	;
-	  Role = assumption
+	  Role = assumption,!
 	;
-	  member( mptp_info(_Nr,Lev1,MPropKind,_,_), Info),
-	  strict_sublevel(Lev,Lev1)
+	  Role = axiom,! %% for henkins
+	;
+	  strict_sublevel(Lev,Lev1),!
+	;
+	  Role = definition,
+	  Spc = [reconsider, equality],!
 	), !,
-	print_for_nd(P).
+	print_for_nd(P,axiom,[]).
 
-mk_nd_tree(F,Lev,_Prefix,_Options,PrintedIn,PrintedOut,P):-
-	atom(P),
-	get_ref_fof(P,fof(P,Role,Fla,file(F,_),[mptp_info(_Nr,Lev1,MPropKind,position(Line,Col),Item_Info)
-					       |Rest_of_info])),
+
+mk_nd_tree(F,Lev,PrintedIn,PrintedOut,P):- mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P),!.
+mk_nd_tree(_,_,_,_,P):- throw(mk_nd_tree(unhandled,P)).
+
+%% renamed to have an easy start for the initial clause in mk_nd_problem,
+%% which would otherwise be caught by the second clause of mk_nd_tree
+mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P):-
+	get_ref_fof(P,fof(P,_,_,file(F,_),[mptp_info(_,_,_,_,_)
+					  |Rest_of_info])),
 	member( mizar_nd( inference(NDKind,NDOpts,NDRefs)), Rest_of_info), !,
 	(
 	  NDKind = discharge_asm,!,
 	  ensure( member( discharged(Discharged), NDOpts), mk_nd_tree(Rest_of_info)),
 	  %% ###TODO: make the discharging syntax better
-	  append(Discharged, NDRefs, AllRefs)
+	  append(Discharged, NDRefs, AllRefs2),
+	  (member( thesis_expansions(ThesExps), NDOpts) ->
+	      get_mizar_inf_refs(F, P, AllRefs2, mizar_from, AllRefs1),
+	      delete(AllRefs1, P, AllRefs)
+	  ;
+	      AllRefs = AllRefs2
+	  )
 	;
 	  NDKind = take,!,
-	  get_mizar_from_refs([P|NDRefs], AllRefs1),
+	  %% this takes care of the possible expansions automatically
+	  get_mizar_inf_refs(F, P, NDRefs, mizar_from, AllRefs1),
 	  delete(AllRefs1, P, AllRefs)
 	;
 	  member(NDKind, [let, conclusion, consider, iterative_eq, trivial, percases]),
 	  (member( thesis_expansions(ThesExps), NDOpts) ->
-	      get_mizar_from_refs([P|NDRefs], AllRefs1),
+	      get_mizar_inf_refs(F, P, NDRefs, mizar_from, AllRefs1),
 	      delete(AllRefs1, P, AllRefs)
 	  ;
 	      AllRefs = NDRefs
 	  )
 	),
 	subtract(AllRefs, PrintedIn, NewRefs),
-	mk_nd_tree_l(F,Lev,_Prefix,_Options,PrintedIn,PrintedTmp,NewRefs),
-	print_for_nd(P),
+	mk_nd_tree_l(F,Lev,PrintedIn,PrintedTmp,NewRefs),
+	print_for_nd(P, NDKind, AllRefs),
 	PrintedOut = [P | PrintedTmp].
 
-mk_nd_tree(F,Lev,_Prefix,_Options,PrintedIn,PrintedOut,P):-
-	atom(P),
-	get_ref_fof(P,fof(P,Role,Fla,file(F,_),[mptp_info(_Nr,Lev1,MPropKind,position(Line,Col),Item_Info)
-					       |Rest_of_info])),
-	member( inference(InfKind,InfOpts,InfRefs), Rest_of_info),
-	(
-	  InfKind = mizar_from,!,
-	  get_mizar_from_refs([P | InfRefs], AllRefs1),
-	  delete(AllRefs1, P, AllRefs)
-	;
-	  InfKind = mizar_by,!,
-	  get_mizar_by_refs([P | InfRefs], AllRefs1),
-	  delete(AllRefs1, P, AllRefs)
-	),
+mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P):-
+	get_ref_fof(P,fof(P,_,_,file(F,_),[mptp_info(_,_,_,_,_)
+					  |Rest_of_info])), !,
+	member( inference(InfKind,_InfOpts,InfRefs), Rest_of_info),
+	ensure( member(InfKind, [mizar_by, mizar_from]), mk_nd_tree(P,InfKind)),
+	get_mizar_inf_refs(F, P, InfRefs, InfKind, AllRefs1),
+	delete(AllRefs1, P, AllRefs),
 	subtract(AllRefs, PrintedIn, NewRefs),
-	mk_nd_tree_l(F,Lev,_Prefix,_Options,PrintedIn,PrintedTmp,NewRefs),
-	print_for_nd(P),
+	mk_nd_tree_l(F,Lev,PrintedIn,PrintedTmp,NewRefs),
+	print_for_nd(P, InfKind, AllRefs),
 	PrintedOut = [P | PrintedTmp].
 
-mk_nd_tree_l(_,_,_,_,PrintedIn,PrintedIn,[]).
-mk_nd_tree_l(F,Lev,_Prefix,_Options,PrintedIn,PrintedOut,[H|T]):-
-	mk_nd_tree(F,Lev,_Prefix,_Options,PrintedIn,PrintedTmp,H),
-	mk_nd_tree_l(F,Lev,_Prefix,_Options,PrintedTmp,PrintedOut,T).
+
+
+mk_nd_tree_l(_,_,PrintedIn,PrintedIn,[]).
+mk_nd_tree_l(F,Lev,PrintedIn,PrintedOut,[H|T]):-
+	mk_nd_tree(F,Lev,PrintedIn,PrintedTmp,H),
+	mk_nd_tree_l(F,Lev,PrintedTmp,PrintedOut,T).
+
+get_mizar_inf_refs(File, P, Refs, InfKind, AllRefs):-
+	fof_name(P, Id1),
+	nth_clause(_, Pos1, Id1),
+	clause(fof(P,_,Fla,_,[mptp_info(_,Lev,_,_,_)|_]),_,Id1),
+	maplist(get_ref_fla, Refs, Flas1),
+	collect_symbols_top( [Fla | Flas1], Syms1),
+	%% ###TODO: for reconsidered type, following is enough instead of fixpoint
+	%% AllRefs1 = [P|Refs]
+	once(fixpoint(File, [Pos1, Lev], InfKind, [P|Refs], [], Syms1, AllRefs)).
+
+print_for_nd(Q,InfKind,Refs):-
+	get_ref_fof(Q, fof(Q,Q1,Q2,Q3,_Q4)),
+	sort_transform_top(Q2,SR2),
+	numbervars(SR2,0,_),
+	(InfKind = axiom ->
+	    print(fof(Q,Q1,SR2,Q3,[axiom]))
+	;
+	    print(fof(Q,Q1,SR2,inference(InfKind,[],Refs),[Q3]))
+	),
+	write('.'), nl.
+
 
 %%%%%%%%%%%%%%%%%%%% MML loading and indexing %%%%%%%%%%%%%%%%%%%%
 
