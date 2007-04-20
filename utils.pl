@@ -42,6 +42,7 @@ dbg(_,_).
 %%%%%%%%%%%%%%%%%%%% Options %%%%%%%%%%%%%%%%%%%%
 opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme instances
 	       opt_MK_TPTP_INF,		%% better tptp inference slot and no mptp_info
+	       opt_TPTPFIX_ND_ROLE,	%% make the role acceptable to GDV
 	       opt_LINE_COL_NMS,        %% problem are named LINE_COL instead
 	       opt_LEVEL_REF_INFO,      %% .refspec file with immediate references is printed
 	       opt_NO_FRAENKEL_CONST_GEN %% do not generalize local consts when abstracting fraenkels
@@ -180,7 +181,9 @@ declare_mptp_predicates:-
  abolish(fraenkel_cached/3),
  dynamic(fraenkel_cached/3),
  abolish(fraenkels_loaded/1),
- dynamic(fraenkels_loaded/1).
+ dynamic(fraenkels_loaded/1),
+ abolish(article_position/2),
+ dynamic(article_position/2).
 % index(fof(1,1,0,1,1)),
 % index(fof(1,1,0,1)).
 
@@ -738,6 +741,9 @@ one_pass(F,Pos,mizar_from,RefsIn,OldSyms,NewSyms,AddedRefs):-
 
 
 %% add symbol references until nothing added
+%% ###TODO: keep the refs of different kinds in separate lists,
+%%          so that the lookup using member/2 is not so expensive
+%%          (or just use the recorded db
 fixpoint(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
 	one_pass(F, Pos, InfKind, RefsIn, OldSyms, NewSyms, Refs1), !,
 	(Refs1 = [] -> RefsOut = RefsIn;
@@ -774,8 +780,7 @@ get_cluster_proof_level(Ref,_):-
 %% check that cluster is applicable to [Pos1,Lev1]
 %% only relevant if from the same file
 check_cluster_position(F,[Pos1,Lev1],F,Ref2):- !,
-	fof_name(Ref2, Id2),
-	nth_clause(_, Pos2, Id2),
+	ensure(article_position(Ref2,Pos2), throw(article_position(Ref2))),
 	dbg(dbg_CLUSTERS,
 	    format('Considering cluster: ~w,~w, position: ~w with [~w,~w] ~n',
 		   [Ref2,F,Pos2,Pos1,Lev1])),
@@ -2521,19 +2526,32 @@ abstract_prereq_fraenkels(Article):-
 	member(schemes(Schms),Theory),
 	union1([Constrs,Regs,Reqs,Defs,Thms,Schms],[],Prereqs),
 	checklist(abstract_fraenkels_if, Prereqs).
-	
 
-%% Kinds is a list [InferenceKinds, PropositionKinds | Rest]
-%% possible InferenceKinds are now [mizar_by, mizar_from, mizar_proof]
-%% possible PropositionKinds are now [theorem, scheme,cluster,fcluster,ccluster,rcluster,top_level_lemma, sublemma]
-%% Rest is a list now only possibly containing snow_spec, problem_list and subproblem_list.
+
+%% should be used only right after loading a full article File
+%% current usage is for determining clusters' area of validity in fixpoint
+install_article_positions(File):-
+	abolish(article_position/2),
+	dynamic(article_position/2),
+	flag(a_pos,_,0),
+	repeat,
+	(
+	  fof(Ref1,_,_,file(File,_),_),
+	  flag(a_pos, APos, APos + 1),
+	  assert(article_position(Ref1, APos)),
+	  fail
+	;
+	  true
+	),!.
+
+%% load_proper_article(+Article,+Options,-PostLoadFiles)
 %%
-%% The fraenkeldef creation for the loaded MML is done on demand,
-%% by looking at article's theory, and remembering which fraenkels
-%% are done at a special predicate fraenkels_loaded/1.
-mk_article_problems(Article,Kinds,Options):-
-%	declare_mptp_predicates,
-%	load_mml,
+%% Load all article reasoning parts, create the MPTP-added stuff
+%% like fraenkel defs, etc., prepare the problem directory and return
+%% it, and return list of files that will have to be reloaded,
+%% after retractall(fof(_,_,_,file(Article,_),_)), is run after
+%% the main processing.
+load_proper_article(Article,Options,PostLoadFiles):-
 	mml_dir_atom(MMLDir),
 	concat_atom([MMLDir, Article, '.xml2'],File),
 	concat_atom([MMLDir, Article, '.dcl2'],DCL),
@@ -2546,6 +2564,7 @@ mk_article_problems(Article,Kinds,Options):-
 	sublist(exists_file,[DCO],ToLoad1),
 	load_files(ToLoad1,[silent(true)]),
 	consult(File),
+	install_article_positions(Article),
 	install_index,
 	once(assert_sch_instances(Article,Options)),
 	install_index,
@@ -2554,10 +2573,42 @@ mk_article_problems(Article,Kinds,Options):-
 	install_index,
 	%% create the table of local-to-global names if absolute_locals
 	(absolute_locals -> absolutize_locals(Article); true),
+	sublist(exists_file,[DCL,DCO,THE,SCH],PostLoadFiles).
+
+%% prepare_for_article(+Article,+Options,-Dir,-PostLoadFiles)
+%%
+%% Load all article reasoning parts, create the MPTP-added stuff
+%% like fraenkel defs, etc., prepare the problem directory and return
+%% it, and return list of files that will have to be reloaded,
+%% after retractall(fof(_,_,_,file(Article,_),_)), is run after
+%% the main processing.
+prepare_for_article(Article,Options,Dir,PostLoadFiles):-
+	load_proper_article(Article,Options,PostLoadFiles),
 	concat_atom(['problems/',Article,'/'],Dir),
 	(exists_directory(Dir) -> (string_concat('rm -r -f ', Dir, Command),
 				      shell(Command)); true),
-	make_directory(Dir),
+	make_directory(Dir).
+
+%% make nd problems for an Article
+mk_article_nd_problems(Article,_Kinds,Options):-
+	prepare_for_article(Article,Options,Dir,PostLoadFiles),
+	assert_henkin_axioms(Article,[]),
+	install_index,
+	repeat,(mk_nd_problem(_,Article,Dir,Options),fail; !,true),	
+	retractall(fof(_,_,_,file(Article,_),_)),
+	load_files(PostLoadFiles,[silent(true)]).
+
+
+%% Kinds is a list [InferenceKinds, PropositionKinds | Rest]
+%% possible InferenceKinds are now [mizar_by, mizar_from, mizar_proof]
+%% possible PropositionKinds are now [theorem, scheme,cluster,fcluster,ccluster,rcluster,top_level_lemma, sublemma]
+%% Rest is a list now only possibly containing snow_spec, problem_list and subproblem_list.
+%%
+%% The fraenkeldef creation for the loaded MML is done on demand,
+%% by looking at article's theory, and remembering which fraenkels
+%% are done at a special predicate fraenkels_loaded/1.
+mk_article_problems(Article,Kinds,Options):-
+	prepare_for_article(Article,Options,Dir,PostLoadFiles),
 
 	%% now take care of possible subproblem_list option -
 	%% create a problem_list from all local mizar_proof references which have the inference slot;
@@ -2594,14 +2645,11 @@ mk_article_problems(Article,Kinds,Options):-
 	
 	%% retract current file but return mml parts,
 	retractall(fof(_,_,_,file(Article,_),_)),
-	sublist(exists_file,[DCL,DCO,THE,SCH],ToLoad),
-	load_files(ToLoad,[silent(true)]).
+	load_files(PostLoadFiles,[silent(true)]).
 	%% abstracting here would not work, since the index is broken
 	%% at this moment
 %	abstract_fraenkels(Article, [], _, _),
 %	assert(fraenkels_loaded(Article)).
-%	retractall(fof(_,_,_,file(Article,_),[mptp_info(_,_,proposition,_,_)|_])),
-%	retractall(fof(_,_,_,file(Article,_),[mptp_info(_,_,constant,_,_)|_])),!.
 
 
 %% create proving problem for a given proposition,
@@ -2675,11 +2723,12 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	  Inference_info = inference(InfKind0,InfInfo,Refs0),
 	  InfKind = InfKind0
 	),
-	fof_name(P, Id1),
+	% fof_name(P, Id1),
 	%% this is used to limit clusters to preceding clauses from the nitial file;
 	%% note that using the ordering of clauses in the initial file
 	%% can be quite fragile (e.g. adding of frankels and scheme instances,...)
-	nth_clause(_, Pos1, Id1),
+	%% OK, this is done safely now with article_position, nth_clause/3 was very slow
+	ensure(article_position(P,Pos1), throw(article_position(P))),
 %	filter_level_refs(Lev,Refs0,Refs),
 	
 	%% Compute references into AllRefs.
@@ -2788,7 +2837,7 @@ print_problem(P,F,[_InferenceKinds,_PropositionKinds|Rest],Options,
 
 
 mk_nd_problem(P,F,Prefix,Options):-
-	fof_file(F,Id),
+	(var(P) -> fof_file(F,Id); true),
 	clause(fof(P,theorem,_,file(F,P),[mptp_info(_,_,_,position(Line,Col),_),
 					  inference(mizar_proof,[proof_level(Lev)|_],_)|_]),_,Id),
 	(member(opt_LINE_COL_NMS, Options) ->
@@ -2798,16 +2847,16 @@ mk_nd_problem(P,F,Prefix,Options):-
 	),
 	tell(Outfile),
 	format('% Mizar ND problem: ~w,~w,~w,~w ~n', [P,F,Line,Col]),
-	mk_nd_tree1(F,Lev,[],_,P),
+	mk_nd_tree1(F,Lev,[],_,P,Options),
 	told.
 
 
 %% the end of recursion
 
-mk_nd_tree(_,_,PrintedIn,PrintedIn,P):- memberchk(P,PrintedIn), !.
+mk_nd_tree(_,_,PrintedIn,PrintedIn,P,_):- memberchk(P,PrintedIn), !.
 
-mk_nd_tree(F,Lev,PrintedIn,[P|PrintedIn],P):-
-	get_ref_fof(P,fof(P,Role,_,file(F1,_),[ mptp_info(_Nr,Lev1,_MPropKind,_,Spc)|_Info])),
+mk_nd_tree(F,Lev,PrintedIn,[P|PrintedIn],P,Options):-
+	get_ref_fof(P,fof(P,Role,_,file(F1,_),[ mptp_info(_Nr,Lev1,MPropKind,_,Spc)|_Info])),
 	(
 	  F \= F1,!
 	;
@@ -2815,20 +2864,25 @@ mk_nd_tree(F,Lev,PrintedIn,[P|PrintedIn],P):-
 	;
 	  Role = axiom,! %% for henkins
 	;
+	  %% ###TODO: shouldn't the level of sch. insts. be changed (they do not contain consts anyway now)?
+	  MPropKind = scheme_instance,! %% hack - their Lev1 is not [] now 
+	;
 	  strict_sublevel(Lev,Lev1),!
 	;
+	  Mpropkind = constant,
 	  Role = definition,
-	  Spc = [reconsider, equality],!
+	  Spc = [EqKind, equality|_],
+	  member(EqKind,[reconsider,takeasvar]),!
 	), !,
-	print_for_nd(P,axiom,[]).
+	print_for_nd(P,axiom,[],Options).
 
 
-mk_nd_tree(F,Lev,PrintedIn,PrintedOut,P):- mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P),!.
-mk_nd_tree(_,_,_,_,P):- throw(mk_nd_tree(unhandled,P)).
+mk_nd_tree(F,Lev,PrintedIn,PrintedOut,P,Options):- mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Options),!.
+mk_nd_tree(_,_,_,_,P,_):- throw(mk_nd_tree(unhandled,P)).
 
 %% renamed to have an easy start for the initial clause in mk_nd_problem,
 %% which would otherwise be caught by the second clause of mk_nd_tree
-mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P):-
+mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Options):-
 	get_ref_fof(P,fof(P,_,_,file(F,_),[mptp_info(_,_,_,_,_)
 					  |Rest_of_info])),
 	member( mizar_nd( inference(NDKind,NDOpts,NDRefs)), Rest_of_info), !,
@@ -2858,11 +2912,11 @@ mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P):-
 	  )
 	),
 	subtract(AllRefs, PrintedIn, NewRefs),
-	mk_nd_tree_l(F,Lev,PrintedIn,PrintedTmp,NewRefs),
-	print_for_nd(P, NDKind, AllRefs),
+	mk_nd_tree_l(F,Lev,PrintedIn,PrintedTmp,NewRefs,Options),
+	print_for_nd(P, NDKind, AllRefs,Options),
 	PrintedOut = [P | PrintedTmp].
 
-mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P):-
+mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Options):-
 	get_ref_fof(P,fof(P,_,_,file(F,_),[mptp_info(_,_,_,_,_)
 					  |Rest_of_info])), !,
 	member( inference(InfKind,_InfOpts,InfRefs), Rest_of_info),
@@ -2870,36 +2924,68 @@ mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P):-
 	get_mizar_inf_refs(F, P, InfRefs, InfKind, AllRefs1),
 	delete(AllRefs1, P, AllRefs),
 	subtract(AllRefs, PrintedIn, NewRefs),
-	mk_nd_tree_l(F,Lev,PrintedIn,PrintedTmp,NewRefs),
-	print_for_nd(P, InfKind, AllRefs),
+	mk_nd_tree_l(F,Lev,PrintedIn,PrintedTmp,NewRefs,Options),
+	print_for_nd(P, InfKind, AllRefs, Options),
 	PrintedOut = [P | PrintedTmp].
 
 
 
-mk_nd_tree_l(_,_,PrintedIn,PrintedIn,[]).
-mk_nd_tree_l(F,Lev,PrintedIn,PrintedOut,[H|T]):-
-	mk_nd_tree(F,Lev,PrintedIn,PrintedTmp,H),
-	mk_nd_tree_l(F,Lev,PrintedTmp,PrintedOut,T).
+mk_nd_tree_l(_,_,PrintedIn,PrintedIn,[],_).
+mk_nd_tree_l(F,Lev,PrintedIn,PrintedOut,[H|T],Options):-
+	mk_nd_tree(F,Lev,PrintedIn,PrintedTmp,H,Options),
+	mk_nd_tree_l(F,Lev,PrintedTmp,PrintedOut,T,Options).
 
 get_mizar_inf_refs(File, P, Refs, InfKind, AllRefs):-
-	fof_name(P, Id1),
-	nth_clause(_, Pos1, Id1),
-	clause(fof(P,_,Fla,_,[mptp_info(_,Lev,_,_,_)|_]),_,Id1),
+	get_ref_fof(P, fof(P,_,Fla,_,[mptp_info(_,Lev,_,_,_)|_])),
 	maplist(get_ref_fla, Refs, Flas1),
 	collect_symbols_top( [Fla | Flas1], Syms1),
+	ensure(article_position(P,Pos1), throw(article_position(P))),
 	%% ###TODO: for reconsidered type, following is enough instead of fixpoint
 	%% AllRefs1 = [P|Refs]
 	once(fixpoint(File, [Pos1, Lev], InfKind, [P|Refs], [], Syms1, AllRefs)).
 
-print_for_nd(Q,InfKind,Refs):-
-	get_ref_fof(Q, fof(Q,Q1,Q2,Q3,_Q4)),
+%% for parsing with TPTP tools, use
+%% Options = [opt_TPTPFIX_ND_ROLE, opt_MK_TPTP_INF],
+%% for more info, use Options = []
+print_for_nd(Q,InfKind,Refs,Options):-
+	get_ref_fof(Q, fof(Q,Q_1,Q2,Q3,Q4)),
+	%% fix the old lemm-derived format
+	%% ###TODO: regenerate the constructor files, then remove this
+	(Q_1 == lemma-derived ->
+	    Q1 = lemma_conjecture
+	;
+	    Q1 = Q_1
+	),
 	sort_transform_top(Q2,SR2),
 	numbervars(SR2,0,_),
-	(InfKind = axiom ->
-	    print(fof(Q,Q1,SR2,Q3,[axiom]))
+	(member( opt_MK_TPTP_INF, Options) ->
+	    UI0 = [Q3]
 	;
-	    print(fof(Q,Q1,SR2,inference(InfKind,[],Refs),[Q3]))
+	    UI0 = Q4
 	),
+	%% ###TODO: when the TPTP (and IDV) parser does not
+	%%          complain about empty list of parents,
+	%%          remove the triviality check
+	((InfKind = axiom; InfKind = trivial) ->
+	    S1 = Q3,
+	    UI1 = [InfKind|UI0]
+	;
+	    S1 = inference(InfKind,[],Refs),
+	    UI1 = [Q3,UI0]
+	),
+
+	(member( opt_TPTPFIX_ND_ROLE, Options) ->
+	    (InfKind = axiom ->
+		Role = axiom
+	    ;
+		Role = plain
+	    ),
+	    UI = [Q1 | UI1]
+	;
+	    Role = Q1,
+	    UI = UI1
+	),
+	print(fof(Q,Role,SR2,S1,UI)),
 	write('.'), nl.
 
 
@@ -2965,6 +3051,9 @@ strip_univ_quant(X,X).
 %% should be called only after addition of custom fof's like
 %% scheme instance, e.g.:
 %% declare_mptp_predicates,assert_sch_instances(File), install_index
+%% ##NOTE: article_positions are not installed here, that is done
+%%         only once after loading a full article, since that can change
+%%         later by doing e.g. the fraenkel abstraction
 install_index:-
 	abolish(fof_name/2),
 	dynamic(fof_name/2),
