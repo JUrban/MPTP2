@@ -2213,8 +2213,8 @@ abstract_fraenkels(Article, Options, NewFrSyms, NewFlaNames):-
 	checklist(assert, Fofs),
 	dbg(dbg_FRAENKELS, checklist(print_nl, Fofs)),
 	length(Defs1, NDefs1), length(Ids, NIds),
-	format('~p flas with fraenkel terms, ~p defs created ~n',
-	       [NIds,NDefs1]),
+	format('~w: ~p flas with fraenkel terms, ~p defs created ~n',
+	       [Article,NIds,NDefs1]),
 	maplist(assert_fraenkel_def(Article), Defs1, NewFlaNames).
 
 abstract_fraenkels_if(Article):- fraenkels_loaded(Article),!.
@@ -2821,6 +2821,10 @@ print_problem(P,F,[_InferenceKinds,_PropositionKinds|Rest],Options,
 
 %%%%%%%%%%%%%%%%%%% ND problem creation %%%%%%%%%%%%%%%%%%%%%%%%%
 
+%% Assumption control (these two seem sufficient):
+%% - each assumption in the inference tree is exactly once discharged
+%% - each assumption is only used in the subtree rooted at the point of its discharge
+
 %% mk_nd_tree(F,_Prefix,_Options,P)
 %%
 %% Print all prerequisities for P and then P.
@@ -2869,7 +2873,7 @@ mk_nd_tree(F,Lev,PrintedIn,[P|PrintedIn],P,Options):-
 	;
 	  strict_sublevel(Lev,Lev1),!
 	;
-	  Mpropkind = constant,
+	  MPropKind = constant,
 	  Role = definition,
 	  Spc = [EqKind, equality|_],
 	  member(EqKind,[reconsider,takeasvar]),!
@@ -2889,31 +2893,62 @@ mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Options):-
 	(
 	  NDKind = discharge_asm,!,
 	  ensure( member( discharged(Discharged), NDOpts), mk_nd_tree(Rest_of_info)),
-	  %% ###TODO: make the discharging syntax better
-	  append(Discharged, NDRefs, AllRefs2),
+	  %% if ThesExps, then prevthesis follows from (Discharged => P) & ThesExps,
+	  %% hence it is correct to add ThesExps to the fixpoint algo
 	  (member( thesis_expansions(ThesExps), NDOpts) ->
+	      append(Discharged, NDRefs, AllRefs2),
 	      get_mizar_inf_refs(F, P, AllRefs2, mizar_from, AllRefs1),
-	      delete(AllRefs1, P, AllRefs)
+	      delete(AllRefs1, P, AllRefs),
+	      subtract(AllRefs, ThesExps, AllRefs3),
+	      subtract(NDRefs, ThesExps, PureTheses),
+	      RefSlot = discharge(Discharged, PureTheses, AllRefs3)
 	  ;
-	      AllRefs = AllRefs2
+	      append(Discharged,NDRefs,AllRefs),
+	      RefSlot = discharge(Discharged, NDRefs)
 	  )
 	;
 	  NDKind = take,!,
 	  %% this takes care of the possible expansions automatically
 	  get_mizar_inf_refs(F, P, NDRefs, mizar_from, AllRefs1),
-	  delete(AllRefs1, P, AllRefs)
+	  delete(AllRefs1, P, AllRefs),
+	  RefSlot = AllRefs
 	;
-	  member(NDKind, [let, conclusion, consider, iterative_eq, trivial, percases]),
+	  NDKind = let,!,
+	  %% we have to conduct additional discharging step
+	  %% for types of the local consts, i.e. ![X:t(X)]:p(X) is justified
+	  %% by p(c) discharged with assumption t(c) (this is the place where t(c)
+	  %% gets discharged), and dh_c (i.e. the inference slot is:
+	  %% infer(foo,[],[infer(discharge_asm,[discharged([t(c)])],[p(c)]),dh_c])
+	  %% if ThesExps occur - e.g. X c= Y expanded to ![X:t(X)]:p(X) by d1,
+	  %% then they and the bg are added to dh_c (i.e. the outer list of refs)
+	  findall(Hax,(member(Hax,NDRefs),atom_prefix(Hax,'dh_')),Henkin_Refs),
+	  maplist(atom_concat('dh_'),HC,Henkin_Refs),
+	  maplist(atom_concat('dt_'),HC,Sort_Refs),
+	  subtract(NDRefs, Henkin_Refs, PureTheses),
+	  (member( thesis_expansions(ThesExps), NDOpts) ->
+	      get_mizar_inf_refs(F, P, NDRefs, mizar_from, AllRefs1),
+	      delete(AllRefs1, P, AllRefs),
+	      append(PureTheses, Sort_Refs, AvoidInOuterInf),
+	      subtract(AllRefs, AvoidInOuterInf, OuterInfRefs),
+	      RefSlot = let(Sort_Refs, PureTheses, OuterInfRefs)
+	  ;
+	      AllRefs = NDRefs,
+	      RefSlot = let(Sort_Refs, PureTheses, Henkin_Refs)
+	      
+	  )
+	;
+	  member(NDKind, [conclusion, consider, iterative_eq, trivial, percases]),!,
 	  (member( thesis_expansions(ThesExps), NDOpts) ->
 	      get_mizar_inf_refs(F, P, NDRefs, mizar_from, AllRefs1),
 	      delete(AllRefs1, P, AllRefs)
 	  ;
 	      AllRefs = NDRefs
-	  )
+	  ),
+	  RefSlot = AllRefs
 	),
 	subtract(AllRefs, PrintedIn, NewRefs),
 	mk_nd_tree_l(F,Lev,PrintedIn,PrintedTmp,NewRefs,Options),
-	print_for_nd(P, NDKind, AllRefs,Options),
+	print_for_nd(P, NDKind, RefSlot,Options),
 	PrintedOut = [P | PrintedTmp].
 
 mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Options):-
@@ -2925,7 +2960,7 @@ mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Options):-
 	delete(AllRefs1, P, AllRefs),
 	subtract(AllRefs, PrintedIn, NewRefs),
 	mk_nd_tree_l(F,Lev,PrintedIn,PrintedTmp,NewRefs,Options),
-	print_for_nd(P, InfKind, AllRefs, Options),
+	print_for_nd(P, InfKind,  AllRefs, Options),
 	PrintedOut = [P | PrintedTmp].
 
 
@@ -2970,13 +3005,32 @@ print_for_nd(Q,InfKind,Refs,Options):-
 	    S1 = Q3,
 	    UI1 = [InfKind|UI0]
 	;
-	    S1 = inference(InfKind,[],Refs),
+	    (
+	      InfKind = discharge_asm,!,
+	      (
+		Refs = discharge(Disch, Thes),!,
+		S1 = inference(InfKind,[discharged(Disch)],Thes)
+	      ;
+		Refs = discharge(Disch, Thes, DefsAndBG),
+		S1 = inference(mizar_def_expansion,[],[inference(InfKind,[discharged(Disch)],Thes)|DefsAndBG])
+	      )
+	    ;
+	      InfKind = let,!,
+	      Refs = let(Sort_Refs, PureTheses, OuterInfRefs),
+	      S1 = inference(let,[],[inference(discharge_asm,[discharged(Sort_Refs)],PureTheses)|OuterInfRefs])
+	    ;
+	      S1 = inference(InfKind,[],Refs)
+	    ),
 	    UI1 = [Q3,UI0]
 	),
 
 	(member( opt_TPTPFIX_ND_ROLE, Options) ->
-	    (InfKind = axiom ->
-		Role = axiom
+	    %% ###TODO: when the TPTP (and IDV) parser does not
+	    %%          complain about empty list of parents, or when
+	    %%          AGint is fixed to consider plain as axiom,
+	    %%          remove the triviality check
+	    ((InfKind = axiom; InfKind = trivial) ->
+		(Q1= assumption -> Role = Q1; Role = axiom)
 	    ;
 		Role = plain
 	    ),
