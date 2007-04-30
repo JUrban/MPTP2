@@ -2571,8 +2571,6 @@ load_proper_article(Article,Options,PostLoadFiles):-
 	abstract_fraenkels(Article, [], _, _),
 	abstract_prereq_fraenkels(Article),
 	install_index,
-	%% create the table of local-to-global names if absolute_locals
-	(absolute_locals -> absolutize_locals(Article); true),
 	sublist(exists_file,[DCL,DCO,THE,SCH],PostLoadFiles).
 
 %% prepare_for_article(+Article,+Options,-Dir,-PostLoadFiles)
@@ -2594,6 +2592,9 @@ mk_article_nd_problems(Article,_Kinds,Options):-
 	prepare_for_article(Article,Options,Dir,PostLoadFiles),
 	assert_henkin_axioms(Article,[]),
 	install_index,
+	%% create the table of local-to-global names if absolute_locals
+	(absolute_locals -> absolutize_locals(Article); true),
+
 	repeat,(mk_nd_problem(_,Article,Dir,Options),fail; !,true),	
 	retractall(fof(_,_,_,file(Article,_),_)),
 	load_files(PostLoadFiles,[silent(true)]).
@@ -2609,6 +2610,8 @@ mk_article_nd_problems(Article,_Kinds,Options):-
 %% are done at a special predicate fraenkels_loaded/1.
 mk_article_problems(Article,Kinds,Options):-
 	prepare_for_article(Article,Options,Dir,PostLoadFiles),
+	%% create the table of local-to-global names if absolute_locals
+	(absolute_locals -> absolutize_locals(Article); true),
 
 	%% now take care of possible subproblem_list option -
 	%% create a problem_list from all local mizar_proof references which have the inference slot;
@@ -2839,11 +2842,25 @@ print_problem(P,F,[_InferenceKinds,_PropositionKinds|Rest],Options,
 %% of things that were requested to be printed, and a list of things
 %% that already were printed.
 
-
+%% now works also for top-level propositions proved by mizar_by or mizar_from
+%% (to make the article tree complete)
+%% the level is in that case forged to [0], to prevent recursion into other
+%% top-level propositions
 mk_nd_problem(P,F,Prefix,Options):-
 	(var(P) -> fof_file(F,Id); true),
-	clause(fof(P,theorem,_,file(F,P),[mptp_info(_,_,_,position(Line,Col),_),
-					  inference(mizar_proof,[proof_level(Lev)|_],_)|_]),_,Id),
+	clause(fof(P,Role1,Fla,file(F,P),[mptp_info(_,[],_,position(Line,Col),_),
+					  inference(InfKind,InfOpts,_)|_]),_,Id),
+	(
+	  Role1 = theorem,
+	  %% to avoid canceled theorems
+	  Fla \== $true
+	;
+	  Role1 = lemma_conjecture),
+	(InfKind = mizar_proof ->
+	    InfOpts = [proof_level(Lev)|_]
+	;
+	    Lev = [0]
+	),
 	(member(opt_LINE_COL_NMS, Options) ->
 	    concat_atom([Prefix,F,'__',Line,'_',Col],Outfile)
 	;
@@ -3030,7 +3047,8 @@ print_for_nd(Q,InfKind,Refs,Options):-
 	    %%          AGint is fixed to consider plain as axiom,
 	    %%          remove the triviality check
 	    ((InfKind = axiom; InfKind = trivial) ->
-		(Q1= assumption -> Role = Q1; Role = axiom)
+%		(Q1= assumption -> Role = Q1; Role = axiom)
+		Role = axiom
 	    ;
 		Role = plain
 	    ),
