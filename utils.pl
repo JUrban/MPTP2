@@ -2396,6 +2396,7 @@ get_proof_syms_and_flas(RefsIn, PLevel, PSyms, PRefs):-
 %%         of E prover are the same.
 absolutize_locals(Article):-
 	abolish(abs_name/2),
+	dynamic(abs_name/2),
 	atom_concat('_',Article,ArticleSuffix),
 	atom_concat('__',Article,ArticleSuffix1),!,
 	repeat,
