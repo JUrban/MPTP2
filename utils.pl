@@ -2869,42 +2869,45 @@ mk_nd_problem(P,F,Prefix,Options):-
 	),
 	tell(Outfile),
 	format('% Mizar ND problem: ~w,~w,~w,~w ~n', [P,F,Line,Col]),
-	mk_nd_tree1(F,Lev,[],_,P,Options),
+	mk_nd_tree1(F,Lev,[],_,P,Assumptions,Options),
+	ensure((Assumptions == []), mk_nd_problem(nonempty_assumptions(P,Assumptions))),
 	told.
 
 
 %% the end of recursion
 
-mk_nd_tree(_,_,PrintedIn,PrintedIn,P,_):- memberchk(P,PrintedIn), !.
+mk_nd_tree(_,_,PrintedIn,PrintedIn,P,Assums,_):- memberchk([P,Assums],PrintedIn), !.
 
-mk_nd_tree(F,Lev,PrintedIn,[P|PrintedIn],P,Options):-
+mk_nd_tree(F,Lev,PrintedIn,[[P,Assums]|PrintedIn],P,Assums,Options):-
 	get_ref_fof(P,fof(P,Role,_,file(F1,_),[ mptp_info(_Nr,Lev1,MPropKind,_,Spc)|_Info])),
 	(
-	  F \= F1,!
+	  F \= F1, Assums = [], !
 	;
-	  Role = assumption,!
+	  Role = assumption, Assums = [P], !
 	;
-	  Role = axiom,! %% for henkins
+	  Role = axiom, Assums = [], ! %% for henkins
 	;
 	  %% ###TODO: shouldn't the level of sch. insts. be changed (they do not contain consts anyway now)?
-	  MPropKind = scheme_instance,! %% hack - their Lev1 is not [] now 
+	  MPropKind = scheme_instance, Assums = [], ! %% hack - their Lev1 is not [] now 
 	;
-	  strict_sublevel(Lev,Lev1),!
+	  strict_sublevel(Lev,Lev1), Assums = [], !
 	;
 	  MPropKind = constant,
 	  Role = definition,
 	  Spc = [EqKind, equality|_],
-	  member(EqKind,[reconsider,takeasvar]),!
+	  member(EqKind,[reconsider,takeasvar]),
+	  Assums = [], !
 	), !,
-	print_for_nd(P,axiom,[],Options).
+	print_for_nd(P,axiom,[],[],Options).
 
 
-mk_nd_tree(F,Lev,PrintedIn,PrintedOut,P,Options):- mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Options),!.
-mk_nd_tree(_,_,_,_,P,_):- throw(mk_nd_tree(unhandled,P)).
+mk_nd_tree(F,Lev,PrintedIn,PrintedOut,P,Assums,Options):- mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Assums,Options),!.
+mk_nd_tree(F,Lev,PrintedIn,PrintedOut,P,Assums,Options):-
+	throw(mk_nd_tree(unhandled,F,Lev,PrintedIn,PrintedOut,P,Assums,Options)).
 
 %% renamed to have an easy start for the initial clause in mk_nd_problem,
 %% which would otherwise be caught by the second clause of mk_nd_tree
-mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Options):-
+mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Assums,Options):-
 	get_ref_fof(P,fof(P,_,_,file(F,_),[mptp_info(_,_,_,_,_)
 					  |Rest_of_info])),
 	member( mizar_nd( inference(NDKind,NDOpts,NDRefs)), Rest_of_info), !,
@@ -2929,7 +2932,8 @@ mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Options):-
 	  %% this takes care of the possible expansions automatically
 	  get_mizar_inf_refs(F, P, NDRefs, mizar_from, AllRefs1),
 	  delete(AllRefs1, P, AllRefs),
-	  RefSlot = AllRefs
+	  RefSlot = AllRefs,
+	  Discharged = []
 	;
 	  NDKind = let,!,
 	  %% we have to conduct additional discharging step
@@ -2942,6 +2946,7 @@ mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Options):-
 	  findall(Hax,(member(Hax,NDRefs),atom_prefix(Hax,'dh_')),Henkin_Refs),
 	  maplist(atom_concat('dh_'),HC,Henkin_Refs),
 	  maplist(atom_concat('dt_'),HC,Sort_Refs),
+	  Discharged = Sort_Refs,
 	  subtract(NDRefs, Henkin_Refs, PureTheses),
 	  (member( thesis_expansions(ThesExps), NDOpts) ->
 	      get_mizar_inf_refs(F, P, NDRefs, mizar_from, AllRefs1),
@@ -2956,6 +2961,7 @@ mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Options):-
 	  )
 	;
 	  member(NDKind, [conclusion, consider, iterative_eq, trivial, percases]),!,
+	  Discharged = [],
 	  (member( thesis_expansions(ThesExps), NDOpts) ->
 	      get_mizar_inf_refs(F, P, NDRefs, mizar_from, AllRefs1),
 	      delete(AllRefs1, P, AllRefs)
@@ -2964,29 +2970,44 @@ mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Options):-
 	  ),
 	  RefSlot = AllRefs
 	),
-	subtract(AllRefs, PrintedIn, NewRefs),
-	mk_nd_tree_l(F,Lev,PrintedIn,PrintedTmp,NewRefs,Options),
-	print_for_nd(P, NDKind, RefSlot,Options),
-	PrintedOut = [P | PrintedTmp].
+	subtract_with_asms(AllRefs, PrintedIn, NewRefs, PrintedAssums),
+	mk_nd_tree_l(F, Lev, PrintedIn, PrintedTmp, NewRefs, NewAssums, Options),
+	union(PrintedAssums, NewAssums, Assums1),
+	subtract(Assums1, Discharged, Assums),
+	print_for_nd(P, NDKind, RefSlot, Assums, Options),
+	PrintedOut = [[P, Assums] | PrintedTmp].
 
-mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Options):-
+mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Assums,Options):-
 	get_ref_fof(P,fof(P,_,_,file(F,_),[mptp_info(_,_,_,_,_)
 					  |Rest_of_info])), !,
 	member( inference(InfKind,_InfOpts,InfRefs), Rest_of_info),
 	ensure( member(InfKind, [mizar_by, mizar_from]), mk_nd_tree(P,InfKind)),
 	get_mizar_inf_refs(F, P, InfRefs, InfKind, AllRefs1),
 	delete(AllRefs1, P, AllRefs),
-	subtract(AllRefs, PrintedIn, NewRefs),
-	mk_nd_tree_l(F,Lev,PrintedIn,PrintedTmp,NewRefs,Options),
-	print_for_nd(P, InfKind,  AllRefs, Options),
-	PrintedOut = [P | PrintedTmp].
+	subtract_with_asms(AllRefs, PrintedIn, NewRefs, PrintedAssums),
+	mk_nd_tree_l(F,Lev,PrintedIn,PrintedTmp,NewRefs, NewAssums, Options),
+	union(PrintedAssums, NewAssums, Assums),
+	print_for_nd(P, InfKind,  AllRefs, Assums, Options),
+	PrintedOut = [[P, Assums] | PrintedTmp].
 
 
+%% like subtract/3, but operates on lists of pairs instead,
+%% assuming that on the second place in each pair is a list (of its assumptions),
+%% and returns the union of all the subtracted guys' assumptions
+subtract_with_asms([], _, [], []):- !.
+subtract_with_asms([[A, AsmsA]|B], C, D, Asms) :-
+	memberchk([A, AsmsA], C), !,
+	subtract_with_asms(B, C, D, AsmsB),
+	union(AsmsA, AsmsB, Asms).
+subtract_with_asms([A|B], C, [A|D], Asms) :-
+	subtract_with_asms(B, C, D, Asms).
 
-mk_nd_tree_l(_,_,PrintedIn,PrintedIn,[],_).
-mk_nd_tree_l(F,Lev,PrintedIn,PrintedOut,[H|T],Options):-
-	mk_nd_tree(F,Lev,PrintedIn,PrintedTmp,H,Options),
-	mk_nd_tree_l(F,Lev,PrintedTmp,PrintedOut,T,Options).
+
+mk_nd_tree_l(_,_,PrintedIn,PrintedIn,[],[],_).
+mk_nd_tree_l(F,Lev,PrintedIn,PrintedOut,[H|T],Assums,Options):-
+	mk_nd_tree(F,Lev,PrintedIn,PrintedTmp,H,AssumsH,Options),
+	mk_nd_tree_l(F,Lev,PrintedTmp,PrintedOut,T,AssumsT,Options),
+	union(AssumsH, AssumsT, Assums).
 
 get_mizar_inf_refs(File, P, Refs, InfKind, AllRefs):-
 	get_ref_fof(P, fof(P,_,Fla,_,[mptp_info(_,Lev,_,_,_)|_])),
@@ -3000,12 +3021,19 @@ get_mizar_inf_refs(File, P, Refs, InfKind, AllRefs):-
 %% for parsing with TPTP tools, use
 %% Options = [opt_TPTPFIX_ND_ROLE, opt_MK_TPTP_INF],
 %% for more info, use Options = []
-print_for_nd(Q,InfKind,Refs,Options):-
+%% Refs are either just a list of references, or a
+%% term with top functor discharge or let (see below)
+%% for more complicated inferences
+print_for_nd(Q,InfKind,Refs,Assums,Options):-
 	get_ref_fof(Q, fof(Q,Q_1,Q2,Q3,Q4)),
 	%% fix the old lemm-derived format
 	%% ###TODO: regenerate the constructor files, then remove this
-	(Q_1 == lemma-derived ->
-	    Q1 = lemma_conjecture
+	(
+	  (Q_1 == lemma_conjecture; Q_1 == lemma-derived; Q_1 == thesis),!,
+	  Q1 = plain
+	;
+	  Q_1 == sort,!,
+	  Q1 = axiom
 	;
 	    Q1 = Q_1
 	),
@@ -3019,7 +3047,12 @@ print_for_nd(Q,InfKind,Refs,Options):-
 	%% ###TODO: when the TPTP (and IDV) parser does not
 	%%          complain about empty list of parents,
 	%%          remove the triviality check
-	((InfKind = axiom; InfKind = trivial) ->
+	Status = status(thm),
+	(
+	  (InfKind = axiom
+%	 ;
+%	  InfKind = trivial
+	 ) ->
 	    S1 = Q3,
 	    UI1 = [InfKind|UI0]
 	;
@@ -3027,17 +3060,35 @@ print_for_nd(Q,InfKind,Refs,Options):-
 	      InfKind = discharge_asm,!,
 	      (
 		Refs = discharge(Disch, Thes),!,
-		S1 = inference(InfKind,[discharged(Disch)],Thes)
+		subtract(Assums, Disch, NewAssums),
+		%% Thes are the proper refs, but Geoff wants also the
+		%% assumptions in the parent slot
+		union(Disch, Thes, UnionRefs), 
+		S1 = inference(discharge_asm,[Status, assumptions(NewAssums),
+					      discharge_asm(discharge,Disch)],UnionRefs)
 	      ;
 		Refs = discharge(Disch, Thes, DefsAndBG),
-		S1 = inference(mizar_def_expansion,[],[inference(InfKind,[discharged(Disch)],Thes)|DefsAndBG])
+		subtract(Assums, Disch, NewAssums),
+		%% Thes are the proper refs of the inner inference,
+		%% but Geoff wants also the assumptions in the parent slot
+		union(Disch, Thes, UnionRefs), 
+		DischInfer = inference(discharge_asm,[Status, assumptions(NewAssums),
+						      discharge_asm(discharge,Disch)],UnionRefs),
+		S1 = inference(mizar_def_expansion, [Status, assumptions(NewAssums)],
+			       [DischInfer | DefsAndBG])
 	      )
 	    ;
 	      InfKind = let,!,
 	      Refs = let(Sort_Refs, PureTheses, OuterInfRefs),
-	      S1 = inference(let,[],[inference(discharge_asm,[discharged(Sort_Refs)],PureTheses)|OuterInfRefs])
+	      subtract(Assums, Sort_Refs, NewAssums),
+	      %% PureTheses are the proper refs of the inner inference,
+	      %% but Geoff wants also the assumptions in the parent slot
+	      union(Sort_Refs, PureTheses, UnionRefs), 
+	      DischInfer = inference(discharge_asm,[Status, assumptions(NewAssums),
+						    discharge_asm(discharge,Sort_Refs)],UnionRefs),
+	      S1 = inference(let,[Status, assumptions(NewAssums)], [DischInfer|OuterInfRefs])
 	    ;
-	      S1 = inference(InfKind,[],Refs)
+	      S1 = inference(InfKind,[Status, assumptions(Assums)],Refs)
 	    ),
 	    UI1 = [Q3,UI0]
 	),
@@ -3057,10 +3108,11 @@ print_for_nd(Q,InfKind,Refs,Options):-
 	;
 	    Role = Q1,
 	    UI = UI1
-	),
+	),!,
 	print(fof(Q,Role,SR2,S1,UI)),
 	write('.'), nl.
 
+print_for_nd(Q,InfKind,Refs,Assums,Options):- throw(print_for_nd(Q,InfKind,Refs,Assums,Options)).
 
 %%%%%%%%%%%%%%%%%%%% MML loading and indexing %%%%%%%%%%%%%%%%%%%%
 
