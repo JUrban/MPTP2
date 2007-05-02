@@ -178,6 +178,8 @@ declare_mptp_predicates:-
  abolish(fof_req/3),
  abolish(abs_name/2),
  dynamic(abs_name/2),
+ abolish(fof_redefines/4),
+ dynamic(fof_redefines/4),
  abolish(fraenkel_cached/3),
  dynamic(fraenkel_cached/3),
  abolish(fraenkels_loaded/1),
@@ -2914,18 +2916,26 @@ mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Assums,Options):-
 	(
 	  NDKind = discharge_asm,!,
 	  ensure( member( discharged(Discharged), NDOpts), mk_nd_tree(Rest_of_info)),
+	  append(Discharged, NDRefs, AllRefs2),
 	  %% if ThesExps, then prevthesis follows from (Discharged => P) & ThesExps,
 	  %% hence it is correct to add ThesExps to the fixpoint algo
-	  (member( thesis_expansions(ThesExps), NDOpts) ->
-	      append(Discharged, NDRefs, AllRefs2),
-	      get_mizar_inf_refs(F, P, AllRefs2, mizar_from, AllRefs1),
-	      delete(AllRefs1, P, AllRefs),
-	      subtract(AllRefs, ThesExps, AllRefs3),
-	      subtract(NDRefs, ThesExps, PureTheses),
-	      RefSlot = discharge(Discharged, PureTheses, AllRefs3)
+	  (
+	    member( thesis_expansions(ThesExps), NDOpts),!,
+	    get_mizar_inf_refs(F, P, AllRefs2, mizar_from, AllRefs1),
+	    delete(AllRefs1, P, AllRefs),
+	    subtract(NDRefs, ThesExps, PureTheses),
+	    subtract(AllRefs, AllRefs2, AllRefs3),
+	    append(ThesExps, AllRefs3, AllRefs4),
+	    RefSlot = discharge(Discharged, PureTheses, AllRefs4)
 	  ;
-	      append(Discharged,NDRefs,AllRefs),
-	      RefSlot = discharge(Discharged, NDRefs)
+	    check_redefs(P,AllRefs2),!,
+	    get_mizar_inf_refs(F, P, AllRefs2, mizar_from, AllRefs1),
+	    delete(AllRefs1, P, AllRefs),
+	    subtract(AllRefs, AllRefs2, AllRefs3),
+	    RefSlot = discharge(Discharged, NDRefs, AllRefs3)
+	  ;
+	    append(Discharged,NDRefs,AllRefs),
+	    RefSlot = discharge(Discharged, NDRefs)
 	  )
 	;
 	  NDKind = take,!,
@@ -2962,7 +2972,7 @@ mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Assums,Options):-
 	;
 	  member(NDKind, [conclusion, consider, iterative_eq, trivial, percases]),!,
 	  Discharged = [],
-	  (member( thesis_expansions(ThesExps), NDOpts) ->
+	  ((member( thesis_expansions(ThesExps), NDOpts); check_redefs(P,NDRefs)) ->
 	      get_mizar_inf_refs(F, P, NDRefs, mizar_from, AllRefs1),
 	      delete(AllRefs1, P, AllRefs)
 	  ;
@@ -3009,6 +3019,47 @@ mk_nd_tree_l(F,Lev,PrintedIn,PrintedOut,[H|T],Assums,Options):-
 	mk_nd_tree_l(F,Lev,PrintedTmp,PrintedOut,T,AssumsT,Options),
 	union(AssumsH, AssumsT, Assums).
 
+%% check if P and any of Refs have different redefinition variants
+%% of the same original symbol; if so, typing needs to be added
+%% to any reasoning involving EqFrm or EqTrm in Mizar, i.e. the ND
+%% reasonings; the stronger version would be to check if the variants
+%% are present in symbols from all formulas
+check_redefs(P,Refs):-
+	maplist(get_ref_fla, [P| Refs], [Fla|Flas1]),
+	maplist(collect_symbols_top, [Fla,[Flas1]], [AllFlaSyms,AllRefSyms]),
+	logic_syms(LogicSyms),
+	subtract(AllFlaSyms, LogicSyms, FlaSyms),
+	subtract(AllRefSyms, LogicSyms, RefSyms),
+	findall([Redefs,Redefd],
+		(
+		  member(Redefs, FlaSyms),
+		  fof_redefines(Redefs,Redefd,_,_)
+		),
+		FlaRedefPairs),
+	findall([Redefs1,Redefd1],
+		(
+		  member(Redefs1,RefSyms),
+		  fof_redefines(Redefs1,Redefd1,_,_)
+		),
+		RefRedefPairs),!,
+	check_redefs_int(FlaRedefPairs,RefRedefPairs,FlaSyms,RefSyms).
+
+%% check_redefs_int(FlaRedefPairs,RefRedefPairs,FlaSyms,RefSyms)
+check_redefs_int([],[[_,Y]|_],FlaSyms,_):- member(Y, FlaSyms),!.
+check_redefs_int([],[_|T],FlaSyms,_):- check_redefs_int([],T,FlaSyms,_).
+check_redefs_int([[X,Y]|T],RefRedefPairs,FlaSyms,RefSyms):-
+	(
+	  member([Z,Y], RefRedefPairs),
+	  X \== Z,!
+	;
+	  member(Y, RefSyms),!
+	;
+	  check_redefs_int(T,RefRedefPairs,FlaSyms,RefSyms)
+	).
+	
+
+	
+
 get_mizar_inf_refs(File, P, Refs, InfKind, AllRefs):-
 	get_ref_fof(P, fof(P,_,Fla,_,[mptp_info(_,Lev,_,_,_)|_])),
 	maplist(get_ref_fla, Refs, Flas1),
@@ -3049,12 +3100,17 @@ print_for_nd(Q,InfKind,Refs,Assums,Options):-
 	%%          remove the triviality check
 	Status = status(thm),
 	(
-	  (InfKind = axiom
-%	 ;
-%	  InfKind = trivial
-	 ) ->
-	    S1 = Q3,
-	    UI1 = [InfKind|UI0]
+	  Q1 = assumption,!,
+	  S1 = introduced(assumption,[Q3]),
+	  UI1 = [InfKind|UI0]
+	;
+	  InfKind = axiom,!,
+	  S1 = Q3,
+	  UI1 = [InfKind|UI0]
+	;
+	  InfKind = trivial,!,
+	  S1 = introduced(tautology,[Q3]),
+	  UI1 = [InfKind|UI0]
 	;
 	    (
 	      InfKind = discharge_asm,!,
@@ -3194,17 +3250,19 @@ install_index:-
 	dynamic(fof_parentlevel/2),
 	abolish(fof_cluster/3),
 	abolish(fof_req/3),
+	abolish(fof_redefines/4),
+	dynamic(fof_redefines/4),
 %	index(fof_name(1,1)),
 %	add_hidden,
 	logic_syms(LogicSyms),
 	repeat,
 	(
-	  clause(fof(Ref1,Role1,Fla1,file(File1,Sec1), [mptp_info(_,L_1,MKind,_,_)|_]),_,Id),
+	  clause(fof(Ref1,Role1,Fla1,file(File1,Sec1), [mptp_info(_,L_1,MKind,_,Spc)|_]),_,Id),
 	  assert(fof_name(Ref1, Id)),
 	  assert(fof_file(File1, Id)),
 	  assert(fof_section(Sec1, Id)),
 	  assert_level(L_1,Id),
-	  assert_syms(MKind,Ref1,Role1,L_1,Fla1,File1,Id,LogicSyms),
+	  assert_syms(MKind,Ref1,Role1,L_1,Fla1,File1,Id,LogicSyms,Sec1,Spc),
 	  fail
 	;
 	  true
@@ -3230,33 +3288,36 @@ assert_level([H|T],Id):- !,level_atom([H|T],Lev1), assert(fof_level(Lev1, Id)).
 assert_level(_,_).
 
 
-assert_syms(rcluster,Ref1,_,_,Fla1,File1,_,LogicSyms):- !,
+assert_syms(rcluster,Ref1,_,_,Fla1,File1,_,LogicSyms,_,_):- !,
 	    collect_symbols_top(Fla1,AllSyms),
 	    subtract(AllSyms,LogicSyms,Syms),
 	    assert(fof_cluster(File1,Ref1,Syms)).
 
-assert_syms(definition,_,definition,[],Fla1,_,Id,_):-
+assert_syms(definition,_,definition,[],Fla1,_,Id,_,_,_):-
 	strip_univ_quant(Fla1, ( KTerm = _)),
 	nonvar(KTerm),
 	KTerm =..[KFun|_],
 	atom_chars(KFun,[k|_]),
 	assert(fof_eq_def(KFun, Id)),!.
 
-assert_syms(fcluster,Ref1,_,_,Fla1,File1,_,_):- !,
+assert_syms(_,Ref1,definition,[],_,_,Id,_,Sec1,[redefinition(_,_,_,Sec2)|_]):-
+	assert(fof_redefines(Sec1, Sec2, Ref1, Id)).
+
+assert_syms(fcluster,Ref1,_,_,Fla1,File1,_,_,_,_):- !,
 	cl_needed_syms_top(Fla1,AnteSyms),
 	assert(fof_cluster(File1,Ref1,AnteSyms)).
 
-assert_syms(ccluster,Ref1,_,_,Fla1,File1,_,_):- !,
+assert_syms(ccluster,Ref1,_,_,Fla1,File1,_,_,_,_):- !,
 	cl_needed_syms_top(Fla1,AnteSyms),
 	assert(fof_cluster(File1,Ref1,AnteSyms)).
 
-assert_syms(theorem,Ref1,_,_,Fla1,File1,_,LogicSyms):-
+assert_syms(theorem,Ref1,_,_,Fla1,File1,_,LogicSyms,_,_):-
 	member(File1,[numerals, boole, subset, arithm, real]),!,
 	collect_symbols_top(Fla1,AllSyms),
 	subtract(AllSyms,LogicSyms,Syms),
 	assert(fof_req(File1,Ref1,Syms)).
 
-assert_syms(_,_,_,_,_,_,_,_) :- !.
+assert_syms(_,_,_,_,_,_,_,_,_,_) :- !.
 
 
 fraenkel_ths(S):-
