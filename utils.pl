@@ -43,7 +43,8 @@ dbg(_,_).
 opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme instances
 	       opt_MK_TPTP_INF,		%% better tptp inference slot and no mptp_info
 	       opt_TPTPFIX_ND_ROLE,	%% make the role acceptable to GDV
-	       opt_LINE_COL_NMS,        %% problem are named LINE_COL instead
+	       opt_ADD_INTEREST,	%% add interestingness to useful info
+	       opt_LINE_COL_NMS, %% problem are named LINE_COL instead
 	       opt_LEVEL_REF_INFO,      %% .refspec file with immediate references is printed
 	       opt_NO_FRAENKEL_CONST_GEN %% do not generalize local consts when abstracting fraenkels
 	                                 %% (useful for fast translation, when consts are not loaded)
@@ -3069,6 +3070,16 @@ get_mizar_inf_refs(File, P, Refs, InfKind, AllRefs):-
 	%% AllRefs1 = [P|Refs]
 	once(fixpoint(File, [Pos1, Lev], InfKind, [P|Refs], [], Syms1, AllRefs)).
 
+%% compute_interest(InfKind,Lev,Intrst)
+%% now uses linear scaling
+compute_interest(axiom,[],0.9):- !.
+compute_interest(_,[],1):- !.
+compute_interest(_,Lev,Intrst):- !,
+	length(Lev,L),
+	%% So L=1 gets 0.8, L=2 gets 0.65,...,L=6 gets 0.05, and L>6 gets 0.02
+	Intrst is max(0.8 - (0.15 * (L - 1)), 0.02).
+
+
 %% for parsing with TPTP tools, use
 %% Options = [opt_TPTPFIX_ND_ROLE, opt_MK_TPTP_INF],
 %% for more info, use Options = []
@@ -3077,6 +3088,8 @@ get_mizar_inf_refs(File, P, Refs, InfKind, AllRefs):-
 %% for more complicated inferences
 print_for_nd(Q,InfKind,Refs,Assums,Options):-
 	get_ref_fof(Q, fof(Q,Q_1,Q2,Q3,Q4)),
+	Q4 = [mptp_info(_,Lev,_,_,_)|_],
+	compute_interest(InfKind,Lev,Intrst),
 	%% fix the old lemm-derived format
 	%% ###TODO: regenerate the constructor files, then remove this
 	(
@@ -3165,7 +3178,12 @@ print_for_nd(Q,InfKind,Refs,Assums,Options):-
 	    Role = Q1,
 	    UI = UI1
 	),!,
-	print(fof(Q,Role,SR2,S1,UI)),
+	(member( opt_ADD_INTEREST, Options) ->
+	    NewUI = [interesting(Intrst) | UI]
+	;
+	    NewUI = UI
+	),	
+	print(fof(Q,Role,SR2,S1,NewUI)),
 	write('.'), nl.
 
 print_for_nd(Q,InfKind,Refs,Assums,Options):- throw(print_for_nd(Q,InfKind,Refs,Assums,Options)).
