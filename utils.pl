@@ -2958,16 +2958,17 @@ mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Assums,Options):-
 	  maplist(atom_concat('dh_'),HC,Henkin_Refs),
 	  maplist(atom_concat('dt_'),HC,Sort_Refs),
 	  Discharged = Sort_Refs,
-	  subtract(NDRefs, Henkin_Refs, PureTheses),
+	  subtract(NDRefs, Henkin_Refs, PureTheses1),
 	  (member( thesis_expansions(ThesExps), NDOpts) ->
 	      get_mizar_inf_refs(F, P, NDRefs, mizar_from, AllRefs1),
 	      delete(AllRefs1, P, AllRefs),
+	      subtract(PureTheses1, ThesExps, PureTheses),
 	      append(PureTheses, Sort_Refs, AvoidInOuterInf),
 	      subtract(AllRefs, AvoidInOuterInf, OuterInfRefs),
 	      RefSlot = let(Sort_Refs, PureTheses, OuterInfRefs)
 	  ;
 	      AllRefs = NDRefs,
-	      RefSlot = let(Sort_Refs, PureTheses, Henkin_Refs)
+	      RefSlot = let(Sort_Refs, PureTheses1, Henkin_Refs)
 	      
 	  )
 	;
@@ -3080,6 +3081,19 @@ compute_interest(_,Lev,Intrst):- !,
 	Intrst is max(0.8 - (0.15 * (L - 1)), 0.02).
 
 
+%% mk_conj_from_refs(Refs, ResultFla)
+mk_conj_from_refs([], $true).
+mk_conj_from_refs([H], ResultFla):- !, get_ref_fla(H, ResultFla).
+mk_conj_from_refs([H|T], (HFla & TFla)):- !,
+	get_ref_fla(H, HFla),
+	mk_conj_from_refs(T, TFla).
+
+%% mk_impl_from_refs(Antecedents, Consequents, ResultFla)
+mk_impl_from_refs(Antecedents, Consequents, (AntecFla => ConseqFla)):-
+	mk_conj_from_refs(Antecedents, AntecFla),
+	mk_conj_from_refs(Consequents, ConseqFla).
+
+
 %% for parsing with TPTP tools, use
 %% Options = [opt_TPTPFIX_ND_ROLE, opt_MK_TPTP_INF],
 %% for more info, use Options = []
@@ -3143,8 +3157,20 @@ print_for_nd(Q,InfKind,Refs,Assums,Options):-
 		union(Disch, Thes, UnionRefs), 
 		DischInfer = inference(discharge_asm,[Status, assumptions(NewAssums),
 						      discharge_asm(discharge,Disch)],UnionRefs),
+		%% have to add the article suffix - absolutize locals will not know about this
+		Q3 = file(File,_),
+		Thes = [Thes1|_],
+		concat_atom([Thes1, '_tmp__',File], TmpName),
+		mk_impl_from_refs(Disch, Thes, TmpImpl1),
+		sort_transform_top(TmpImpl1,TmpImpl),
+		numbervars(TmpImpl,0,_),
+		print(fof(TmpName, plain, TmpImpl, DischInfer, [interesting(Intrst),Q])),
+		write('.'), nl,
 		S1 = inference(mizar_def_expansion, [Status, assumptions(NewAssums)],
-			       [DischInfer | DefsAndBG])
+			       [TmpName | DefsAndBG])
+		% old version with nested inferences
+%		S1 = inference(mizar_def_expansion, [Status, assumptions(NewAssums)],
+%			       [DischInfer | DefsAndBG])
 	      )
 	    ;
 	      InfKind = let,!,
@@ -3155,7 +3181,18 @@ print_for_nd(Q,InfKind,Refs,Assums,Options):-
 	      union(Sort_Refs, PureTheses, UnionRefs), 
 	      DischInfer = inference(discharge_asm,[Status, assumptions(NewAssums),
 						    discharge_asm(discharge,Sort_Refs)],UnionRefs),
-	      S1 = inference(let,[Status, assumptions(NewAssums)], [DischInfer|OuterInfRefs])
+	      %% have to add the article suffix - absolutize locals will not know about this
+	      Q3 = file(File,_),
+	      PureTheses = [Thes1|_],
+	      concat_atom([Thes1, '_tmp__',File], TmpName),
+	      mk_impl_from_refs(Sort_Refs, PureTheses, TmpImpl1),
+	      sort_transform_top(TmpImpl1,TmpImpl),
+	      numbervars(TmpImpl,0,_),
+	      print(fof(TmpName, plain, TmpImpl, DischInfer, [interesting(Intrst),Q])),
+	      write('.'), nl,
+	      S1 = inference(let, [Status, assumptions(NewAssums)],
+			     [TmpName | OuterInfRefs])
+%	      S1 = inference(let,[Status, assumptions(NewAssums)], [DischInfer|OuterInfRefs])
 	    ;
 	      S1 = inference(InfKind,[Status, assumptions(Assums)],Refs)
 	    ),
