@@ -1282,6 +1282,76 @@ thms2tptp(OutDirectory):-
 	once(mptp2tptp(InFile,Options,OutFile)),
 	fail.
 
+
+%% For all articles create the inference dag of its top-level theorems
+%% (and lemmas and schemes), including needed stuff from other articles
+%% as axioms. No background is added, each article is written to
+%% problems/Article.top, and is suitable for running AGInTRater on it.
+%% ##TEST: :- create_top_infers.
+create_top_infers:-
+	declare_mptp_predicates,
+	load_mml,
+	load_lemmas,
+	all_articles(ArticleNames),
+	install_index,
+	findall(FraenkelName,
+		(
+		  member(Article, ArticleNames),
+		  once(abstract_fraenkels(Article, [opt_NO_FRAENKEL_CONST_GEN], _, ArticleFrNames)),
+		  member(FraenkelName, ArticleFrNames)
+		),
+		_AddedFraenkelNames), !,
+	install_index,!,
+
+	RefCodes = [t,d,s,l],
+	member(PFile, ArticleNames),
+	findall(ARef2,
+		(
+		  fof_file(PFile,AId),
+		  clause(fof(ARef1,_,_,file(_,_),AInfo),_,AId),
+		  AInfo = [mptp_info(_,_,_,_,_), inference(_,_,ARefs0) |_],
+		  member(ARef0,[ARef1|ARefs0]),
+		  atom_chars(ARef0,[C1|Cs1]),
+		  member(C1,RefCodes),
+		  fix_sch_ref(ARef0,[C1|Cs1],ARef2)
+		),
+		PrintedNames1),
+	sort(PrintedNames1, PrintedNames),
+	concat_atom([problems,'/',PFile,'.top'], OutFile1),
+	tell(OutFile1),
+	(
+
+	  member(Name,PrintedNames),
+	  get_ref_fof(Name, fof(Name,Role,Fla,file(A,Name),Info)),
+	  ((A = PFile, Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs) | _]) ->
+	      findall(Ref,(member(Ref0,Refs),atom_chars(Ref0,[C|Cs]),
+			   member(C,RefCodes),fix_sch_ref(Ref0,[C|Cs],Ref)), Refs2),
+	      sort_transform_top(Fla,Fla1),
+	      numbervars(Fla1,0,_),
+	      %% ###TODO: remove this when Geoff allows inferences without parents
+	      (Refs2 = [] ->		  
+		  print(fof(Name,theorem,Fla1,file(A,Name))),
+		  write('.')		  
+	      ;
+		  Info1 = inference(mizar_proof,[status(thm)],Refs2),
+		  print(fof(Name,theorem,Fla1,Info1,[file(A,Name)])),
+		  write('.')		  
+	      )
+	  ;
+	      sort_transform_top(Fla,Fla1),
+	      numbervars(Fla1,0,_),	      
+	      print(fof(Name,Role,Fla1,file(A,Name))),
+	      write('.')	      
+	  ),
+	  nl,
+	  fail
+	;
+	  told
+	),
+	fail.
+
+
+
 %% reads ProvedFile and prints comparison of the proofs there
 %% with the MML proofs; sorted by the difference between the
 %% numbers of explicit references
@@ -2852,12 +2922,14 @@ print_problem(P,F,[_InferenceKinds,_PropositionKinds|Rest],Options,
 %% top-level propositions
 mk_nd_problem(P,F,Prefix,Options):-
 	(var(P) -> fof_file(F,Id); true),
-	clause(fof(P,Role1,Fla,file(F,P),[mptp_info(_,[],_,position(Line,Col),_),
+	clause(fof(P,Role1,Fla,file(F,P),[mptp_info(_,[],MPropKind,position(Line,Col),_),
 					  inference(InfKind,InfOpts,_)|_]),_,Id),
 	(
 	  Role1 = theorem,
 	  %% to avoid canceled theorems
-	  Fla \== $true
+	  Fla \== $true,
+	  %% to avoid scheme instances on top-level (s2_recdef_1__e21__pre_ff)
+	  MPropKind \== scheme_instance
 	;
 	  Role1 = lemma_conjecture),
 	(InfKind = mizar_proof ->
