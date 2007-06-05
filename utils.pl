@@ -186,7 +186,9 @@ declare_mptp_predicates:-
  abolish(fraenkels_loaded/1),
  dynamic(fraenkels_loaded/1),
  abolish(article_position/2),
- dynamic(article_position/2).
+ dynamic(article_position/2),
+ abolish(rec_sch_inst_name/2),
+ dynamic(rec_sch_inst_name/2).
 % index(fof(1,1,0,1,1)),
 % index(fof(1,1,0,1)).
 
@@ -783,7 +785,7 @@ get_cluster_proof_level(Ref,_):-
 %% check that cluster is applicable to [Pos1,Lev1]
 %% only relevant if from the same file
 check_cluster_position(F,[Pos1,Lev1],F,Ref2):- !,
-	ensure(article_position(Ref2,Pos2), throw(article_position(Ref2))),
+	ensure(article_position(Ref2,Pos2), throw(article_position2(F,Ref2))),
 	dbg(dbg_CLUSTERS,
 	    format('Considering cluster: ~w,~w, position: ~w with [~w,~w] ~n',
 		   [Ref2,F,Pos2,Pos1,Lev1])),
@@ -1891,8 +1893,455 @@ gen_sch_instance(SI_Name,F,Res,Options):-
 %%   however, we'll need to remove the facts about the original scheme functors and
 %%   preds, and add typing BG for the instances symbols instead
 
+%% the algo for creating the high-level (not ND) reproving problems is
+%% actually simple
+%% - generate the reproving problem for the original scheme;
+%%   that problem contains top-level references (top lemmas,
+%%   theorems, defs, scheme instances), possibly fraenkel defs,
+%%   typing info about the scheme functors and predicates, and
+%%   other top-level background (even if a top-level constant
+%%   typing is there, we should be OK, since this is done for the
+%%   article with the original scheme)
+%% - if another scheme instance is used in the proof, apply the
+%%   substitutions to the scheme functors
+%% - but in addition to the standard filtering of sublevel references,
+%%   filter also all the typing info for the scheme functors
+%% - compute background for the generalized scheme instance; it needs
+%%   to be done in the context of the instance article 
+
+%% - add to the top-level symbol set the symbols from the scheme instance
+%%   (actually those from the generalized-consts version should be enough)
+%% - rerun
 
 
+%% get_top_scheme_instances_for(+Problem, -SchInstances)
+%%
+%% Generates the chains of scheme instances for the Problem.
+%% Allowed problems must be top-level. The chains can be later re-used for
+%% constructing proper proofs of the instances.
+%% Following generates the chains of scheme instances for the MPTP Challenge:
+%% ##TEST: :- get_top_scheme_instances_for(l37_yellow19, SchInstances), write(SchInstances),length(SchInstances,N).
+%% Follwing writes only the top-level scheme instances (useful as input for
+%% mk_sch_instance_problem_from_th_top_l)
+%% ##TEST: :- get_top_scheme_instances_for(l37_yellow19, SchInstances),
+%%            findall(S,(member(SL,SchInstances),length(SL,N),N1 is N - 1, nth1(N1,SL,S)),Tops1),
+%%	      sort(Tops1,Tops), write(Tops),length(Tops,L1).
+get_top_scheme_instances_for(Problem, SchInstances):-
+	declare_mptp_predicates,load_mml,load_lemmas,
+	install_index,
+	get_top_scheme_instances_for1(Problem, [], [], SchInstances, _).
+get_top_scheme_instances_for1(Problem, _SchAncestors, DoneThsIn, [], DoneThsIn):-
+	member(Problem, DoneThsIn),!.
+get_top_scheme_instances_for1(Problem1, SchAncestors, DoneThsIn, SchInstances, DoneThsOut):-
+	(
+	  Problem1 = [Problem, ProbSchInst],!
+	;
+	  Problem = Problem1
+	),
+	get_ref_fof(Problem, fof(_,_,_,_,Info)),
+	Info = [_, inference(_,_,ARefs0) |_ ],
+	findall(ARef0,
+		(
+		  member(ARef0,ARefs0),
+		  atom_chars(ARef0,[C1|Cs1]),
+		  member(C1,[t,l])
+		),
+		TopThRefs1
+	       ),
+	sort(TopThRefs1, TopThRefs2),
+	subtract(TopThRefs2, DoneThsIn, TopThRefs),
+	findall([ARef2, ARef0],
+		(
+		  member(ARef0,ARefs0),
+		  atom_chars(ARef0,[s|Cs1]),
+		  fix_sch_ref(ARef0,[s|Cs1],ARef2)
+		),
+		TopSchPairs
+	       ),
+	(
+	  Problem1 = [Problem, ProbSchInst] ->
+	  NewDone = DoneThsIn,
+	  NewSchAncestors = [ ProbSchInst | SchAncestors]
+	;
+	  NewDone = [Problem|DoneThsIn],
+	  NewSchAncestors = [ Problem ]
+	),
+	zip(_TopSchRefs, TopSchInsts, TopSchPairs),
+	get_top_scheme_instances_for1_l(TopThRefs, [], NewDone, SchInsts1, DoneThsOut1),
+	get_top_scheme_instances_for1_l(TopSchPairs, NewSchAncestors, DoneThsOut1, SchSchInsts1, DoneThsOut),
+	findall([SchInst | NewSchAncestors], member(SchInst, TopSchInsts), TopSchInsts1),
+	append(TopSchInsts1, SchInsts1, SchInsts2),
+	append(SchInsts2, SchSchInsts1, SchInstances).
+
+get_top_scheme_instances_for1_l([], _, DoneThsIn, [], DoneThsIn).
+get_top_scheme_instances_for1_l([H|T], SchAncestors, DoneThsIn, SchInstances, DoneThsOut):-
+	get_top_scheme_instances_for1(H, SchAncestors, DoneThsIn, SchInstances1, DoneThsOut1),
+	get_top_scheme_instances_for1_l(T, SchAncestors, DoneThsOut1, SchInstances_l, DoneThsOut),
+	append(SchInstances1, SchInstances_l, SchInstances).
+
+
+% mk_rec_sch_instance_problem_from_th(SI_Name,Options, SubstStackIn, NewSubstStack, SchInstsToDo):-
+%	mk_sch_instance_problem_from_th(SI_Name,Options, SubstStackIn, NewSubstStack, SchInstsToDo).
+	
+mk_sch_instance_problem_from_th_l(_Ancestors, [], _Options, _SubstStackIn).
+mk_sch_instance_problem_from_th_l(Ancestors, [SI_Name |T], Options, SubstStackIn):-
+	mk_sch_instance_problem_from_th(Ancestors,SI_Name,Options, SubstStackIn, _NewSubstStack,
+					_NewAncestors, _SchInstsToDo),
+	mk_sch_instance_problem_from_th_l(Ancestors, T, Options, SubstStackIn).
+
+mk_sch_instance_problem_from_th_top(SI_Name,Options):-
+	abolish(rec_sch_inst_name/2),
+	dynamic(rec_sch_inst_name/2),
+	mk_sch_instance_problem_from_th([],SI_Name,Options, [],
+					_NewSubstStack, _NewAncestors, _SchInstsToDo).
+
+%% Following creates all scheme instance problems for MPTP Challenge (note that it also
+%% creates instances of tarski, which are axioms (not provable) - those problems
+%% should be removed
+%% ##TEST: :- declare_mptp_predicates,load_mml,install_index,
+%%      A=[s1_ordinal1__e8_6__wellord2,s1_ordinal2__e18_27__finset_1,s1_relat_1__e6_21__wellord2,
+%%	s1_wellord2__e6_39_3__yellow19,s1_xboole_0__e4_27_3_1__finset_1,s1_xboole_0__e6_22__wellord2,
+%%	s1_xboole_0__e6_27__finset_1,s2_finset_1__e11_2_1__waybel_0,s2_funct_1__e10_24__wellord2,
+%%	s2_funct_1__e4_7_1__tops_2,s2_funct_1__e4_7_2__tops_2,s3_funct_1__e16_22__wellord2,
+%%	s3_subset_1__e1_40__pre_topc,s3_subset_1__e2_37_1_1__pre_topc],
+%%       mk_sch_instance_problem_from_th_top_l(A,[opt_MK_TPTP_INF, opt_REM_SCH_CONSTS]).
+mk_sch_instance_problem_from_th_top_l(SI_Names,Options):-
+	abolish(rec_sch_inst_name/2),
+	dynamic(rec_sch_inst_name/2),
+	mk_sch_instance_problem_from_th_l([],SI_Names,Options, []).
+
+%% The main procedure for creating problems from layered scheme instances.
+%% The NewSubstStack, NewAncestors, and SchInstsToDo are now unused as output
+%% parameters ( could be changed in the future).
+%% ##TODO: Should be (much) improved in terms of efficiency (minimize the number of
+%% full article reloadings for a set of schemes!!).
+%% ##TODO: enhance to create an ND version for GDV (possible way: use new dummy
+%%         scheme functors/predicates for outputing the main scheme ND proof, then
+%%         just add equivalence to their instances and verify the instances' typing)
+mk_sch_instance_problem_from_th(Ancestors,SI_Name,Options, SubstStackIn, NewSubstStack, NewAncestors, SchInstsToDo):-
+	ensure(concat_atom([S_Name, Problem1, InstArticle], '__', SI_Name), schinst_name(SI_Name)),
+	get_sch_inst_name(Ancestors, SI_Name, SchInstName),
+	print([SI_Name, SchInstName, Ancestors]), nl,
+	get_ref_fof(S_Name, fof(S_Name,_,Fla,file(SchArticle,_),SchInfo)),
+	SchInfo = [mptp_info(_,_,_,_,_), inference(_,_,SchRefs) | _],
+	findall(SchInst1,
+		(
+		  member(SchInst1, SchRefs),
+		  atom_concat('s', _, SchInst1)
+		),
+		SchInstsToDo
+	       ),
+	%% print the background and conjecture created from the InstArticle,
+	%% also create the substitutions and the UnivContext
+	load_proper_article(InstArticle, Options, PostLoadFiles),
+	fof(Problem1,_,_,file(InstArticle,_),
+	    [MPTPInfo,inference(mizar_from,[InstInfo],_Refs)|_]),
+	MPTPInfo = mptp_info(_,_,_,position(InstLine, InstCol),_),
+	InstInfo = scheme_instance(SI_Name,S_Name,_Ref,_,Substs),
+	zip_s('/',SchFuncsAndPreds,_SchInsts,Substs),
+	copy_term(Fla,Tmp),
+	apply_sch_substs_top(Substs,Tmp,Fla0),
+	(member(opt_REM_SCH_CONSTS,Options) ->
+	    generalize_consts(Fla0, Tmp2, UnivContext, NewConstSubst),
+	    add_univ_context(UnivContext, Tmp2, Fla1_1)
+	;
+	    ensure(fail, bad_sch_inst_options(Options))
+	),
+	(
+	  Ancestors = [] -> BGArticle = InstArticle, Problem = Problem1, BGPostLoadFiles = PostLoadFiles
+	;
+	  last(Ancestors, [Problem, BGArticle]),
+	  retractall(fof(_,_,_,file(InstArticle,_),_)),
+	  load_files(PostLoadFiles,[silent(true)]),
+	  load_proper_article(BGArticle, Options, BGPostLoadFiles)
+	),
+	print([SubstStackIn, Fla1_1]),
+	instantiate_and_gen_sch_inst_many(SubstStackIn, Fla1_1, Fla1), write(hehe),nl,
+	print(Fla1),nl,
+	
+	collect_symbols_top( Fla1, Syms1),
+	NewSubstStack = [[UnivContext, NewConstSubst, Substs] | SubstStackIn],
+	NewAncestors = [[Problem1,InstArticle] | Ancestors],
+%	zip(AncProblems,AncArticles,NewAncestors),
+%	concat_atom(AncProblems,'__',OutName1),
+	OutName1 = SchInstName,
+	ensure(article_position(Problem, Pos1), throw(article_position(Problem))), write(haha),
+	once(fixpoint(BGArticle, [Pos1, []], mizar_from, [], [], Syms1, AllRefs)),
+	concat_atom([problems,'/',dummy_schinst,'_',OutName1],Outfile),
+	tell(Outfile),
+	format('% Mizar problem: ~w,~w,~w,~w,~w ~n', [SI_Name,InstArticle,InstLine,InstCol,Ancestors]),
+	write('% scheme substs: '),
+	print(Substs), nl,
+	write('% constant substs: '),
+	print(NewConstSubst), nl,
+	write('% subst stack: '),
+	print(SubstStackIn), nl,
+	delete(AllRefs, SI_Name, ProperRefs1),
+
+	copy_term(Fla1, Fla11),
+	sort_transform_top(Fla11,SR2),
+	numbervars(SR2,0,_),
+	print(fof(SchInstName,conjecture,SR2,file(BGArticle,SchInstName),[])),
+	write('.'), nl,
+
+%	print_ref_as_conjecture(Options, [], SI_Name),
+	checklist(print_ref_as_axiom(Options), ProperRefs1),
+	write('%%% end of instance refs'), nl,
+	told,
+	retractall(fof(_,_,_,file(BGArticle,_),_)),
+	load_files(BGPostLoadFiles,[silent(true)]),
+	%% now print the scheme proof
+	%% the scheme functor axioms are filtered away (replaced by type inference
+	%% on their instances),
+	load_proper_article(SchArticle, Options, SchPostLoadFiles),
+	mk_problem_data(_,SchArticle,dummy,[[mizar_proof],
+					     [scheme], problem_list([S_Name])],
+				 Options,_Outfile,_Line,_Col,SchAllRefs),
+	get_sec_info_refs([], SchFuncsAndPreds,
+			  [mptp_info(_,_,functor,_,[scheme,type|_])|_], SchFuncTyps),
+	delete(SchAllRefs, S_Name, SchProperRefs1),	
+	subtract(SchProperRefs1, ProperRefs1, SchNewProperRefs0),
+	subtract(SchNewProperRefs0, SchFuncTyps, SchNewProperRefs2),
+	subtract(SchNewProperRefs2, SchInstsToDo, SchNewProperRefs1),
+	maplist(mk_sch_inst_name(NewAncestors), SchInstsToDo, _NewSchInstsNames),
+	append(Outfile),
+	checklist(rec_instantiate_and_gen_sch_inst(NewSubstStack, Options, NewAncestors), SchInstsToDo),
+	checklist(print_ref_as_axiom(Options), SchNewProperRefs1),
+	retractall(fof(_,_,_,file(SchArticle,_),_)),
+	load_files(SchPostLoadFiles,[silent(true)]),
+	told,
+	mk_sch_instance_problem_from_th_l(NewAncestors,SchInstsToDo,Options,NewSubstStack).
+
+
+%% get_sch_inst_name(+Ancestors, +SchInst, -SchInstName)
+%%
+%% assumes that we are inside mk_sch_instance_problem_from_th,
+%% and that nontrivial (i.e. layered scheme instance) names were
+%% already created by call to mk_sch_inst_name, and are available
+%% in rec_sch_inst_name/2
+get_sch_inst_name([], SchInst, SchInst).
+get_sch_inst_name([H | T], SchInst, SchInstName):-
+	last([H | T], [Problem, BGArticle]),
+	concat_atom([S_Name, _Problem1, _InstArticle], '__', SchInst),
+	concat_atom([S_Name, Problem, BGArticle], '__', SchInst1),
+	rec_sch_inst_name(SchInst1,N),
+	concat_atom([SchInst1, '__', N], SchInstName).
+
+%% mk_sch_inst_name(+Ancestors, +SchInst, -SchInstName)
+%%
+%% create a name for a layered scheme instance, store it
+%% using rec_sch_inst_name/2
+%%
+%% mk_sch_inst_name([], SchInst, SchInst).
+mk_sch_inst_name( [H | T], SchInst, SchInstName):-
+	last([H | T], [Problem, BGArticle]),
+	concat_atom([S_Name, _Problem1, _InstArticle], '__', SchInst),
+	concat_atom([S_Name, Problem, BGArticle], '__', SchInst1),
+	(
+	  retract(rec_sch_inst_name(SchInst1,N)) ->
+	  N1 is N + 1
+	;
+	  N1 = 1
+	),
+	assert(rec_sch_inst_name(SchInst1,N1)),
+	concat_atom([SchInst1, '__', N1], SchInstName).
+	
+	
+%% rec_instantiate_and_gen_sch_inst(+SubstStack, +Options, +Ancestors, +SchInst)
+%%
+%% Instantiate a scheme SchInst using the stack of substitutions SubstStack.
+%% The Options and Ancestors serve only for printing info.
+rec_instantiate_and_gen_sch_inst(SubstStack, Options, Ancestors, SchInst):-
+	get_ref_fof(SchInst, fof(SchInst,_,Fla,Q3,Q4)),
+	ensure(get_sch_inst_name(Ancestors, SchInst, SchInstName), get_sch_inst_name(SchInst)),
+	instantiate_and_gen_sch_inst_many(SubstStack, Fla, FlaOut),
+	sort_transform_top(FlaOut,SR2),
+	numbervars([SR2,Q3,Q4],0,_),
+	Status = axiom, QQ3 = Q3, QQ4= [],
+	(member(opt_MK_TPTP_INF,Options) ->
+	    print(fof(SchInstName,Status,SR2,QQ3,QQ4))
+	;
+	    print(fof(SchInstName,Status,SR2,Q3,Q4))
+	),
+	write('.'),
+	nl.
+
+
+%% perform %% instantiate_and_gen_sch_inst/5 multiple times 
+instantiate_and_gen_sch_inst_many([], FlaIn, FlaIn).
+instantiate_and_gen_sch_inst_many([[UnivContext, NewConstSubst, Substs] | OldSubstStack], FlaIn, FlaOut):-
+	copy_term(FlaIn,Tmp),
+	copy_term([UnivContext,NewConstSubst], [FreshUnivContext, FreshConstSubst]),
+	apply_sch_substs_top(Substs,Tmp,Fla0),
+	apply_const_substs(FreshConstSubst, Fla0, Fla1),
+	add_univ_context(FreshUnivContext, Fla1, FlaOut1),
+	instantiate_and_gen_sch_inst_many(OldSubstStack, FlaOut1, FlaOut).
+
+%% instantiate_and_gen_sch_inst(+UnivContext, +NewConstSubst, +Substs, +FlaIn, -FlaOut)
+%%
+%% Apply a scheme substitution Substs to FlaIn, then apply constant substitutions
+%% in NewConstSubst to the result, and add the UnivContext to it.
+instantiate_and_gen_sch_inst(UnivContext, NewConstSubst, Substs, FlaIn, FlaOut):-
+	copy_term(FlaIn,Tmp),
+	copy_term([UnivContext,NewConstSubst], [FreshUnivContext, FreshConstSubst]),
+	apply_sch_substs_top(Substs,Tmp,Fla0),
+	apply_const_substs(FreshConstSubst, Fla0, Fla1),
+	add_univ_context(FreshUnivContext, Fla1, FlaOut).
+
+%% get_problem_sch_insts_from_article(+Article, +ProblemPairs, +Options, -SI_Names, topRefs)
+%%
+%% Get scheme instances from problems (generated with Options) in ProblemPairs
+%% corresponding to Article.
+%% Not used now, but an example of using mk_problem_data.
+get_problem_sch_insts_from_article(A, Pairs, Options, SI_Names, topRefs):-
+	findall(P, member([A,P], Pairs), AList),
+	load_proper_article(A, Options, PostLoadFiles),
+	findall(SI_Name,
+		(
+		  mk_problem_data(_,A,dummy,[[mizar_by,mizar_from,mizar_proof],
+					     [theorem, top_level_lemma], problem_list(AList)],
+				 Options,_Outfile,_Line,_Col,AllRefs),
+		  member(SI_Name, AllRefs),
+		  atom_chars(SI_Name, [s, Digit | _]),
+		  member(Digit, ['0','1','2','3','4','5','6','7','8','9'])
+		),
+		SI_Names
+	       ),
+	%% retract current file but return mml parts,
+	retractall(fof(_,_,_,file(A,_),_)),
+	load_files(PostLoadFiles,[silent(true)]).
+
+%% following commented code probably should be killed, keeping
+%% it here now so that it's in at least one CVS version
+/*
+%% get_init_scheme_instances(+Problems, -SchInstances)
+%%
+%% Computes all the scheme instances initially needed in
+%% Problems. Proceeds by calling the background algo for
+%% Problems, in the same way as mk_problems_from_list.
+get_init_scheme_instances(Problems, SchInstances):-
+	declare_mptp_predicates,load_mml,
+	Options = [opt_REM_SCH_CONSTS, opt_MK_TPTP_INF],
+	findall([Article, Problem],
+		( member(Name,Problems), concat_atom([Article,Problem], '__', Name)),
+		Pairs), !,
+	maplist(nth1(1),Pairs,Articles),
+	sort(Articles, L),!,
+	findall([SI_Names, TopRefs],
+		(
+		  member(A,L),
+		  get_problem_sch_insts_from_article(A, Pairs, Options, SI_Names, TopRefs)
+		),
+		RefPairs_s
+	       ),
+	zip(SI_Names_s, _TopRefs_s, RefPairs_s),
+	flatten(SI_Names_s, SI_Names_all),
+	sort(SI_Names_all, SchInstances).
+
+
+get_rec_scheme_instances(Problems, DoneSchemeProblems, SchInstances):-
+	subtract(Problems, DoneSchemeProblems, Problems1),
+	(
+	  Problems1 = [] ->
+	  SchInstances = DoneSchemeProblems
+	;
+	  get_init_scheme_instances(Problems1, InitSchInstances),
+	  findall([Scheme,SchProblem],
+		  (
+		    member(SchInst, InitSchInstances),
+		    concat_atom([Scheme,_Problem,_InstArticle], '__', SchInst),
+		    get_ref_fof(Scheme, fof(_,_,_,file(SchFile,_),_)),
+		    concat_atom([SchFile,Scheme], '__', SchProblem)
+		  ),
+		  NewSchemesPairs
+		 ),
+	  sort(NewSchemesPairs, NewSchemesSortedPairs),
+	  zip(_NewSchemesSorted, NewProblemsSorted, NewSchemesSortedPairs),
+	  append(DoneSchemeProblems, Problems1, NewDoneProblems),
+	  get_rec_scheme_instances(NewProblemsSorted, NewDoneProblems, SchInstances)
+	).
+		
+	
+
+%% ##TEST: :- get_init_scheme_instances_from_file('mptp_chall_problems', SchInstances).
+get_init_scheme_instances_from_file(File, SchInstances):-
+	open(File,read,S),
+	read_lines(S,List),
+	close(S),!,
+	get_init_scheme_instances(List, SchInstances).
+
+get_proof_syms_and_flas([P|Refs0], PLevel, PSyms, PRefs),
+	  dbg(dbg_LEVEL_REFS, format('Refs for ~w bef. filtering: ~w~n', [P,PRefs])),
+	  Syms1 = PSyms,
+	  once(fixpoint(F, [Pos1, Lev], InfKind, PRefs, [], Syms1, AllRefs0)),
+	  dbg(dbg_LEVEL_REFS, format('Refs for ~w after fixpoint: ~w~n', [P,AllRefs0])),
+	  %% incorrect, but needs handling of fraenkels and sch_insts
+	  filter_level_refs(Lev,AllRefs0,AllRefs),
+	  dbg(dbg_LEVEL_REFS, format('Refs for ~w after level filtering: ~w~n', [P,AllRefs]))
+
+%% there are no scheme functors and predicates in the scheme instance - easy
+mk_sch_instance_problem_from_th(SI_Name,F,Res,Options):-
+	compute_and_record_instance_data(SI_Name), % means also private and scheme functor type flas kept explicitly
+	switch_to_orig_article,
+	compute_scheme_formulas(S_Name),
+	remove_scheme_functor_flas(S_Name),
+	add_instance_data_to_orig_problem,
+	print.
+
+
+mk_sch_instance_problem_from_th_rec(SI_Name,F,Res,Options):-
+	compute_and_record_instance_data(SI_Name), % means also private and scheme functor type flas kept explicitly
+	switch_to_orig_article,
+	compute_scheme_formulas(S_Name),
+	remove_scheme_functor_flas(S_Name),
+	add_instance_data_to_orig_problem,
+	print.
+	
+	fof(Ref,_,_,file(F,_),
+	    [MPTPInfo,inference(mizar_from,[InstInfo],_Refs)|_]),
+	InstInfo = scheme_instance(SI_Name,S_Name,Ref,_,Substs),
+	MPTPInfo= mptp_info(_Nr,Lev,_Kind,Pos,_Args),
+	once(fof(S_Name,theorem,Fla,_,_)),
+	copy_term(Fla,Tmp),
+	generalize_consts(Substs, Tmp2, UnivContext, NewConstSubst),
+	
+	apply_sch_substs_top(Substs,Tmp,Fla0),
+	(member(opt_REM_SCH_CONSTS,Options) ->
+	    generalize_consts(Fla0, Tmp2, UnivContext, _ ),
+	    add_univ_context(UnivContext, Tmp2, Fla1),
+	    Lev1 = []
+	;
+	    Fla1 = Fla0, Lev1 = Lev
+	),
+	Res = fof(SI_Name,theorem, Fla1, file(F,SI_Name),
+		  [mptp_info(0,Lev1,scheme_instance,Pos,[]),
+		   inference(mizar_sch_instance,[InstInfo],[S_Name])]).
+
+
+
+	  
+gen_sch_instance_new(SI_Name,F,Res,Options):-
+	fof(Ref,_,_,file(F,_),
+	    [MPTPInfo,inference(mizar_from,[InstInfo],_Refs)|_]),
+	InstInfo = scheme_instance(SI_Name,S_Name,Ref,_,Substs),
+	MPTPInfo= mptp_info(_Nr,Lev,_Kind,Pos,_Args),
+	once(fof(S_Name,theorem,Fla,_,_)),
+	copy_term(Fla,Tmp),
+	generalize_consts(Substs, Tmp2, UnivContext, NewConstSubst),
+	
+	apply_sch_substs_top(Substs,Tmp,Fla0),
+	(member(opt_REM_SCH_CONSTS,Options) ->
+	    generalize_consts(Fla0, Tmp2, UnivContext, _ ),
+	    add_univ_context(UnivContext, Tmp2, Fla1),
+	    Lev1 = []
+	;
+	    Fla1 = Fla0, Lev1 = Lev
+	),
+	Res = fof(SI_Name,theorem, Fla1, file(F,SI_Name),
+		  [mptp_info(0,Lev1,scheme_instance,Pos,[]),
+		   inference(mizar_sch_instance,[InstInfo],[S_Name])]).
+
+*/
 %% create and assert all scheme instances for a given article
 assert_sch_instances(File,Options):-
 	repeat,
@@ -2746,7 +3195,7 @@ mk_article_problems(Article,Kinds,Options):-
 %% ###TODO: currently does not handle reconsidered const's type proof, since
 %%          the item_kind is not proposition (but constant)
 %%          also note that fixpoint is hardly needed for that inference
-mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
+mk_problem_old(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	theory(F, _Theory),
 	member(InfKind0,InferenceKinds),
 	member(PropKind,PropositionKinds),
@@ -2854,6 +3303,122 @@ mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
 	print_problem(P,F,[InferenceKinds,PropositionKinds|Rest],Options,
 	      Outfile,Line,Col,AllRefs).
 
+%% mk_problem_data(?P,+F,+Prefix,+[InferenceKinds,PropositionKinds|Rest],+Options,
+%%		   -Outfile,-Line,-Col,-AllRefs)
+%%
+%% internal version for mk_problem, useful if the explicit reference list is needed
+mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
+		Outfile,Line,Col,AllRefs):-
+	theory(F, _Theory),
+	member(InfKind0,InferenceKinds),
+	member(PropKind,PropositionKinds),
+	(
+	  member(PropKind,[theorem,scheme,fcluster,ccluster,rcluster]),
+	  MPropKind = PropKind
+	;
+	  not(member(PropKind,[theorem,scheme,fcluster,ccluster,rcluster])),
+	  MPropKind = proposition,
+	  (
+	    PropKind = top_level_lemma,
+	    Lev = []
+	  ;
+	    PropKind \= top_level_lemma
+	  )
+	),
+	fof(P,_,_Fla,file(F,_),[mptp_info(_Nr,Lev,MPropKind,position(Line,Col),Item_Info)
+			       |Rest_of_info]),
+
+	(member(MPropKind,[fcluster,ccluster,rcluster]) ->
+	    ensure(Item_Info = [proof_level(_), Justification |_], cluster(Item_Info)),
+	    (Justification = correctness_conditions([Correctness_Proposition1|_]) ->
+		Correctness_Proposition1 =.. [_Correctness_Condition_Name1, Corr_Proposition_Ref1],
+		fof(Corr_Proposition_Ref1,_,_CPFla,file(F,Corr_Proposition_Ref1),
+		    [_CP_Mptp_info, Inference_info|_])
+	    ;
+		%% forged inference for "strict" rcluster justified by the aggregate type
+		ensure(Justification = inference(mizar_by,_,_), cluster(Justification)),
+		Inference_info = Justification
+	    )
+	;
+	    Rest_of_info = [Inference_info|_]
+	),
+
+	%% filter if problem_list given
+	(
+	  member(problem_list(PList), Rest) ->
+	  member(P,PList)
+	;
+	  true
+	),
+	(member(opt_LINE_COL_NMS, Options) ->
+	    concat_atom([Prefix,F,'__',Line,'_',Col],Outfile);
+	    concat_atom([Prefix,F,'__',P],Outfile)
+	),
+	(
+	  member(snow_spec, Rest) ->
+	  snow_spec(P, Refs0),
+	  InfKind = mizar_by
+	;
+	  Inference_info = inference(InfKind0,InfInfo,Refs0),
+	  InfKind = InfKind0
+	),
+	% fof_name(P, Id1),
+	%% this is used to limit clusters to preceding clauses from the nitial file;
+	%% note that using the ordering of clauses in the initial file
+	%% can be quite fragile (e.g. adding of frankels and scheme instances,...)
+	%% OK, this is done safely now with article_position, nth_clause/3 was very slow
+	ensure(article_position(P,Pos1), throw(article_position1(P))),
+%	filter_level_refs(Lev,Refs0,Refs),
+	
+	%% Compute references into AllRefs.
+	%% This gets a bit tricky for cluster registrations - we need the original
+	%% formula (P), but use the PLevel for collecting the refs, and finally filter
+	%% using the original cluster's level (Lev).
+	(
+	  InfKind == mizar_proof,
+	  ensure(InfInfo = [proof_level(PLevel)|_], inf_info(InfInfo,PLevel)),
+	  (member(opt_LEVEL_REF_INFO, Options) ->
+	      get_thislevel_refs(PLevel, Refs0, ThisLevelRefs, SuperLevelRefs),
+	      concat_atom([Outfile,'.refspec'], RefSpecFile),
+	      tell(RefSpecFile),
+	      print(refspec(P,ThisLevelRefs,SuperLevelRefs)),
+	      write('.'),nl,
+	      told
+	  ;
+	      true
+	  ),
+	  get_proof_syms_and_flas([P|Refs0], PLevel, PSyms, PRefs),
+	  dbg(dbg_LEVEL_REFS, format('Refs for ~w bef. filtering: ~w~n', [P,PRefs])),
+	  Syms1 = PSyms,
+	  once(fixpoint(F, [Pos1, Lev], InfKind, PRefs, [], Syms1, AllRefs0)),
+	  dbg(dbg_LEVEL_REFS, format('Refs for ~w after fixpoint: ~w~n', [P,AllRefs0])),
+	  %% incorrect, but needs handling of fraenkels and sch_insts
+	  filter_level_refs(Lev,AllRefs0,AllRefs),
+	  dbg(dbg_LEVEL_REFS, format('Refs for ~w after level filtering: ~w~n', [P,AllRefs]))
+	;
+	  InfKind \== mizar_proof,
+	  Refs = Refs0,
+	  maplist(get_ref_fla, [P|Refs], Flas1),
+	  collect_symbols_top(Flas1, Syms0),
+	  Syms1 = Syms0,
+	  %% ###TODO: for reconsidered type, following is enough instead of fixpoint
+%	  AllRefs1 = [P|Refs]
+	  once(fixpoint(F, [Pos1, Lev], InfKind, [P|Refs], [], Syms1, AllRefs1)),
+	  %% if we used the correctness proposition for computing references of cluster 
+	  %% registrations, we have to filter using the cluster's level
+	  (member(MPropKind,[fcluster,ccluster,rcluster]) ->
+	      filter_level_refs(Lev,AllRefs1,AllRefs)
+	  ;
+	      AllRefs = AllRefs1
+	  )
+	).
+
+mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
+	mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],
+			Options, Outfile,Line,Col,AllRefs),
+	print_problem(P,F,[InferenceKinds,PropositionKinds|Rest],
+		      Options, Outfile,Line,Col,AllRefs).
+
 
 %% print_problem(+ProblemName,+Article,[+InferenceKinds,+PropositionKinds|+Rest],+Options,
 %%               +Outfile,+Line,+Column,+AllRefs)
@@ -2869,7 +3434,11 @@ print_problem(P,F,[_InferenceKinds,_PropositionKinds|Rest],Options,
 	;
 	    true
 	),
-	
+
+	print_refs(P, AllRefs, Options),
+
+	%% following is now replaced by print_refs (but that is not tested yet)
+/*
 	delete(AllRefs, P, ProperRefs1),
 
 	%% print sort-transformed axioms and conjecture
@@ -2894,7 +3463,42 @@ print_problem(P,F,[_InferenceKinds,_PropositionKinds|Rest],Options,
 		  write('.'),nl
 		),
 		_),
+*/
 	told.
+
+
+print_ref_as_axiom(Options, Q):-
+	get_ref_fof(Q, fof(Q,_Q1,Q2,Q3,Q4)),
+	sort_transform_top(Q2,SR2),
+	numbervars([SR2,Q3,Q4],0,_),
+	Status = axiom, QQ3 = Q3, QQ4= [],
+	(member(opt_MK_TPTP_INF,Options) ->
+	    print(fof(Q,Status,SR2,QQ3,QQ4))
+	;
+	    print(fof(Q,Status,SR2,Q3,Q4))
+	),
+	write('.'),
+	nl.
+
+print_ref_as_conjecture(Options, ProperRefs1, Q):-
+	get_ref_fof(Q, fof(Q,_Q1,Q2,Q3,Q4)),
+	sort_transform_top(Q2,SR2),
+	numbervars([SR2,Q3,Q4],0,_),
+	Status = conjecture,
+	QQ3 = inference(mizar_bg_added,[status(thm)],ProperRefs1),
+	QQ4 = [Q3],
+	(member(opt_MK_TPTP_INF,Options) ->
+	    print(fof(Q,Status,SR2,QQ3,QQ4))
+	;
+	    print(fof(Q,Status,SR2,Q3,Q4))
+	),
+	write('.'),
+	nl.
+
+print_refs(Conjecture, AllRefs, Options):-
+	delete(AllRefs, Conjecture, ProperRefs1),
+	print_ref_as_conjecture(Options, ProperRefs1, Conjecture),
+	checklist(print_ref_as_axiom(Options), ProperRefs1).
 
 %%%%%%%%%%%%%%%%%%% ND problem creation %%%%%%%%%%%%%%%%%%%%%%%%%
 
