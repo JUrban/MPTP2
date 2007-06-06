@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.86 $
+%% $Revision: 1.87 $
 %%
 %% File  : utils.pl
 %%
@@ -3796,7 +3796,7 @@ mk_impl_from_refs(Antecedents, Consequents, (AntecFla => ConseqFla)):-
 %% for more complicated inferences
 print_for_nd(Q,InfKind,Refs,Assums,Options):-
 	get_ref_fof(Q, fof(Q,Q_1,Q2,Q3,Q4)),
-	Q4 = [mptp_info(_,Lev,_,_,_)|_],
+	Q4 = [mptp_info(_,Lev,_,_,MpInfoRest)|_],
 	compute_interest(InfKind,Lev,Intrst),
 	%% fix the old lemm-derived format
 	%% ###TODO: regenerate the constructor files, then remove this
@@ -3806,6 +3806,9 @@ print_for_nd(Q,InfKind,Refs,Assums,Options):-
 	;
 	  Q_1 == sort,!,
 	  Q1 = axiom
+	;
+	  Q_1 == axiom, MpInfoRest = [_,henkin_axiom|_],!,
+	  Q1 = plain
 	;
 	    Q1 = Q_1
 	),
@@ -3826,7 +3829,13 @@ print_for_nd(Q,InfKind,Refs,Assums,Options):-
 	  UI1 = [InfKind|UI0]
 	;
 	  InfKind = axiom,!,
-	  S1 = Q3,
+	  (
+	    MpInfoRest = [_,henkin_axiom|_] ->
+	    Q3 = file(_,NewConstSym),
+	    S1 = introduced(definition,[new_symbol(NewConstSym),Q3])
+	  ;
+	    S1 = Q3
+	  ),
 	  UI1 = [InfKind|UI0]
 	;
 	  InfKind = trivial,!,
