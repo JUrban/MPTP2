@@ -1,5 +1,7 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
+%% $Revision: 1.86 $
+%%
 %% File  : utils.pl
 %%
 %% Author: Josef Urban
@@ -2490,6 +2492,13 @@ create_henkin_axioms_let([HRef|HRefs],[Const|Consts],[SRef|SRefs],Instance,UnivI
 
 %% create_henkin_axiom_let(+Henkin_Ref,+Const,+Sort_Ref,+Instance,-UnivGenInst,-Henkin_Fof)
 %%
+%% Given the desired name of the new axiom (Henkin_Ref), the new constant (Const),
+%% its sort declaration (Sort_Ref with formula Sort_Fla sort(Const,Sort)), and the instance formula (Instance),
+%% containing the Const, replace Const in Instance with NewVar, and add quantification (! [NewVar : Sort])
+%% yielding UnivGenInst, and 
+%% create the Henkin_Fof, saying that
+%% (sort(Const,Sort) => Instance) => UnivGenInst
+%%
 %% note that the processing order of constants guarantees
 %% that only the right constants are present in the new quantification
 create_henkin_axiom_let(Henkin_Ref,Const,Sort_Ref,Instance,UnivGenInst,Henkin_Fof):-	
@@ -2527,6 +2536,13 @@ create_henkin_axioms_consider([HRef|HRefs],[Const|Consts],[SRef|SRefs],ExFla,ExI
 	create_henkin_axioms_consider(HRefs,Consts,SRefs,ExInst1,ExInstance,HFofs).
 
 %% create_henkin_axiom_consider(+Henkin_Ref,+Const,+Sort_Ref,+ExFla,-ExInstance,-Henkin_Fof)
+%%
+%% Given the desired name of the new axiom (Henkin_Ref), the new constant (Const),
+%% its sort declaration (Sort_Ref - this is only used for useful_info of
+%% the new axiom), and the existential formula (ExFla, in the form ? [(ExVar : Sort)] : Body ),
+%% create the Henkin_Fof, saying that 
+%% ExFla => (sort(Const,Sort) & Body),
+%% and also return ExInstance, which is Body with ExVar instantiated to Const.
 %%
 %% Note that the processing order of constants guarantees
 %% that only the right constants are present in the new quantification.
@@ -3111,6 +3127,8 @@ prepare_for_article(Article,Options,Dir,PostLoadFiles):-
 	make_directory(Dir).
 
 %% make nd problems for an Article
+%% ##TEST: :- declare_mptp_predicates,load_mml,install_index,
+%%            mk_article_nd_problems(zfmisc_1,_,[opt_REM_SCH_CONSTS,opt_MK_TPTP_INF, opt_ADD_INTEREST]).
 mk_article_nd_problems(Article,_Kinds,Options):-
 	prepare_for_article(Article,Options,Dir,PostLoadFiles),
 	assert_henkin_axioms(Article,[]),
