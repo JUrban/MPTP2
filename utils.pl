@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.87 $
+%% $Revision: 1.88 $
 %%
 %% File  : utils.pl
 %%
@@ -3127,8 +3127,14 @@ prepare_for_article(Article,Options,Dir,PostLoadFiles):-
 	make_directory(Dir).
 
 %% make nd problems for an Article
+%% generating problems for all MPTP Challenge articles:
 %% ##TEST: :- declare_mptp_predicates,load_mml,install_index,
-%%            mk_article_nd_problems(zfmisc_1,_,[opt_REM_SCH_CONSTS,opt_MK_TPTP_INF, opt_ADD_INTEREST]).
+%%            L=[ compts_1, connsp_2, enumset1, filter_1, finset_1, funct_1, funct_2,
+%%		lattice3, lattices, mcart_1, orders_2, ordinal1, pre_topc, relat_1,
+%%		relset_1, setfam_1, subset_1, tex_2, tmap_1, tops_1, tops_2, waybel_0,
+%%		waybel_7, waybel_9, wellord1, wellord2, xboole_0, xboole_1, yellow_0,
+%%		yellow_1, yellow19, yellow_6, zfmisc_1], member(A,L),
+%%            mk_article_nd_problems(A,_,[opt_REM_SCH_CONSTS,opt_MK_TPTP_INF, opt_ADD_INTEREST]),fail.
 mk_article_nd_problems(Article,_Kinds,Options):-
 	prepare_for_article(Article,Options,Dir,PostLoadFiles),
 	assert_henkin_axioms(Article,[]),
@@ -3810,6 +3816,11 @@ print_for_nd(Q,InfKind,Refs,Assums,Options):-
 	  Q_1 == axiom, MpInfoRest = [_,henkin_axiom|_],!,
 	  Q1 = plain
 	;
+	  Q_1 == definition,
+	  MpInfoRest = [EqKind, equality|_],
+	  member(EqKind,[reconsider,takeasvar]),!,
+	  Q1 = plain
+	;
 	    Q1 = Q_1
 	),
 	sort_transform_top(Q2,SR2),
@@ -3830,7 +3841,12 @@ print_for_nd(Q,InfKind,Refs,Assums,Options):-
 	;
 	  InfKind = axiom,!,
 	  (
-	    MpInfoRest = [_,henkin_axiom|_] ->
+	    (
+	      MpInfoRest = [_,henkin_axiom|_],!
+	    ;
+	      MpInfoRest = [EqKind, equality|_],
+	      member(EqKind,[reconsider,takeasvar])
+	    ),!,
 	    Q3 = file(_,NewConstSym),
 	    S1 = introduced(definition,[new_symbol(NewConstSym),Q3])
 	  ;
