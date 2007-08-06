@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.88 $
+%% $Revision: 1.89 $
 %%
 %% File  : utils.pl
 %%
@@ -44,6 +44,7 @@ dbg(_,_).
 %%%%%%%%%%%%%%%%%%%% Options %%%%%%%%%%%%%%%%%%%%
 opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme instances
 	       opt_MK_TPTP_INF,		%% better tptp inference slot and no mptp_info
+	       opt_PROB_PRINT_FUNC,	%% unary functor passing a special printing func
 	       opt_TPTPFIX_ND_ROLE,	%% make the role acceptable to GDV
 	       opt_ADD_INTEREST,	%% add interestingness to useful info
 	       opt_LINE_COL_NMS, %% problem are named LINE_COL instead
@@ -1047,7 +1048,7 @@ mk_sub_problems_from_list(List):-
 
 %% Create problems whose names are in the list.
 %% Names should have the form xboole_1__t40_xboole_1 (i.e.: Article__Problem)
-mk_problems_from_list(List):-
+mk_problems_from_list(List,AddOptions):-
 	declare_mptp_predicates,load_mml,
 	findall([Article, Problem],
 		( member(Name,List), concat_atom([Article,Problem], '__', Name)),
@@ -1056,10 +1057,10 @@ mk_problems_from_list(List):-
 	sort(Articles, L),!,
 	member(A,L),
 	findall(P, member([A,P], Pairs), AList),
+	union([opt_REM_SCH_CONSTS,opt_MK_TPTP_INF], AddOptions, Options),
 	mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],
 			       [theorem, top_level_lemma],
-			       problem_list(AList)],
-			    [opt_REM_SCH_CONSTS,opt_MK_TPTP_INF]),fail.
+			       problem_list(AList)], Options),fail.
 
 %% ##TEST: :- mk_problems_from_file('mptp_chall_problems').
 mk_problems_from_file(File):-
@@ -1067,6 +1068,14 @@ mk_problems_from_file(File):-
 	read_lines(S,List),
 	close(S),!,
 	mk_problems_from_list(List).
+
+%% ##TEST: :- mk_problems_from_file('mptp_chall_problems',[opt_PROB_PRINT_FUNC(print_refs_as_one_fla)]).
+mk_problems_from_file(File, AddOptions):-
+	open(File,read,S),
+	read_lines(S,List),
+	close(S),!,
+	mk_problems_from_list(List, AddOptions).
+
 
 %% this takes time, better do the simple versions for all
 %% ##TEST: :- test_refs_first100.
@@ -3135,6 +3144,10 @@ prepare_for_article(Article,Options,Dir,PostLoadFiles):-
 %%		waybel_7, waybel_9, wellord1, wellord2, xboole_0, xboole_1, yellow_0,
 %%		yellow_1, yellow19, yellow_6, zfmisc_1], member(A,L),
 %%            mk_article_nd_problems(A,_,[opt_REM_SCH_CONSTS,opt_MK_TPTP_INF, opt_ADD_INTEREST]),fail.
+%%
+%% generate GDV derovations for all articles:
+%% ##TEST: :- declare_mptp_predicates,load_mml,install_index,all_articles(L),!, member(A,L),
+%%            mk_article_nd_problems(A,_,[opt_REM_SCH_CONSTS,opt_MK_TPTP_INF, opt_ADD_INTEREST]),fail.
 mk_article_nd_problems(Article,_Kinds,Options):-
 	prepare_for_article(Article,Options,Dir,PostLoadFiles),
 	assert_henkin_axioms(Article,[]),
@@ -3458,9 +3471,12 @@ print_problem(P,F,[_InferenceKinds,_PropositionKinds|Rest],Options,
 	;
 	    true
 	),
-
-	print_refs(P, AllRefs, Options),
-
+	(member(opt_PROB_PRINT_FUNC(Print_Func),Options) ->
+	    call(Print_Func, P, AllRefs, Options)
+	;
+	    print_refs(P, AllRefs, Options)
+	),
+	    
 	%% following is now replaced by print_refs (but that is not tested yet)
 /*
 	delete(AllRefs, P, ProperRefs1),
@@ -3523,6 +3539,31 @@ print_refs(Conjecture, AllRefs, Options):-
 	delete(AllRefs, Conjecture, ProperRefs1),
 	print_ref_as_conjecture(Options, ProperRefs1, Conjecture),
 	checklist(print_ref_as_axiom(Options), ProperRefs1).
+
+get_transformed_fla(Q,Fla):-
+	get_ref_fof(Q, fof(Q,_Q1,Q2,Q3,Q4)),
+	sort_transform_top(Q2,Fla),
+	numbervars([Fla,Q3,Q4],0,_).
+
+%% list2constr(BinConstr, Nil, List , Terms)
+%% replace cons and nil with BinConstr and Nil, creating term
+list2constr(_BinConstr, Nil, [], Nil).
+list2constr(BinConstr, Nil, [H|T],Res):-
+	list2constr(BinConstr, Nil, T, Tmp),
+	Res =.. [BinConstr, H, Tmp].
+
+print_refs_as_one_fla(Conjecture, AllRefs, _Options):-
+	delete(AllRefs, Conjecture, ProperRefs1),
+	maplist(get_transformed_fla, ProperRefs1, ProperRefs2),
+	list2constr(&, $true, ProperRefs2, AxiomsConjunction),
+	Q = Conjecture,
+	get_ref_fof(Q, fof(Q,_Q1,Q2,Q3,Q4)),
+	sort_transform_top(Q2,SR2),
+	numbervars([SR2,Q3,Q4],0,_),
+	print(fof(Q,conjecture,(AxiomsConjunction => SR2),Q3)),
+	write('.'),
+	nl.
+
 
 %%%%%%%%%%%%%%%%%%% ND problem creation %%%%%%%%%%%%%%%%%%%%%%%%%
 
