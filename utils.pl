@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.90 $
+%% $Revision: 1.91 $
 %%
 %% File  : utils.pl
 %%
@@ -44,6 +44,7 @@ dbg(_,_).
 %%%%%%%%%%%%%%%%%%%% Options %%%%%%%%%%%%%%%%%%%%
 opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme instances
 	       opt_MK_TPTP_INF,		%% better tptp inference slot and no mptp_info
+	       opt_NO_EX_BG_FLAS,       %% do not include existential background in fixpoint
 	       opt_PROB_PRINT_FUNC,	%% unary functor passing a special printing func
 	       opt_TPTPFIX_ND_ROLE,	%% make the role acceptable to GDV
 	       opt_ADD_INTEREST,	%% add interestingness to useful info
@@ -732,6 +733,27 @@ one_pass(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,AddedRefs):-
 	flatten([Refs0,Refs1,Refs2,Refs3,Refs4,Refs5,Refs6,Refs7,Refs8,Refs9],
 		AddedRefs).
 
+%% version for mizar_by and mizar_proof pruning
+%%  existence properties and clusters, and requirement flas.
+%%  -- just heuristical, quite often incomplete.
+one_pass(F,Pos,mizar_no_existence,RefsIn,OldSyms,NewSyms,AddedRefs):-
+	theory(F, Theory),
+	member(registrations(Regs),Theory),
+	member(requirements(Reqs),Theory),
+	member(definitions(Defs),Theory),
+	get_properties(RefsIn,NewSyms,Refs0),
+	get_redefinitions(RefsIn,NewSyms,Refs2),
+	get_types(RefsIn,NewSyms,Refs3),
+	get_equalities(RefsIn,NewSyms,Refs4),
+%% Refs5=[],
+	get_fc_clusters([F|Regs],Pos,RefsIn,OldSyms,NewSyms,Refs5),
+	get_fraenkel_defs(RefsIn,NewSyms,Refs7),
+	get_eq_defs([F|Defs],RefsIn,NewSyms,Refs8),
+	get_nr_types(Reqs,RefsIn,NewSyms,Refs9),
+	flatten([Refs0,Refs2,Refs3,Refs4,Refs5,Refs7,Refs8,Refs9],
+		AddedRefs).
+
+
 %% version for mizar_from
 %% OldSyms are used only for clusters and requirements,
 %% fraenkel defs should not be needed
@@ -811,6 +833,20 @@ get_clusters([F|Regs],Pos,RefsIn,OldSyms,NewSyms,AddedRefs):-
 			  not(member(Ref1, RefsIn)),
 			  subset(AnteSyms, AllSyms)),
 		AddedRefs).
+
+%% as get_clusters, but only conditional and functor clusters
+%% (i.e. avoids existential ones)
+get_fc_clusters([F|Regs],Pos,RefsIn,OldSyms,NewSyms,AddedRefs):-
+	union(OldSyms, NewSyms, AllSyms),
+	findall(Ref1, (member(F1,[F|Regs]),
+			  fof_cluster(F1,Ref1,AnteSyms),
+			  atom_chars(Ref1,[Char|_]),
+			  member(Char,[c,f]),
+			  check_cluster_position(F,Pos,F1,Ref1),
+			  not(member(Ref1, RefsIn)),
+			  subset(AnteSyms, AllSyms)),
+		AddedRefs).
+
 
 %%
 get_requirements(Files,RefsIn,OldSyms,NewSyms,AddedRefs):-
@@ -3422,6 +3458,12 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	%% can be quite fragile (e.g. adding of frankels and scheme instances,...)
 	%% OK, this is done safely now with article_position, nth_clause/3 was very slow
 	ensure(article_position(P,Pos1), throw(article_position1(P))),
+	(
+	  member(opt_NO_EX_BG_FLAS, Options) ->
+	  InfKind1 = mizar_no_existence
+	;
+	  InfKind1 = InfKind
+	),
 %	filter_level_refs(Lev,Refs0,Refs),
 	
 	%% Compute references into AllRefs.
@@ -3444,7 +3486,7 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	  get_proof_syms_and_flas([P|Refs0], PLevel, PSyms, PRefs),
 	  dbg(dbg_LEVEL_REFS, format('Refs for ~w bef. filtering: ~w~n', [P,PRefs])),
 	  Syms1 = PSyms,
-	  once(fixpoint(F, [Pos1, Lev], InfKind, PRefs, [], Syms1, AllRefs0)),
+	  once(fixpoint(F, [Pos1, Lev], InfKind1, PRefs, [], Syms1, AllRefs0)),
 	  dbg(dbg_LEVEL_REFS, format('Refs for ~w after fixpoint: ~w~n', [P,AllRefs0])),
 	  %% incorrect, but needs handling of fraenkels and sch_insts
 	  filter_level_refs(Lev,AllRefs0,AllRefs),
@@ -3457,7 +3499,7 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	  Syms1 = Syms0,
 	  %% ###TODO: for reconsidered type, following is enough instead of fixpoint
 %	  AllRefs1 = [P|Refs]
-	  once(fixpoint(F, [Pos1, Lev], InfKind, [P|Refs], [], Syms1, AllRefs1)),
+	  once(fixpoint(F, [Pos1, Lev], InfKind1, [P|Refs], [], Syms1, AllRefs1)),
 	  %% if we used the correctness proposition for computing references of cluster 
 	  %% registrations, we have to filter using the cluster's level
 	  (member(MPropKind,[fcluster,ccluster,rcluster]) ->
