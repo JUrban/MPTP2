@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.89 $
+%% $Revision: 1.90 $
 %%
 %% File  : utils.pl
 %%
@@ -1220,7 +1220,7 @@ mptp2tptp(InFile,Options,OutFile):-
 
 	tell(OutFile1),
 	(
-	  fof(Name,Role,Fla,file(A,Name),Info),
+	  fof(Name,Role,Fla,file(A,Sec),Info),
 	  (
 	    PrintedNames \= [],
 	    member(Name,PrintedNames)
@@ -1242,7 +1242,7 @@ mptp2tptp(InFile,Options,OutFile):-
 		      string_to_atom(A1,A),
 		      print(initial(A1,Name))
 		  ;
-		      print(fof(Name,theorem,Fla1,file(A,Name))),
+		      print(fof(Name,theorem,Fla1,file(A,Sec))),
 		      write('.')
 		  )
 	      ;
@@ -1256,7 +1256,7 @@ mptp2tptp(InFile,Options,OutFile):-
 
 		  ;
 		      Info1 = inference(mizar_proof,[status(thm)],Refs2),
-		      print(fof(Name,theorem,Fla1,Info1,[file(A,Name)])),
+		      print(fof(Name,theorem,Fla1,Info1,[file(A,Sec)])),
 		      write('.')
 		  )
 	      )
@@ -1270,7 +1270,7 @@ mptp2tptp(InFile,Options,OutFile):-
 		  string_to_atom(A1,A),
 		  print(initial(A1,Name))
 	      ;
-		  print(fof(Name,Role,Fla1,file(A,Name))),
+		  print(fof(Name,Role,Fla1,file(A,Sec))),
 		  write('.')
 	      )
 	  ),
@@ -1294,6 +1294,23 @@ thms2tptp(OutDirectory):-
 	concat_atom([OutDirectory, A, '.', Kind, '3'], OutFile),
 	once(mptp2tptp(InFile,Options,OutFile)),
 	fail.
+
+%% mml2tptp(+OutDirectory)
+%%
+%% translate all of mml (theorems, top-level lemmas, constructor info and clusters)
+%% each into file Article.(lem|the|dco|dcl)3 in OutDirectory
+%% ##TEST: :- mml2tptp('/home/urban/mptp0.2/00tmp4/').
+mml2tptp(OutDirectory):-
+	mml_dir_atom(MMLDir),
+	all_articles(List),
+	member(A,[hidden,tarski|List]),
+	member([Kind|Options],[[lem, opt_NO_FRAENKEL_CONST_GEN],[the],[dco],[dcl]]),
+	concat_atom([MMLDir, A, '.', Kind, '2'], InFile),
+	exists_file(InFile),
+	concat_atom([OutDirectory, A, '.', Kind, '3'], OutFile),
+	once(mptp2tptp(InFile,Options,OutFile)),
+	fail.
+
 
 
 %% For all articles create the inference dag of its top-level theorems
