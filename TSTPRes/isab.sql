@@ -10,6 +10,25 @@
 -- INDEX (`time` )
 -- ) TYPE = MYISAM ;
 
+-- SQL table of all provers
+CREATE TABLE `all` (
+`problem` VARCHAR( 255 ) NOT NULL ,
+`prover` VARCHAR( 255 ) NOT NULL ,
+`result` CHAR( 3 ) NOT NULL ,
+`output_status` CHAR( 3 ) NOT NULL ,
+`time` FLOAT NOT NULL DEFAULT 700,
+INDEX ( `problem` ) ,
+INDEX ( `prover` ) ,
+INDEX ( `result`) , 
+INDEX (`output_status`) ,
+INDEX (`time` )
+) TYPE = MYISAM ;
+
+-- create load file for all: 
+-- for i in `cat 00Systems_isab`; do sed -e "s/^\([^\\t]\+\)\\t/\\1\\t$i\\t/" loadisab/"$i"_r1; done > loadisab/all_r1
+
+LOAD DATA LOCAL INFILE 'all_r1' INTO TABLE `all` FIELDS TERMINATED BY '\t' ENCLOSED BY '"' ESCAPED BY '\\' LINES TERMINATED BY '\n';
+
 
 -- sample loading of the table form a file
 -- LOAD DATA LOCAL INFILE 'Bliksem___1_12_r1' INTO TABLE `Bliksem___1_12` FIELDS TERMINATED BY '\t' ENCLOSED BY '"' ESCAPED BY '\\' LINES TERMINATED BY '\n';
