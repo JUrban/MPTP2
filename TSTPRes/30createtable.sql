@@ -36,6 +36,29 @@ INDEX (`time` )
 -- load the all table
 LOAD DATA LOCAL INFILE 'all_r1' INTO TABLE `all` FIELDS TERMINATED BY '\t' ENCLOSED BY '"' ESCAPED BY '\\' LINES TERMINATED BY '\n';
 
+-- table tptp of problem divisions, categories, and whether used at CASC21
+-- the casc21 field is actually boolean - 1 for casc21 problems, 0 for the rest
+-- the category is NULL for:
+--  FOF_UNS_EPR_EQU FOF_UNS_EPR_NEQ FOF_UNS_RFO_EQU FOF_UNS_RFO_NEQ
+CREATE TABLE `tptp` (
+`problem` VARCHAR( 255 ) NOT NULL ,
+`division` CHAR( 3 ) NOT NULL ,
+`category` CHAR( 3 ) NULL ,
+`casc21` tinyint NOT NULL DEFAULT 0,
+INDEX ( `problem` ) ,
+INDEX ( `division` ) ,
+INDEX ( `category`) , 
+INDEX (`casc21`) 
+) TYPE = MYISAM ;
+
+-- create category and division data from Geoff's SPC files
+-- ./40mktptploadfile.sh
+
+-- load the tptp table
+LOAD DATA LOCAL INFILE 'tptp_r1' INTO TABLE `tptp` FIELDS TERMINATED BY '\t' ENCLOSED BY '"' ESCAPED BY '\\' LINES TERMINATED BY '\n';
+
+
+
 -- sample loading of the table form a file
 -- LOAD DATA LOCAL INFILE 'Bliksem___1_12_r1' INTO TABLE `Bliksem___1_12` FIELDS TERMINATED BY '\t' ENCLOSED BY '"' ESCAPED BY '\\' LINES TERMINATED BY '\n';
 
