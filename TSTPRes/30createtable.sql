@@ -11,10 +11,31 @@ INDEX (`time` )
 ) TYPE = MYISAM ;
 
 
+-- SQL table of all provers
+CREATE TABLE `all` (
+`problem` VARCHAR( 255 ) NOT NULL ,
+`prover` VARCHAR( 255 ) NOT NULL ,
+`result` CHAR( 3 ) NOT NULL ,
+`output_status` CHAR( 3 ) NOT NULL ,
+`time` FLOAT NOT NULL DEFAULT 700,
+INDEX ( `problem` ) ,
+INDEX ( `prover` ) ,
+INDEX ( `result`) , 
+INDEX (`output_status`) ,
+INDEX (`time` )
+) TYPE = MYISAM ;
+
+
+-- create load file for all: 
+-- for i in `cat 00Systems | sed -e 's/[-.]/_/g'`; do sed -e "s/^\([^\\t]\+\)\\t/\\1\\t$i\\t/" loadsql/"$i"_r1; done > loadsql/all_r1
+
+LOAD DATA LOCAL INFILE 'all_r1' INTO TABLE `all` FIELDS TERMINATED BY '\t' ENCLOSED BY '"' ESCAPED BY '\\' LINES TERMINATED BY '\n';
+
 -- sample loading of the table form a file
 LOAD DATA LOCAL INFILE 'Bliksem___1_12_r1' INTO TABLE `Bliksem___1_12` FIELDS TERMINATED BY '\t' ENCLOSED BY '"' ESCAPED BY '\\' LINES TERMINATED BY '\n';
 
--- the rest of tables (generate this from the 00Systems file)
+-- the rest of tables (generate this from the 00Systems file):
+-- cat 00Systems | sed -e 's/[-.]/_/g'| sed -e 's/\(.*\)/CREATE TABLE `\1` (`problem` VARCHAR( 255 ) NOT NULL , `result` CHAR( 3 ) NOT NULL , `output_status` CHAR( 3 ) NOT NULL , `time` FLOAT NOT NULL DEFAULT\ 700, PRIMARY KEY ( `problem` ) , INDEX ( `result`) , INDEX (`output_status`) , INDEX (`time` )) TYPE = MYISAM ;/'
 CREATE TABLE `CARINE___0_734` (`problem` VARCHAR( 255 ) NOT NULL , `result` CHAR( 3 ) NOT NULL , `output_status` CHAR( 3 ) NOT NULL , `time` FLOAT NOT NULL DEFAULT 700, PRIMARY KEY ( `problem` ) , INDEX ( `result`) , INDEX (`output_status`) , INDEX (`time` )) TYPE = MYISAM ;
 CREATE TABLE `CiME___2_01` (`problem` VARCHAR( 255 ) NOT NULL , `result` CHAR( 3 ) NOT NULL , `output_status` CHAR( 3 ) NOT NULL , `time` FLOAT NOT NULL DEFAULT 700, PRIMARY KEY ( `problem` ) , INDEX ( `result`) , INDEX (`output_status`) , INDEX (`time` )) TYPE = MYISAM ;
 CREATE TABLE `Darwin___1_4_1` (`problem` VARCHAR( 255 ) NOT NULL , `result` CHAR( 3 ) NOT NULL , `output_status` CHAR( 3 ) NOT NULL , `time` FLOAT NOT NULL DEFAULT 700, PRIMARY KEY ( `problem` ) , INDEX ( `result`) , INDEX (`output_status`) , INDEX (`time` )) TYPE = MYISAM ;
@@ -62,7 +83,8 @@ CREATE TABLE `Waldmeister___806` (`problem` VARCHAR( 255 ) NOT NULL , `result` C
 
 
 
--- the rest of loading (generate this from the 00Systems file)
+-- the rest of loading (generate this from the 00Systems file):
+-- cat 00Systems | sed -e 's/[-.]/_/g'| sed -e "s/\(.*\)/LOAD DATA LOCAL INFILE \'\1_r1\' INTO TABLE \`\1\` FIELDS TERMINATED BY \'\\\t\' ENCLOSED BY \'\"\' ESCAPED BY \'\\\\\\\' LINES TERMINATED BY \'\\\n\';/" 
 LOAD DATA LOCAL INFILE 'CARINE___0_734_r1' INTO TABLE `CARINE___0_734` FIELDS TERMINATED BY '\t' ENCLOSED BY '"' ESCAPED BY '\\' LINES TERMINATED BY '\n';
 LOAD DATA LOCAL INFILE 'CiME___2_01_r1' INTO TABLE `CiME___2_01` FIELDS TERMINATED BY '\t' ENCLOSED BY '"' ESCAPED BY '\\' LINES TERMINATED BY '\n';
 LOAD DATA LOCAL INFILE 'Darwin___1_4_1_r1' INTO TABLE `Darwin___1_4_1` FIELDS TERMINATED BY '\t' ENCLOSED BY '"' ESCAPED BY '\\' LINES TERMINATED BY '\n';
