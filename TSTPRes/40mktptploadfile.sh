@@ -16,4 +16,4 @@ cat FOF_NKC_EPR_EQU FOF_NKC_RFO_EQU | sed -e 's/ .*/\tFOF\tFEQ\t/' >../FEQ
 cat FOF_NKC_EPR_NEQ FOF_NKC_RFO_NEQ | sed -e 's/ .*/\tFOF\tFNE\t/' >../FNE
 cat FOF_UNS_EPR_EQU FOF_UNS_EPR_NEQ FOF_UNS_RFO_EQU FOF_UNS_RFO_NEQ | sed -e 's/ .*/\tFOF\tNULL\t/' >../NULL
 cd ..
-cat EPS EPT FEQ FNE FNN FNQ HEQ HNE NEQ NNE PEQ SEQ SNE UEQ NULL | perl -e '%h=(); open(C,"CASC21problems");while(<C>){chop; $h{$_}=();} close(C); while(<>) {chop; (m/^([^\t]+)\t.*/) or die "Bad"; print $_; if(exists $h{$1}) {print "1\n";} else {print "0\n";}}' >../loadsql/tptp_r1
+cat EPS EPT FEQ FNE FNN FNQ HEQ HNE NEQ NNE PEQ SEQ SNE UEQ NULL | perl -e '%h=(); open(C,"CASC21problems");while(<C>){chop; $h{$_}=();} close(C); while(<>) {chop; (m/^([^\t]+)\t.*/) or die "Bad"; print $_; if(exists $h{$1}) {print "1\n";} else {print "0\n";}}' |sort > ../loadsql/tptp_r1
