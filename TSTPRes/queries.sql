@@ -19,7 +19,8 @@ SELECT count(*) FROM `leanCoP___2_0` WHERE (problem like "SEU%") and result="THM
 -- 414
 SELECT count(*) FROM `SRASS___0_1` WHERE (problem like "SEU%") and result="THM";
 
+-- select SPASS results on CASC21 problems
+SELECT `SPASS___3_0`.*,tptp.* FROM `SPASS___3_0`,tptp WHERE `SPASS___3_0`.problem=tptp.problem and tptp.casc21=1
 
-
-
-
+-- count SPASS successes on CASC21 problems
+SELECT count(*) FROM `SPASS___3_0`,tptp WHERE `SPASS___3_0`.problem=tptp.problem and tptp.casc21=1 and (`SPASS___3_0`.result="THM" or `SPASS___3_0`.result="UNS" or `SPASS___3_0`.result="SAT" or `SPASS___3_0`.result="CSA")
