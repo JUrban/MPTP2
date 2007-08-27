@@ -1,9 +1,9 @@
 -- all vampire successes (6633)
-SELECT * FROM `Vampire___9_0` WHERE result="CSA" or result="THM" or result="UNS";
--- all E successes (6498)
-SELECT * FROM `E___0_999` WHERE result="CSA" or result="THM" or result="UNS";
--- all SPASS successes (5381)
-SELECT * FROM `SPASS___3_0` WHERE result="CSA" or result="THM" or result="UNS";
+SELECT * FROM `Vampire___9_0` WHERE result="CSA" or result="THM" or result="UNS" or result="SAT";
+-- all E successes (6978)
+SELECT * FROM `E___0_999` WHERE result="CSA" or result="THM" or result="UNS" or result="SAT";
+-- all SPASS successes (5842)
+SELECT * FROM `SPASS___3_0` WHERE result="CSA" or result="THM" or result="UNS" or result="SAT";
 
 -- count of vampire,fampire,E,SPASS,Leancop,SRASS sucesses on the SEU (Mizar) problems
 -- 358
