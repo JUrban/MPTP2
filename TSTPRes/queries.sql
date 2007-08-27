@@ -24,3 +24,9 @@ SELECT `SPASS___3_0`.*,tptp.* FROM `SPASS___3_0`,tptp WHERE `SPASS___3_0`.proble
 
 -- count SPASS successes on CASC21 problems
 SELECT count(*) FROM `SPASS___3_0`,tptp WHERE `SPASS___3_0`.problem=tptp.problem and tptp.casc21=1 and (`SPASS___3_0`.result="THM" or `SPASS___3_0`.result="UNS" or `SPASS___3_0`.result="SAT" or `SPASS___3_0`.result="CSA")
+
+-- doing previous using the `all` table: (498)
+SELECT count(*) FROM `all`,tptp WHERE `all`.problem=tptp.problem and tptp.casc21=1 and prover="SPASS___3_0" and (`all`.result="THM" or `all`.result="UNS" or `all`.result="SAT" or `all`.result="CSA")
+
+-- counting  E and SPASS success on CASC21 problems (681)
+SELECT count(distinct tptp.problem) FROM `all`,tptp WHERE `all`.problem=tptp.problem and tptp.casc21=1 and (prover="SPASS___3_0" or prover="E___0_999") and (`all`.result="THM" or `all`.result="UNS" or `all`.result="SAT" or `all`.result="CSA")
