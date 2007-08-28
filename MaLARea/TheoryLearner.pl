@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.1 $
+## $Revision: 1.2 $
 
 
 =head1 NAME
@@ -745,7 +745,7 @@ sub RunProblems
 	    $proved_by{$conj} = [];
 	    while ($_=<EP>)
 	    {
-		m/.*,file\([^\),]+, *([a-z0-9_]+) *\)/ or die "bad proof line: $file: $_";
+		m/.*,file\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $file: $_";
 		my $ref = $1;
 		exists $grefnr{$ref} or die "Unknown reference $ref in $file: $_";
 		push( @{$proved_by{$conj}}, $ref);
@@ -849,7 +849,7 @@ sub Iterate
     close(INISPECS);
 
     # create the refsyms file
-    `cat $file_prefix*$file_postfix | bin/GetSymbols |sort -u > $filestem.refsyms`;
+    `cat $file_prefix*$file_postfix | sort -u | bin/GetSymbols  > $filestem.refsyms`;
 
     # create the refnr and symnr files, load these tables and the refsyms table
     CreateTables();
