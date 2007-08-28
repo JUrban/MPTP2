@@ -1,11 +1,11 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% File  : NumberVras.pl
+%% File  : NumberVars.pl
 %%
 %% Author: Josef Urban
 %%
 %%  Expects a set of TPTP fof's in input. Outputs the same fof's,
-%%  renaming the vars in a Prolog way.
+%%  renaming the vars in a Prolog way. Compile: gplc NumberVars.pl
 %%------------------------------------------------------------------------
 
     :- op(99,fx,'$').
