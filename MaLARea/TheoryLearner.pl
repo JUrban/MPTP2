@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.3 $
+## $Revision: 1.4 $
 
 
 =head1 NAME
@@ -33,6 +33,12 @@ It is prepended to the conjecture name (and can contain directory part).
 
 Postfix saying how to create problem file names from conjecture names.
 It is appended to the conjecture name (typically a file extension).
+
+=item B<<< --dofull=<arg>, -f<arg> >>>
+
+If 1, the first pass is a max-timelimit run on full problems. If 0,
+that pass is omitted, and the symbol-only pass is the first run.
+Default is 1.
 
 =item B<<< --refsbgcheat=<arg>, -r<arg> >>>
 
@@ -106,6 +112,7 @@ Getopt::Long::Configure ("bundling");
 
 GetOptions('fileprefix|e=s'    => \$gfileprefix,
 	   'filepostfix|s=s'    => \$gfilepostfix,
+	   'dofull|f=i'    => \$gdofull,
 	   'refsbgcheat|r=i'    => \$grefsbgcheat,
 	   'alwaysmizrefs|m=i'    => \$galwaysmizrefs,
 	   'help|h'          => \$help,
@@ -119,6 +126,7 @@ pod2usage(2) if ($#ARGV != 0);
 
 my $filestem   = shift(@ARGV);
 
+$gdofull = 1 unless(defined($gdofull));
 $grefsbgcheat = 0 unless(defined($grefsbgcheat));
 $galwaysmizrefs = 0 unless(defined($galwaysmizrefs));
 $gfileprefix = "" unless(defined($gfileprefix));
@@ -872,20 +880,21 @@ sub Iterate
     LoadSpecs();   # initialises %gspec and %gresults
     @conjs_todo{ keys %gspec }  = (); # initialize with all conjectures
 
+    @tmp_conjs = sort keys %conjs_todo;
+
+
     # creates the $proved_by_1 hash table, and creates initial .out,out1 files;
     # modifies $gresults! - need to initialize first
-    @tmp_conjs = sort keys %conjs_todo;
+    if($gdofull == 1)
+    {
+	print "THRESHOLD: 0\nTIMELIMIT: $gtimelimit\n";
+	my $proved_by_1 = RunProblems(0,$file_prefix, $file_postfix,\@tmp_conjs,1,1);
+	delete @conjs_todo{ keys %{$proved_by_1}}; # delete the proved ones
+	@tmp_conjs = sort keys %conjs_todo;
+	PrintTrainingFromHash(1,$proved_by_1);
+    }
 
-
-    print "THRESHOLD: 0\nTIMELIMIT: $gtimelimit\n";
-    my $proved_by_1 = RunProblems(0,$file_prefix, $file_postfix,\@tmp_conjs,1,1);
-    delete @conjs_todo{ keys %{$proved_by_1}}; # delete the proved ones
-    @tmp_conjs = sort keys %conjs_todo;
-    PrintTrainingFromHash(1,$proved_by_1);
     $gtimelimit = $mintimelimit;
-
-
-
 
 
     PrintTestingFromArray(1, \@tmp_conjs);    # write testing file for still unproved
