@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.2 $
+## $Revision: 1.3 $
 
 
 =head1 NAME
@@ -99,6 +99,8 @@ my $maxtimelimit = 64;  # should be power of 4
 my $mintimelimit = 1;
 my $gtimelimit = $maxtimelimit;
 my $gtargetsnr = 1233;
+my $greclearning = 0;   # whether to recursively add references useful for references
+my $greclimit = 4;
 
 Getopt::Long::Configure ("bundling");
 
@@ -469,65 +471,63 @@ sub LoadResults
 # returns 0 if this spec was irrelevant (i.e. already tried before and noted in %gresults),
 # and nothing was done, otherwise 1;
 # Note that entries in %gspec also contain the conjecture.
+# @$spec1 and @$reserve1 are guaranteed to be a subset of @allrefs here.
 # ##TODO: improve for lemmatizing
 sub HandleSpec
 {
     my ($iter, $file_prefix, $file_postfix, $spec1, $reserve1) = @_;
     my @spec = @$spec1;
     my @reserve = @$reserve1;
-    my @old_refs = keys %{$gspec{$spec[0]}};
-    if ($#spec < $#old_refs)
+    my $conjecture = $spec[0];
+    my @all_refs = keys %{$gspec{$conjecture}};
+
+    my $result;
+    my $subsumed = 0;
+    my $i = 0;
+
+    # for each previous result, check that it does not subsume the
+    # new specification; this is now achieved either by being subset of
+    # CounterSatisfiable spec, or being equal to any previous spec.
+    # If subsumed, try to add one reference from @reserve to @spec and check again -
+    # but do this only if $gtimelimit == $mintimelimit not to waste CPU on randomness
+    my @results = @{$gresults{$conjecture}};
+    while ($i <= $#results)
     {
-	my @refs = @spec;
-	my $result;
-	my $subsumed = 0;
-	my $i = 0;
+	$result = $results[$i];
+	$i++;
 
-	# for each previous result, check that it does not subsume the
-	# new specification; this is now achieved either by being subset of
-	# CounterSatisfiable spec, or being equal to any previous spec.
-	# If subsumed, try to add one reference from @reserve to @spec and check again -
-	# but do this only if $gtimelimit == $mintimelimit not to waste CPU on randomness
-	my @results = @{$gresults{$spec[0]}};
-	while ($i <= $#results)
+	if((0 == $subsumed) &&
+	   ((($#spec <= $result->[res_REFNR]) && (szs_COUNTERSAT eq $result->[res_STATUS]))
+	    || ($#spec == $result->[res_REFNR])))
 	{
-	    $result = $results[$i];
-	    $i++;
-
-	    if((0 == $subsumed) &&
-	       ((($#refs <= $result->[res_REFNR]) && (szs_COUNTERSAT eq $result->[res_STATUS]))
-		|| ($#refs == $result->[res_REFNR])))
+	    my %cmp_refs = ();
+	    @cmp_refs{ @spec } = ();            # insert the new refs
+	    delete @cmp_refs{ @{$result->[res_REFS]} };   # delete the old ones
+	    my @remaining = keys %cmp_refs;
+	    if ((-1 == $#remaining) &&
+		(($gtimelimit <= $result->[res_CPULIM]) ||
+		 (szs_COUNTERSAT eq $result->[res_STATUS]) ||
+		 (szs_UNKNOWN eq $result->[res_STATUS])))  # the last one means that systems died on the same input
 	    {
-		my %cmp_refs = ();
-		@cmp_refs{ @refs } = ();            # insert the new refs
-		delete @cmp_refs{ @{$result->[res_REFS]} };   # delete the old ones
-		my @remaining = keys %cmp_refs;
-		if ((-1 == $#remaining) &&
-		    (($gtimelimit <= $result->[res_CPULIM]) ||
-		     (szs_COUNTERSAT eq $result->[res_STATUS]) ||
-		     (szs_UNKNOWN eq $result->[res_STATUS])))  # the last one means that systems died on the same input
+		if (($#reserve >= 0) && ($gtimelimit == $mintimelimit))
 		{
-		    if (($#reserve >= 0) && ($gtimelimit == $mintimelimit))
-		    {
-			my $added = shift @reserve;
-			push(@spec, $added);
-			$i = 0;
-		    }
-		    else { $subsumed = 1; }
+		    my $added = shift @reserve;
+		    push(@spec, $added);
+		    $i = 0;
 		}
+		else { $subsumed = 1; }
 	    }
 	}
+    }
 
-	if (0 == $subsumed)
-	{
-	    my $new_spec = [szs_INIT, $#refs, -1, [@refs], [] ];
-	    push(@{$gresults{$spec[0]}}, $new_spec);
-	    my $new_refs = join(",", @refs);
-	    print SPEC "spec($spec[0],[$new_refs]).\n";
-	    PrintPruned($iter, $file_prefix, $file_postfix, \@spec);
-	    return 1;
-	}
-	else { return 0; }
+    if (0 == $subsumed)
+    {
+	my $new_spec = [szs_INIT, $#spec, -1, [@spec], [] ];
+	push(@{$gresults{$conjecture}}, $new_spec);
+	my $new_refs = join(",", @spec);
+	print SPEC "spec($conjecture,[$new_refs]).\n";
+	PrintPruned($iter, $file_prefix, $file_postfix, \@spec);
+	return 1;
     }
     else { return 0; }
 }
@@ -875,12 +875,18 @@ sub Iterate
     # creates the $proved_by_1 hash table, and creates initial .out,out1 files;
     # modifies $gresults! - need to initialize first
     @tmp_conjs = sort keys %conjs_todo;
+
+
     print "THRESHOLD: 0\nTIMELIMIT: $gtimelimit\n";
     my $proved_by_1 = RunProblems(0,$file_prefix, $file_postfix,\@tmp_conjs,1,1);
-    $gtimelimit = $mintimelimit;
-
     delete @conjs_todo{ keys %{$proved_by_1}}; # delete the proved ones
     @tmp_conjs = sort keys %conjs_todo;
+    PrintTrainingFromHash(1,$proved_by_1);
+    $gtimelimit = $mintimelimit;
+
+
+
+
 
     PrintTestingFromArray(1, \@tmp_conjs);    # write testing file for still unproved
 
@@ -894,7 +900,7 @@ sub Iterate
     @tmp_conjs = sort keys %conjs_todo;
     PrintTestingFromArray(3,\@tmp_conjs);
 
-    PrintTrainingFromHash(1,$proved_by_1);
+
     PrintTrainingFromHash(2,$proved_by_2);
     `cat $filestem.train_* > $filestem.alltrain_2`;
     Learn(2);
