@@ -52,3 +52,101 @@ SELECT count( * ) as c , prover,division FROM `all` , tptp WHERE `all`.problem =
 
 -- the same for all of tptp
 SELECT count( * ) as c , prover,division FROM `all` , tptp WHERE `all`.problem = tptp.problem and ( `all`.result = "THM" or `all`.result = "UNS" or `all`.result = "SAT" or `all`.result = "CSA" ) group by prover,division  ORDER BY division,`c`  DESC
+
+-- cummulative times for the FOF division for 10 provers (takes 10 minutes)
+select t1.n as time ,t1.cx as Vampire___9_0, t2.cx as  Vampire___8_1,
+t3.cx as E___0_999, t4.cx as  SPASS___3_0,
+t5.cx as Prover9___0607, t6.cx as  iProver___0_2,
+t7.cx as SNARK___20061020, t8.cx as  SRASS___0_1,
+t9.cx as Fampire___1_3, t10.cx as  Equinox___1_2, t11.cx as leanCoP___2_0
+ from 
+(SELECT n300.n as n,count(x.problem) as cx FROM `Vampire___9_0` as x,tptp,n300 where x.time<n300.n and tptp.problem=x.problem and tptp.division="FOF" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t1,
+(SELECT n300.n as n,count(x.problem) as cx FROM `Vampire___8_1` as x,tptp,n300 where x.time<n300.n and tptp.problem=x.problem and tptp.division="FOF" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t2,
+(SELECT n300.n as n,count(x.problem) as cx FROM `E___0_999` as x,tptp,n300 where x.time<n300.n and tptp.problem=x.problem and tptp.division="FOF" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t3,
+(SELECT n300.n as n,count(x.problem) as cx FROM `SPASS___3_0` as x,tptp,n300 where x.time<n300.n and tptp.problem=x.problem and tptp.division="FOF" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t4,
+(SELECT n300.n as n,count(x.problem) as cx FROM `Prover9___0607` as x,tptp,n300 where x.time<n300.n and tptp.problem=x.problem and tptp.division="FOF" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t5,
+(SELECT n300.n as n,count(x.problem) as cx FROM `iProver___0_2` as x,tptp,n300 where x.time<n300.n and tptp.problem=x.problem and tptp.division="FOF" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t6,
+(SELECT n300.n as n,count(x.problem) as cx FROM `SNARK___20061020` as x,tptp,n300 where x.time<n300.n and tptp.problem=x.problem and tptp.division="FOF" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t7,
+(SELECT n300.n as n,count(x.problem) as cx FROM `SRASS___0_1` as x,tptp,n300 where x.time<n300.n and tptp.problem=x.problem and tptp.division="FOF" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t8,
+(SELECT n300.n as n,count(x.problem) as cx FROM `Fampire___1_3` as x,tptp,n300 where x.time<n300.n and tptp.problem=x.problem and tptp.division="FOF" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t9,
+(SELECT n300.n as n,count(x.problem) as cx FROM `Equinox___1_2` as x,tptp,n300 where x.time<n300.n and tptp.problem=x.problem and tptp.division="FOF" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t10,
+(SELECT n300.n as n,count(x.problem) as cx FROM `leanCoP___2_0` as x,tptp,n300 where x.time<n300.n and tptp.problem=x.problem and tptp.division="FOF" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t11
+where t1.n=t2.n and t1.n=t3.n and t1.n=t4.n and t1.n=t5.n and t1.n=t6.n and t1.n=t7.n and t1.n=t8.n and t1.n=t9.n and t1.n=t10.n and t1.n=t11.n;
+
+
+
+-- the same for CNF (some FOF provers removed)
+select t1.n as time ,t1.cx as Vampire___9_0, t2.cx as  Vampire___8_1,
+t3.cx as E___0_999, t4.cx as  SPASS___3_0,
+t5.cx as Prover9___0607, t6.cx as  iProver___0_2,
+t7.cx as SNARK___20061020, 
+t10.cx as  Equinox___1_2
+ from 
+(SELECT n300.n as n,count(x.problem) as cx FROM `Vampire___9_0` as x,tptp,n300 where x.time<n300.n and tptp.problem=x.problem and tptp.division="CNF" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t1,
+(SELECT n300.n as n,count(x.problem) as cx FROM `Vampire___8_1` as x,tptp,n300 where x.time<n300.n and tptp.problem=x.problem and tptp.division="CNF" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t2,
+(SELECT n300.n as n,count(x.problem) as cx FROM `E___0_999` as x,tptp,n300 where x.time<n300.n and tptp.problem=x.problem and tptp.division="CNF" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t3,
+(SELECT n300.n as n,count(x.problem) as cx FROM `SPASS___3_0` as x,tptp,n300 where x.time<n300.n and tptp.problem=x.problem and tptp.division="CNF" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t4,
+(SELECT n300.n as n,count(x.problem) as cx FROM `Prover9___0607` as x,tptp,n300 where x.time<n300.n and tptp.problem=x.problem and tptp.division="CNF" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t5,
+(SELECT n300.n as n,count(x.problem) as cx FROM `iProver___0_2` as x,tptp,n300 where x.time<n300.n and tptp.problem=x.problem and tptp.division="CNF" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t6,
+(SELECT n300.n as n,count(x.problem) as cx FROM `SNARK___20061020` as x,tptp,n300 where x.time<n300.n and tptp.problem=x.problem and tptp.division="CNF" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t7,
+(SELECT n300.n as n,count(x.problem) as cx FROM `Equinox___1_2` as x,tptp,n300 where x.time<n300.n and tptp.problem=x.problem and tptp.division="CNF" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t10
+where t1.n=t2.n and t1.n=t3.n and t1.n=t4.n and t1.n=t5.n and t1.n=t6.n and t1.n=t7.n  and t1.n=t10.n;
+
+
+-- cummulative times for the SEU%+2 (MPTP chainy division) for 10 provers (takes 1 second)
+select t1.n as time ,t1.cx as Vampire___9_0, t2.cx as  Vampire___8_1,
+t3.cx as E___0_999, t4.cx as  SPASS___3_0,
+t5.cx as Prover9___0607, t6.cx as  iProver___0_2,
+t7.cx as SNARK___20061020, t8.cx as  SRASS___0_1,
+t9.cx as Fampire___1_3, t10.cx as  Equinox___1_2, t11.cx as leanCoP___2_0
+ from 
+(SELECT n300.n as n,count(x.problem) as cx FROM `Vampire___9_0` as x,n300 where x.time<n300.n  and x.problem LIKE "SEU%+2" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t1,
+(SELECT n300.n as n,count(x.problem) as cx FROM `Vampire___8_1` as x,n300 where x.time<n300.n  and x.problem LIKE "SEU%+2" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t2,
+(SELECT n300.n as n,count(x.problem) as cx FROM `E___0_999` as x,n300 where x.time<n300.n  and x.problem LIKE "SEU%+2" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t3,
+(SELECT n300.n as n,count(x.problem) as cx FROM `SPASS___3_0` as x,n300 where x.time<n300.n  and x.problem LIKE "SEU%+2" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t4,
+(SELECT n300.n as n,count(x.problem) as cx FROM `Prover9___0607` as x,n300 where x.time<n300.n  and x.problem LIKE "SEU%+2" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t5,
+(SELECT n300.n as n,count(x.problem) as cx FROM `iProver___0_2` as x,n300 where x.time<n300.n  and x.problem LIKE "SEU%+2" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t6,
+(SELECT n300.n as n,count(x.problem) as cx FROM `SNARK___20061020` as x,n300 where x.time<n300.n  and x.problem LIKE "SEU%+2" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t7,
+(SELECT n300.n as n,count(x.problem) as cx FROM `SRASS___0_1` as x,n300 where x.time<n300.n  and x.problem LIKE "SEU%+2" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t8,
+(SELECT n300.n as n,count(x.problem) as cx FROM `Fampire___1_3` as x,n300 where x.time<n300.n  and x.problem LIKE "SEU%+2" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t9,
+(SELECT n300.n as n,count(x.problem) as cx FROM `Equinox___1_2` as x,n300 where x.time<n300.n  and x.problem LIKE "SEU%+2" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t10,
+(SELECT n300.n as n,count(x.problem) as cx FROM `leanCoP___2_0` as x,n300 where x.time<n300.n  and x.problem LIKE "SEU%+2" and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t11
+where t1.n=t2.n and t1.n=t3.n and t1.n=t4.n and t1.n=t5.n and t1.n=t6.n and t1.n=t7.n and t1.n=t8.n and t1.n=t9.n and t1.n=t10.n and t1.n=t11.n;
+
+-- cummulative times for the MPTP chainy division for 10 provers (takes 1 second)
+select t1.n as time ,t1.cx as Vampire___9_0, t2.cx as  Vampire___8_1,
+t3.cx as E___0_999, t4.cx as  SPASS___3_0,
+t5.cx as Prover9___0607, t6.cx as  iProver___0_2,
+t7.cx as SNARK___20061020, t8.cx as  SRASS___0_1,
+t9.cx as Fampire___1_3, t10.cx as  Equinox___1_2, t11.cx as leanCoP___2_0
+ from 
+(SELECT n300.n as n,count(x.problem) as cx FROM `Vampire___9_0` as x,bushy_prob,n300 where x.time<n300.n  and x.problem= bushy_prob.problem and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t1,
+(SELECT n300.n as n,count(x.problem) as cx FROM `Vampire___8_1` as x,bushy_prob,n300 where x.time<n300.n  and x.problem= bushy_prob.problem and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t2,
+(SELECT n300.n as n,count(x.problem) as cx FROM `E___0_999` as x,bushy_prob,n300 where x.time<n300.n  and x.problem= bushy_prob.problem and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t3,
+(SELECT n300.n as n,count(x.problem) as cx FROM `SPASS___3_0` as x,bushy_prob,n300 where x.time<n300.n  and x.problem= bushy_prob.problem and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t4,
+(SELECT n300.n as n,count(x.problem) as cx FROM `Prover9___0607` as x,bushy_prob,n300 where x.time<n300.n  and x.problem= bushy_prob.problem and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t5,
+(SELECT n300.n as n,count(x.problem) as cx FROM `iProver___0_2` as x,bushy_prob,n300 where x.time<n300.n  and x.problem= bushy_prob.problem and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t6,
+(SELECT n300.n as n,count(x.problem) as cx FROM `SNARK___20061020` as x,bushy_prob,n300 where x.time<n300.n  and x.problem= bushy_prob.problem and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t7,
+(SELECT n300.n as n,count(x.problem) as cx FROM `SRASS___0_1` as x,bushy_prob,n300 where x.time<n300.n  and x.problem= bushy_prob.problem and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t8,
+(SELECT n300.n as n,count(x.problem) as cx FROM `Fampire___1_3` as x,bushy_prob,n300 where x.time<n300.n  and x.problem= bushy_prob.problem and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t9,
+(SELECT n300.n as n,count(x.problem) as cx FROM `Equinox___1_2` as x,bushy_prob,n300 where x.time<n300.n  and x.problem= bushy_prob.problem and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t10,
+(SELECT n300.n as n,count(x.problem) as cx FROM `leanCoP___2_0` as x,bushy_prob,n300 where x.time<n300.n  and x.problem= bushy_prob.problem and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t11
+where t1.n=t2.n and t1.n=t3.n and t1.n=t4.n and t1.n=t5.n and t1.n=t6.n and t1.n=t7.n and t1.n=t8.n and t1.n=t9.n and t1.n=t10.n and t1.n=t11.n;
+
+
+-- times for isabelle problems (CNF) (92s)
+select t1.n as time ,t1.cx as Vampire___9_0, t2.cx as  Vampire___8_1,
+t3.cx as E___0_999, t4.cx as  SPASS___3_0,
+t5.cx as Prover9___0607, t6.cx as  iProver___0_2,
+t7.cx as SNARK___20061020, 
+t10.cx as  Equinox___1_2
+ from 
+(SELECT n300.n as n,count(x.problem) as cx FROM `Vampire___9_0` as x,isab_prob,n300 where x.time<n300.n and isab_prob.problem=x.problem and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t1,
+(SELECT n300.n as n,count(x.problem) as cx FROM `Vampire___8_1` as x,isab_prob,n300 where x.time<n300.n and isab_prob.problem=x.problem and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t2,
+(SELECT n300.n as n,count(x.problem) as cx FROM `E___0_999` as x,isab_prob,n300 where x.time<n300.n and isab_prob.problem=x.problem and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t3,
+(SELECT n300.n as n,count(x.problem) as cx FROM `SPASS___3_0` as x,isab_prob,n300 where x.time<n300.n and isab_prob.problem=x.problem and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t4,
+(SELECT n300.n as n,count(x.problem) as cx FROM `Prover9___0607` as x,isab_prob,n300 where x.time<n300.n and isab_prob.problem=x.problem and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t5,
+(SELECT n300.n as n,count(x.problem) as cx FROM `iProver___0_2` as x,isab_prob,n300 where x.time<n300.n and isab_prob.problem=x.problem and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t6,
+(SELECT n300.n as n,count(x.problem) as cx FROM `SNARK___20061020` as x,isab_prob,n300 where x.time<n300.n and isab_prob.problem=x.problem and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t7,
+(SELECT n300.n as n,count(x.problem) as cx FROM `Equinox___1_2` as x,isab_prob,n300 where x.time<n300.n and isab_prob.problem=x.problem and (result="CSA" or result="THM" or result="UNS" or result="SAT") group by n300.n) as t10
+where t1.n=t2.n and t1.n=t3.n and t1.n=t4.n and t1.n=t5.n and t1.n=t6.n and t1.n=t7.n  and t1.n=t10.n;
