@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.5 $
+## $Revision: 1.6 $
 
 
 =head1 NAME
@@ -39,6 +39,14 @@ It is appended to the conjecture name (typically a file extension).
 If 1, the first pass is a max-timelimit run on full problems. If 0,
 that pass is omitted, and the symbol-only pass is the first run.
 Default is 1.
+
+=item B<<< --runspass=<arg>, -S<arg> >>>
+
+If 1, run SPASS. Default is 1.
+
+=item B<<< --runvampire=<arg>, -V<arg> >>>
+
+If 1, run Vampire. Default is 0.
 
 =item B<<< --recadvice=<arg>, -a<arg> >>>
 
@@ -106,7 +114,7 @@ my %gsuperrefs; # contains additions to bg inherited from direct lemmas
 
 my $maxthreshold = 256;
 my $minthreshold = 4;
-my ($gfileprefix,$gfilepostfix,$gdofull,$grecadvice,$grefsbgcheat,$galwaysmizrefs);
+my ($gfileprefix,$gfilepostfix,$gdofull,$gspass,$gvampire,$grecadvice,$grefsbgcheat,$galwaysmizrefs);
 my ($help, $man);
 my $maxtimelimit = 64;  # should be power of 4
 my $mintimelimit = 1;
@@ -119,6 +127,8 @@ Getopt::Long::Configure ("bundling");
 GetOptions('fileprefix|e=s'    => \$gfileprefix,
 	   'filepostfix|s=s'    => \$gfilepostfix,
 	   'dofull|f=i'    => \$gdofull,
+	   'runspass|S=i'    => \$gspass,
+	   'runvampire|V=i'    => \$gvampire,
 	   'recadvice|a=i'    => \$grecadvice,
 	   'refsbgcheat|r=i'    => \$grefsbgcheat,
 	   'alwaysmizrefs|m=i'    => \$galwaysmizrefs,
@@ -134,6 +144,8 @@ pod2usage(2) if ($#ARGV != 0);
 my $filestem   = shift(@ARGV);
 
 $gdofull = 1 unless(defined($gdofull));
+$gspass = 1 unless(defined($gspass));
+$gvampire = 0 unless(defined($gvampire));
 $grecadvice = 0 unless(defined($grecadvice));
 $grefsbgcheat = 0 unless(defined($grefsbgcheat));
 $galwaysmizrefs = 0 unless(defined($galwaysmizrefs));
@@ -791,8 +803,8 @@ sub Learn
 # that we are running with high timelimit problems (e.g. when cheating)
 sub RunProblems
 {
-    my ($iter, $file_prefix, $file_postfix, $conjs, $spass, $keep_cpu_limit) = @_;
-    my ($conj,%proved_by,$status,$spass_status,%nonconj_refs);
+    my ($iter, $file_prefix, $file_postfix, $conjs, $spass, $vampire, $keep_cpu_limit) = @_;
+    my ($conj,%proved_by,$status,$spass_status,$vamp_status,%nonconj_refs);
     %proved_by = ();
 
     open(PROVED_BY,">$filestem.proved_by_$iter");
@@ -885,6 +897,39 @@ sub RunProblems
 	    }
 	    print ", SPASS: $spass_status";
 	}
+
+	if (($vampire == 1) && 
+	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
+	{
+	    my $vamp_status_line =
+		`bin/vampire9 --output_syntax tptp -t $gtimelimit $file 2>$file.errv | tee $file.vout |grep "Refutation"`;
+
+	    if ($vamp_status_line=~m/Refutation/)
+	    {
+		$vamp_status = szs_THEOREM;
+		$status= szs_THEOREM;
+		($gtimelimit = $mintimelimit) if ($keep_cpu_limit == 0);
+		my $vamp_pid = open(VP,"cat $file.vout |grep file|") or die("Cannot start grep");
+		while ($_=<VP>)
+		{
+		    m/.*,file\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $file: $_";
+		    my $ref = $1;
+		    exists $grefnr{$ref} or die "Unknown reference $ref in $file.vout: $_";
+		    push( @{$proved_by{$conj}}, $ref);
+		}
+		my $conj_refs = join(",", @{$proved_by{$conj}});
+		print PROVED_BY "proved_by($conj,[$conj_refs]).\n";
+		%nonconj_refs = ();
+		@nonconj_refs{ @{$proved_by{$conj}} } = ();
+		delete $nonconj_refs{ $conj };
+		$conj_entries[$#conj_entries]->[res_NEEDED] = [ keys %nonconj_refs ];
+	    }
+	    else
+	    {
+		$vamp_status = szs_RESOUT;
+	    }
+	    print ", Vampire: $vamp_status";
+	}
 	print "\n";
 	$conj_entries[$#conj_entries]->[res_STATUS] = $status;
     }
@@ -904,6 +949,9 @@ sub Iterate
     open(INISPECS,">$filestem.specs");
     foreach $i (`ls $file_prefix*$file_postfix`)
     {
+	chop $i;
+	`bin/tptp4X -f tptp:short  -u machine -c $i > $i.tmp1`;
+	`mv $i.tmp1 $i`;
 	$conj = "";
 	my %h = ();
 	open(PROBLEM,$i);
@@ -920,7 +968,6 @@ sub Iterate
 	}
 	close(PROBLEM);
 	print INISPECS "spec($conj,[" . join(",", keys %h) . "]).\n";
-	chop $i;
 	`cp  $i  $i.s_0`;
 #	system(cp,($i, "$i.s_0"));
     }
@@ -958,7 +1005,7 @@ sub Iterate
     if($gdofull == 1)
     {
 	print "THRESHOLD: 0\nTIMELIMIT: $gtimelimit\n";
-	my $proved_by_1 = RunProblems(0,$file_prefix, $file_postfix,\@tmp_conjs,1,1);
+	my $proved_by_1 = RunProblems(0,$file_prefix, $file_postfix,\@tmp_conjs,$gspass,$gvampire,1);
 	delete @conjs_todo{ keys %{$proved_by_1}}; # delete the proved ones
 	@tmp_conjs = sort keys %conjs_todo;
 	PrintTrainingFromHash(1,$proved_by_1);
@@ -973,7 +1020,7 @@ sub Iterate
 
     print "SYMBOL ONLY PASS\n";
     print "THRESHOLD: $threshold\nTIMELIMIT: $gtimelimit\n";
-    my $proved_by_2 = RunProblems(1,$file_prefix, $file_postfix,$to_solve,1,0);  # creates initial .s_1.out files - omits solved in .proved_by_1
+    my $proved_by_2 = RunProblems(1,$file_prefix, $file_postfix,$to_solve,$gspass,$gvampire,0);  # creates initial .s_1.out files - omits solved in .proved_by_1
     delete @conjs_todo{ keys %{$proved_by_2}}; # delete the proved ones
 
     @tmp_conjs = sort keys %conjs_todo;
@@ -990,7 +1037,7 @@ sub Iterate
 
     while ($iter < 1000)
     {
-	my $proved_by = RunProblems($iter,$file_prefix, $file_postfix,$to_solve,1,0);
+	my $proved_by = RunProblems($iter,$file_prefix, $file_postfix,$to_solve,$gspass,$gvampire,0);
 	my @newly_proved = keys %$proved_by;
 	# we need a better variating policy here
 	if ($#newly_proved == -1)
@@ -1042,7 +1089,7 @@ sub Iterate
 		    $gtimelimit = $maxtimelimit;
 		    print "FOUND CHEATABLE: 1+$#cheated_conjs:\nTIMELIMIT: $gtimelimit\n";
 
-		    $proved_by = RunProblems($iter . "_cheat",$file_prefix, $file_postfix,\@cheated_conjs,1,1);
+		    $proved_by = RunProblems($iter . "_cheat",$file_prefix, $file_postfix,\@cheated_conjs,$gspass,$gvampire,1);
 
 		    PrintTrainingFromHash($iter . "_cheat_ok",$proved_by);
 
