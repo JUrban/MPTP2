@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.4 $
+## $Revision: 1.5 $
 
 
 =head1 NAME
@@ -39,6 +39,13 @@ It is appended to the conjecture name (typically a file extension).
 If 1, the first pass is a max-timelimit run on full problems. If 0,
 that pass is omitted, and the symbol-only pass is the first run.
 Default is 1.
+
+=item B<<< --recadvice=<arg>, -a<arg> >>>
+
+If nonzero, the axiom advising phase is repeated this many times,
+recursively using the recommended axioms to enlarge the set of symbols
+for the next advising phase. Default is 0 (no recursion).
+
 
 =item B<<< --refsbgcheat=<arg>, -r<arg> >>>
 
@@ -97,22 +104,22 @@ my %gsubrefs; # contains direct lemmas for those proved by mizar_proof,
 my %gsuperrefs; # contains additions to bg inherited from direct lemmas
                 # for those proved by mizar_proof, only if $grefsbgcheat == 0
 
-my $maxthreshold = 64;
+my $maxthreshold = 256;
 my $minthreshold = 4;
-my ($gfileprefix,$gfilepostfix,$grefsbgcheat,$galwaysmizrefs);
+my ($gfileprefix,$gfilepostfix,$gdofull,$grecadvice,$grefsbgcheat,$galwaysmizrefs);
 my ($help, $man);
 my $maxtimelimit = 64;  # should be power of 4
 my $mintimelimit = 1;
 my $gtimelimit = $maxtimelimit;
 my $gtargetsnr = 1233;
-my $greclearning = 0;   # whether to recursively add references useful for references
-my $greclimit = 4;
+
 
 Getopt::Long::Configure ("bundling");
 
 GetOptions('fileprefix|e=s'    => \$gfileprefix,
 	   'filepostfix|s=s'    => \$gfilepostfix,
 	   'dofull|f=i'    => \$gdofull,
+	   'recadvice|a=i'    => \$grecadvice,
 	   'refsbgcheat|r=i'    => \$grefsbgcheat,
 	   'alwaysmizrefs|m=i'    => \$galwaysmizrefs,
 	   'help|h'          => \$help,
@@ -127,6 +134,7 @@ pod2usage(2) if ($#ARGV != 0);
 my $filestem   = shift(@ARGV);
 
 $gdofull = 1 unless(defined($gdofull));
+$grecadvice = 0 unless(defined($grecadvice));
 $grefsbgcheat = 0 unless(defined($grefsbgcheat));
 $galwaysmizrefs = 0 unless(defined($galwaysmizrefs));
 $gfileprefix = "" unless(defined($gfileprefix));
@@ -366,12 +374,14 @@ sub PrintTesting
 
 # also now prints the to_prove_$iter files, which is used as a check
 # for SelectRelevantFromSpecs
+# the conjecture is printed to become a check for SelectRelevantFromSpecs
 sub PrintTestingFromArray
 {
     my ($iter,$conjs) = @_;
     my $ref;
+    my $iter1 = ($grecadvice > 0) ? $iter . "_" . $grecadvice : $iter;
     open(TO_PROVE,">$filestem.to_prove_$iter") or die "Cannot write to_prove_$iter file";
-    open(TEST, ">$filestem.test_$iter") or die "Cannot write test_$iter file";
+    open(TEST, ">$filestem.test_$iter1") or die "Cannot write test_$iter1 file";
     foreach $ref (@$conjs) {
 	exists $grefsyms{$ref} or die "Unknown reference $ref";
 	my @syms = @{$grefsyms{$ref}};
@@ -383,6 +393,32 @@ sub PrintTestingFromArray
     }
     close TEST;
     close TO_PROVE;
+}
+
+# gets array of specs consisting of conjecture and some axioms
+# instead of just a conjecture
+# the conjecture is printed to become a check for SelectRelevantFromSpecs
+sub PrintTestingFromArrArray
+{
+    my ($iter,$specs) = @_;
+    my $spec1;
+    open(TEST, ">$filestem.test_$iter") or die "Cannot write test_$iter file";
+    foreach $spec1 (@$specs)
+    {
+	my @spec = @$spec1;
+	my %symsh = ();
+	my $ref;
+	foreach $ref (@spec)
+	{
+	    exists $grefsyms{$ref} or die "Unknown reference $ref";
+	    @symsh{ @{$grefsyms{$ref}} } = ();
+	}
+	my @syms_nrs   = map { $gsymnr{$_} if(exists($gsymnr{$_})) } (keys %symsh);
+	push(@syms_nrs, $grefnr{$spec[0]});
+	my $testing_exmpl = join(",", @syms_nrs);
+	print TEST "$testing_exmpl:\n";
+    }
+    close TEST;
 }
 
 
@@ -561,7 +597,7 @@ sub PrintPruned
 # Returns: list of conjectures to try
 sub SelectRelevantFromSpecs
 {
-    my ($iter, $threshold, $file_prefix, $file_postfix) = @_;
+    my ($iter, $threshold, $file_prefix, $file_postfix, $recurse) = @_;
 
 #    LoadSpecs(); # calls LoadTables too
 
@@ -578,10 +614,19 @@ sub SelectRelevantFromSpecs
     my @active = ();
     my $do_example = 0;
     my $wantednr = $gtargetsnr;
+    my @specs = ();
 
-    open(SPEC, ">$filestem.spec_$iter") or die "Cannot write spec_$iter file";
-    my $snow_pid = open(SOUT,"bin/snow -test -I $filestem.test_$iter -F $filestem.net_$iter -L $wantednr -o allboth -B :0-$gtargetsnr|tee $filestem.eval_$iter|") 
-	or die("Cannot start snow: $iter");
+    ## becomes 0 if no recadvice
+    $recurse = $grecadvice unless(defined($recurse));
+
+    if($recurse == 0)
+    {
+	open(SPEC, ">$filestem.spec_$iter") or die "Cannot write spec_$iter file";
+    }
+
+    my $iter1 = ($grecadvice > 0) ? $iter . "_" . $recurse : $iter;
+    my $snow_pid = open(SOUT,"bin/snow -test -I $filestem.test_$iter1 -F $filestem.net_$iter -L $wantednr -o allboth -B :0-$gtargetsnr|tee $filestem.eval_$iter1|") 
+	or die("Cannot start snow: $iter1");
 
     while ($_=<SOUT>)
     {
@@ -590,8 +635,18 @@ sub SelectRelevantFromSpecs
 	    # print the previous entry
 	    if ($do_example == 1)
 	    {
-		$act = HandleSpec($iter, $file_prefix, $file_postfix, \@spec, \@reserve);
-		push(@active, $spec[0]) if ($act == 1);
+
+		if($recurse > 0)
+		{
+		    my @spec2 = @spec;
+		    push(@specs, \@spec2);
+#		    PrintTestingFromArrArray($iter . "_" . ($recurse - 1), \@spec);
+		}
+		else
+		{
+		    $act = HandleSpec($iter, $file_prefix, $file_postfix, \@spec, \@reserve);
+		    push(@active, $spec[0]) if ($act == 1);
+		}
 	    }
 
 	    @spec = ();
@@ -632,14 +687,29 @@ sub SelectRelevantFromSpecs
     # print the last entry
     if ($do_example == 1)
     {
-	$act = HandleSpec($iter, $file_prefix, $file_postfix, \@spec, \@reserve);
-	push(@active, $spec[0]) if ($act == 1);
+	if($recurse > 0)
+	{
+	    push(@specs, \@spec);
+	    PrintTestingFromArrArray($iter . "_" . ($recurse - 1), \@specs);
+	}
+	else
+	{
+	    $act = HandleSpec($iter, $file_prefix, $file_postfix, \@spec, \@reserve);
+	    push(@active, $spec[0]) if ($act == 1);
+	}
     }
 
     die "Some entries unhandled in .to_prove_$iter: @to_prove" if ($#to_prove >= 0);
-    close(SPEC);
-    `gzip $filestem.eval_$iter`;
-    return \@active;
+    if($recurse > 0)
+    {
+	return SelectRelevantFromSpecs($iter,$threshold, $file_prefix, $file_postfix, $recurse - 1);
+    }
+    else
+    {
+	close(SPEC);
+	`gzip $filestem.eval_$iter*`;
+	return \@active;
+    }
 }
 
 # SelectRelevantFromSpecs(0,30,"bushy/",".ren");
@@ -857,7 +927,7 @@ sub Iterate
     close(INISPECS);
 
     # create the refsyms file
-    `cat $file_prefix*$file_postfix | sort -u | bin/GetSymbols  > $filestem.refsyms`;
+    `cat $file_prefix*$file_postfix | sort -u | bin/GetSymbols |sort -u > $filestem.refsyms`;
 
     # create the refnr and symnr files, load these tables and the refsyms table
     CreateTables();
