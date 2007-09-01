@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.91 $
+%% $Revision: 1.92 $
 %%
 %% File  : utils.pl
 %%
@@ -44,6 +44,7 @@ dbg(_,_).
 %%%%%%%%%%%%%%%%%%%% Options %%%%%%%%%%%%%%%%%%%%
 opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme instances
 	       opt_MK_TPTP_INF,		%% better tptp inference slot and no mptp_info
+	       opt_TPTP_SHORT,	        %% short tptp format (parsable by vampire too)
 	       opt_NO_EX_BG_FLAS,       %% do not include existential background in fixpoint
 	       opt_PROB_PRINT_FUNC,	%% unary functor passing a special printing func
 	       opt_TPTPFIX_ND_ROLE,	%% make the role acceptable to GDV
@@ -3571,10 +3572,14 @@ print_ref_as_axiom(Options, Q):-
 	sort_transform_top(Q2,SR2),
 	numbervars([SR2,Q3,Q4],0,_),
 	Status = axiom, QQ3 = Q3, QQ4= [],
-	(member(opt_MK_TPTP_INF,Options) ->
-	    print(fof(Q,Status,SR2,QQ3,QQ4))
-	;
-	    print(fof(Q,Status,SR2,Q3,Q4))
+	(member(opt_TPTP_SHORT,Options) ->
+	    print(fof(Q,Status,SR2))
+	;		 
+	    (member(opt_MK_TPTP_INF,Options) ->
+		print(fof(Q,Status,SR2,QQ3,QQ4))
+	    ;
+		print(fof(Q,Status,SR2,Q3,Q4))
+	    )
 	),
 	write('.'),
 	nl.
@@ -3586,10 +3591,14 @@ print_ref_as_conjecture(Options, ProperRefs1, Q):-
 	Status = conjecture,
 	QQ3 = inference(mizar_bg_added,[status(thm)],ProperRefs1),
 	QQ4 = [Q3],
-	(member(opt_MK_TPTP_INF,Options) ->
-	    print(fof(Q,Status,SR2,QQ3,QQ4))
+	(member(opt_TPTP_SHORT,Options) ->
+	    print(fof(Q,Status,SR2))
 	;
-	    print(fof(Q,Status,SR2,Q3,Q4))
+	    (member(opt_MK_TPTP_INF,Options) ->
+		print(fof(Q,Status,SR2,QQ3,QQ4))
+	    ;
+		print(fof(Q,Status,SR2,Q3,Q4))
+	    )
 	),
 	write('.'),
 	nl.
