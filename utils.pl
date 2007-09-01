@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.92 $
+%% $Revision: 1.93 $
 %%
 %% File  : utils.pl
 %%
@@ -253,6 +253,9 @@ insert_at(X,L,K,R) :- remove_at(X,R,K,L).
 %    (list,integer,list,list) (?,+,?,?)
 split(L,0,[],L).
 split([X|Xs],N,[X|Ys],Zs) :- N > 0, N1 is N - 1, split(Xs,N1,Ys,Zs).
+
+%% Digit is a digit character
+digit(Digit):- member(Digit, ['0','1','2','3','4','5','6','7','8','9']).
 
 %% mptp_func with args
 mptp_func(X):- X =..[H|_],atom_chars(H,[F|_]),member(F,[k,g,u,'0','1','2','3','4','5','6','7','8','9']).
@@ -2268,7 +2271,7 @@ get_problem_sch_insts_from_article(A, Pairs, Options, SI_Names, topRefs):-
 				 Options,_Outfile,_Line,_Col,AllRefs),
 		  member(SI_Name, AllRefs),
 		  atom_chars(SI_Name, [s, Digit | _]),
-		  member(Digit, ['0','1','2','3','4','5','6','7','8','9'])
+		  digit(Digit)
 		),
 		SI_Names
 	       ),
