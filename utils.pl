@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.93 $
+%% $Revision: 1.94 $
 %%
 %% File  : utils.pl
 %%
@@ -4185,6 +4185,14 @@ assert_syms(definition,_,definition,[],Fla1,_,Id,_,_,_):-
 	KTerm =..[KFun|_],
 	atom_chars(KFun,[k|_]),
 	assert(fof_eq_def(KFun, Id)),!.
+
+assert_syms(definition,_,definition,[],Fla1,_,Id,_,_,_):-
+	strip_univ_quant(Fla1, ( sort(Var,STerm) <=> _)),
+	var(Var),
+	nonvar(STerm),
+	STerm =..[SFun|_],
+	atom_chars(SFun,[v|_]),
+	assert(fof_sort_def(SFun, Id)),!.
 
 assert_syms(_,Ref1,definition,[],_,_,Id,_,Sec1,[redefinition(_,_,_,Sec2)|_]):-
 	assert(fof_redefines(Sec1, Sec2, Ref1, Id)).
