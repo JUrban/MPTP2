@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.94 $
+%% $Revision: 1.95 $
 %%
 %% File  : utils.pl
 %%
@@ -1818,6 +1818,8 @@ parse_snow_specs(File):-
 % 	).
 
 
+%%%%%%%%%%%%%%% generating numerical formulas %%%%%%%%%%%%%%%%%%%%
+
 
 
 %%%%%%%%%%%%%%% generating scheme instances  %%%%%%%%%%%%%%%%%%%%%%%
@@ -1903,7 +1905,7 @@ add_univ_context([H|T], Fla, ( ! [H|T] : ( Fla) )).
 %%   (with the same type) can be used at the place of the constant.
 gen_sch_instance(SI_Name,F,Res,Options):-
 	fof(Ref,_,_,file(F,_),
-	    [MPTPInfo,inference(mizar_from,[InstInfo],_Refs)|_]),
+	    [MPTPInfo,inference(mizar_from,[InstInfo|_],_Refs)|_]),
 	InstInfo = scheme_instance(SI_Name,S_Name,Ref,_,Substs),
 	MPTPInfo= mptp_info(_Nr,Lev,_Kind,Pos,_Args),
 	once(fof(S_Name,theorem,Fla,_,_)),
@@ -2103,7 +2105,7 @@ mk_sch_instance_problem_from_th(Ancestors,SI_Name,Options, SubstStackIn, NewSubs
 	%% also create the substitutions and the UnivContext
 	load_proper_article(InstArticle, Options, PostLoadFiles),
 	fof(Problem1,_,_,file(InstArticle,_),
-	    [MPTPInfo,inference(mizar_from,[InstInfo],_Refs)|_]),
+	    [MPTPInfo,inference(mizar_from,[InstInfo|_],_Refs)|_]),
 	MPTPInfo = mptp_info(_,_,_,position(InstLine, InstCol),_),
 	InstInfo = scheme_instance(SI_Name,S_Name,_Ref,_,Substs),
 	zip_s('/',SchFuncsAndPreds,_SchInsts,Substs),
@@ -2279,137 +2281,6 @@ get_problem_sch_insts_from_article(A, Pairs, Options, SI_Names, topRefs):-
 	retractall(fof(_,_,_,file(A,_),_)),
 	load_files(PostLoadFiles,[silent(true)]).
 
-%% following commented code probably should be killed, keeping
-%% it here now so that it's in at least one CVS version
-/*
-%% get_init_scheme_instances(+Problems, -SchInstances)
-%%
-%% Computes all the scheme instances initially needed in
-%% Problems. Proceeds by calling the background algo for
-%% Problems, in the same way as mk_problems_from_list.
-get_init_scheme_instances(Problems, SchInstances):-
-	declare_mptp_predicates,load_mml,
-	Options = [opt_REM_SCH_CONSTS, opt_MK_TPTP_INF],
-	findall([Article, Problem],
-		( member(Name,Problems), concat_atom([Article,Problem], '__', Name)),
-		Pairs), !,
-	maplist(nth1(1),Pairs,Articles),
-	sort(Articles, L),!,
-	findall([SI_Names, TopRefs],
-		(
-		  member(A,L),
-		  get_problem_sch_insts_from_article(A, Pairs, Options, SI_Names, TopRefs)
-		),
-		RefPairs_s
-	       ),
-	zip(SI_Names_s, _TopRefs_s, RefPairs_s),
-	flatten(SI_Names_s, SI_Names_all),
-	sort(SI_Names_all, SchInstances).
-
-
-get_rec_scheme_instances(Problems, DoneSchemeProblems, SchInstances):-
-	subtract(Problems, DoneSchemeProblems, Problems1),
-	(
-	  Problems1 = [] ->
-	  SchInstances = DoneSchemeProblems
-	;
-	  get_init_scheme_instances(Problems1, InitSchInstances),
-	  findall([Scheme,SchProblem],
-		  (
-		    member(SchInst, InitSchInstances),
-		    concat_atom([Scheme,_Problem,_InstArticle], '__', SchInst),
-		    get_ref_fof(Scheme, fof(_,_,_,file(SchFile,_),_)),
-		    concat_atom([SchFile,Scheme], '__', SchProblem)
-		  ),
-		  NewSchemesPairs
-		 ),
-	  sort(NewSchemesPairs, NewSchemesSortedPairs),
-	  zip(_NewSchemesSorted, NewProblemsSorted, NewSchemesSortedPairs),
-	  append(DoneSchemeProblems, Problems1, NewDoneProblems),
-	  get_rec_scheme_instances(NewProblemsSorted, NewDoneProblems, SchInstances)
-	).
-		
-	
-
-%% ##TEST: :- get_init_scheme_instances_from_file('mptp_chall_problems', SchInstances).
-get_init_scheme_instances_from_file(File, SchInstances):-
-	open(File,read,S),
-	read_lines(S,List),
-	close(S),!,
-	get_init_scheme_instances(List, SchInstances).
-
-get_proof_syms_and_flas([P|Refs0], PLevel, PSyms, PRefs),
-	  dbg(dbg_LEVEL_REFS, format('Refs for ~w bef. filtering: ~w~n', [P,PRefs])),
-	  Syms1 = PSyms,
-	  once(fixpoint(F, [Pos1, Lev], InfKind, PRefs, [], Syms1, AllRefs0)),
-	  dbg(dbg_LEVEL_REFS, format('Refs for ~w after fixpoint: ~w~n', [P,AllRefs0])),
-	  %% incorrect, but needs handling of fraenkels and sch_insts
-	  filter_level_refs(Lev,AllRefs0,AllRefs),
-	  dbg(dbg_LEVEL_REFS, format('Refs for ~w after level filtering: ~w~n', [P,AllRefs]))
-
-%% there are no scheme functors and predicates in the scheme instance - easy
-mk_sch_instance_problem_from_th(SI_Name,F,Res,Options):-
-	compute_and_record_instance_data(SI_Name), % means also private and scheme functor type flas kept explicitly
-	switch_to_orig_article,
-	compute_scheme_formulas(S_Name),
-	remove_scheme_functor_flas(S_Name),
-	add_instance_data_to_orig_problem,
-	print.
-
-
-mk_sch_instance_problem_from_th_rec(SI_Name,F,Res,Options):-
-	compute_and_record_instance_data(SI_Name), % means also private and scheme functor type flas kept explicitly
-	switch_to_orig_article,
-	compute_scheme_formulas(S_Name),
-	remove_scheme_functor_flas(S_Name),
-	add_instance_data_to_orig_problem,
-	print.
-	
-	fof(Ref,_,_,file(F,_),
-	    [MPTPInfo,inference(mizar_from,[InstInfo],_Refs)|_]),
-	InstInfo = scheme_instance(SI_Name,S_Name,Ref,_,Substs),
-	MPTPInfo= mptp_info(_Nr,Lev,_Kind,Pos,_Args),
-	once(fof(S_Name,theorem,Fla,_,_)),
-	copy_term(Fla,Tmp),
-	generalize_consts(Substs, Tmp2, UnivContext, NewConstSubst),
-	
-	apply_sch_substs_top(Substs,Tmp,Fla0),
-	(member(opt_REM_SCH_CONSTS,Options) ->
-	    generalize_consts(Fla0, Tmp2, UnivContext, _ ),
-	    add_univ_context(UnivContext, Tmp2, Fla1),
-	    Lev1 = []
-	;
-	    Fla1 = Fla0, Lev1 = Lev
-	),
-	Res = fof(SI_Name,theorem, Fla1, file(F,SI_Name),
-		  [mptp_info(0,Lev1,scheme_instance,Pos,[]),
-		   inference(mizar_sch_instance,[InstInfo],[S_Name])]).
-
-
-
-	  
-gen_sch_instance_new(SI_Name,F,Res,Options):-
-	fof(Ref,_,_,file(F,_),
-	    [MPTPInfo,inference(mizar_from,[InstInfo],_Refs)|_]),
-	InstInfo = scheme_instance(SI_Name,S_Name,Ref,_,Substs),
-	MPTPInfo= mptp_info(_Nr,Lev,_Kind,Pos,_Args),
-	once(fof(S_Name,theorem,Fla,_,_)),
-	copy_term(Fla,Tmp),
-	generalize_consts(Substs, Tmp2, UnivContext, NewConstSubst),
-	
-	apply_sch_substs_top(Substs,Tmp,Fla0),
-	(member(opt_REM_SCH_CONSTS,Options) ->
-	    generalize_consts(Fla0, Tmp2, UnivContext, _ ),
-	    add_univ_context(UnivContext, Tmp2, Fla1),
-	    Lev1 = []
-	;
-	    Fla1 = Fla0, Lev1 = Lev
-	),
-	Res = fof(SI_Name,theorem, Fla1, file(F,SI_Name),
-		  [mptp_info(0,Lev1,scheme_instance,Pos,[]),
-		   inference(mizar_sch_instance,[InstInfo],[S_Name])]).
-
-*/
 %% create and assert all scheme instances for a given article
 assert_sch_instances(File,Options):-
 	repeat,
@@ -3289,113 +3160,11 @@ mk_article_problems(Article,Kinds,Options):-
 %% ###TODO: currently does not handle reconsidered const's type proof, since
 %%          the item_kind is not proposition (but constant)
 %%          also note that fixpoint is hardly needed for that inference
-mk_problem_old(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
-	theory(F, _Theory),
-	member(InfKind0,InferenceKinds),
-	member(PropKind,PropositionKinds),
-	(
-	  member(PropKind,[theorem,scheme,fcluster,ccluster,rcluster]),
-	  MPropKind = PropKind
-	;
-	  not(member(PropKind,[theorem,scheme,fcluster,ccluster,rcluster])),
-	  MPropKind = proposition,
-	  (
-	    PropKind = top_level_lemma,
-	    Lev = []
-	  ;
-	    PropKind \= top_level_lemma
-	  )
-	),
-	fof(P,_,_Fla,file(F,_),[mptp_info(_Nr,Lev,MPropKind,position(Line,Col),Item_Info)
-			       |Rest_of_info]),
-
-	(member(MPropKind,[fcluster,ccluster,rcluster]) ->
-	    ensure(Item_Info = [proof_level(_), Justification |_], cluster(Item_Info)),
-	    (Justification = correctness_conditions([Correctness_Proposition1|_]) ->
-		Correctness_Proposition1 =.. [_Correctness_Condition_Name1, Corr_Proposition_Ref1],
-		fof(Corr_Proposition_Ref1,_,_CPFla,file(F,Corr_Proposition_Ref1),
-		    [_CP_Mptp_info, Inference_info|_])
-	    ;
-		%% forged inference for "strict" rcluster justified by the aggregate type
-		ensure(Justification = inference(mizar_by,_,_), cluster(Justification)),
-		Inference_info = Justification
-	    )
-	;
-	    Rest_of_info = [Inference_info|_]
-	),
-
-	%% filter if problem_list given
-	(
-	  member(problem_list(PList), Rest) ->
-	  member(P,PList)
-	;
-	  true
-	),
-	(member(opt_LINE_COL_NMS, Options) ->
-	    concat_atom([Prefix,F,'__',Line,'_',Col],Outfile);
-	    concat_atom([Prefix,F,'__',P],Outfile)
-	),
-	(
-	  member(snow_spec, Rest) ->
-	  snow_spec(P, Refs0),
-	  InfKind = mizar_by
-	;
-	  Inference_info = inference(InfKind0,InfInfo,Refs0),
-	  InfKind = InfKind0
-	),
-	% fof_name(P, Id1),
-	%% this is used to limit clusters to preceding clauses from the nitial file;
-	%% note that using the ordering of clauses in the initial file
-	%% can be quite fragile (e.g. adding of frankels and scheme instances,...)
-	%% OK, this is done safely now with article_position, nth_clause/3 was very slow
-	ensure(article_position(P,Pos1), throw(article_position(P))),
-%	filter_level_refs(Lev,Refs0,Refs),
-	
-	%% Compute references into AllRefs.
-	%% This gets a bit tricky for cluster registrations - we need the original
-	%% formula (P), but use the PLevel for collecting the refs, and finally filter
-	%% using the original cluster's level (Lev).
-	(
-	  InfKind == mizar_proof,
-	  ensure(InfInfo = [proof_level(PLevel)|_], inf_info(InfInfo,PLevel)),
-	  (member(opt_LEVEL_REF_INFO, Options) ->
-	      get_thislevel_refs(PLevel, Refs0, ThisLevelRefs, SuperLevelRefs),
-	      concat_atom([Outfile,'.refspec'], RefSpecFile),
-	      tell(RefSpecFile),
-	      print(refspec(P,ThisLevelRefs,SuperLevelRefs)),
-	      write('.'),nl,
-	      told
-	  ;
-	      true
-	  ),
-	  get_proof_syms_and_flas([P|Refs0], PLevel, PSyms, PRefs),
-	  dbg(dbg_LEVEL_REFS, format('Refs for ~w bef. filtering: ~w~n', [P,PRefs])),
-	  Syms1 = PSyms,
-	  once(fixpoint(F, [Pos1, Lev], InfKind, PRefs, [], Syms1, AllRefs0)),
-	  dbg(dbg_LEVEL_REFS, format('Refs for ~w after fixpoint: ~w~n', [P,AllRefs0])),
-	  %% incorrect, but needs handling of fraenkels and sch_insts
-	  filter_level_refs(Lev,AllRefs0,AllRefs),
-	  dbg(dbg_LEVEL_REFS, format('Refs for ~w after level filtering: ~w~n', [P,AllRefs]))
-	;
-	  InfKind \== mizar_proof,
-	  Refs = Refs0,
-	  maplist(get_ref_fla, [P|Refs], Flas1),
-	  collect_symbols_top(Flas1, Syms0),
-	  Syms1 = Syms0,
-	  %% ###TODO: for reconsidered type, following is enough instead of fixpoint
-%	  AllRefs1 = [P|Refs]
-	  once(fixpoint(F, [Pos1, Lev], InfKind, [P|Refs], [], Syms1, AllRefs1)),
-	  %% if we used the correctness proposition for computing references of cluster 
-	  %% registrations, we have to filter using the cluster's level
-	  (member(MPropKind,[fcluster,ccluster,rcluster]) ->
-	      filter_level_refs(Lev,AllRefs1,AllRefs)
-	  ;
-	      AllRefs = AllRefs1
-	  )
-	),
-	
-	print_problem(P,F,[InferenceKinds,PropositionKinds|Rest],Options,
-	      Outfile,Line,Col,AllRefs).
+mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
+	mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],
+			Options, Outfile,Line,Col,AllRefs),
+	print_problem(P,F,[InferenceKinds,PropositionKinds|Rest],
+		      Options, Outfile,Line,Col,AllRefs).
 
 %% mk_problem_data(?P,+F,+Prefix,+[InferenceKinds,PropositionKinds|Rest],+Options,
 %%		   -Outfile,-Line,-Col,-AllRefs)
@@ -3476,7 +3245,7 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	%% using the original cluster's level (Lev).
 	(
 	  InfKind == mizar_proof,
-	  ensure(InfInfo = [proof_level(PLevel)|_], inf_info(InfInfo,PLevel)),
+	  ensure(member(proof_level(PLevel), InfInfo), inf_info(InfInfo,PLevel)),
 	  (member(opt_LEVEL_REF_INFO, Options) ->
 	      get_thislevel_refs(PLevel, Refs0, ThisLevelRefs, SuperLevelRefs),
 	      concat_atom([Outfile,'.refspec'], RefSpecFile),
@@ -3512,12 +3281,6 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	      AllRefs = AllRefs1
 	  )
 	).
-
-mk_problem(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options):-
-	mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],
-			Options, Outfile,Line,Col,AllRefs),
-	print_problem(P,F,[InferenceKinds,PropositionKinds|Rest],
-		      Options, Outfile,Line,Col,AllRefs).
 
 
 %% print_problem(+ProblemName,+Article,[+InferenceKinds,+PropositionKinds|+Rest],+Options,
@@ -3673,7 +3436,7 @@ mk_nd_problem(P,F,Prefix,Options):-
 	;
 	  Role1 = lemma_conjecture),
 	(InfKind = mizar_proof ->
-	    InfOpts = [proof_level(Lev)|_]
+	    member(proof_level(Lev), InfOpts)
 	;
 	    Lev = [0]
 	),
