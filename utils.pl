@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.95 $
+%% $Revision: 1.96 $
 %%
 %% File  : utils.pl
 %%
@@ -255,7 +255,10 @@ split(L,0,[],L).
 split([X|Xs],N,[X|Ys],Zs) :- N > 0, N1 is N - 1, split(Xs,N1,Ys,Zs).
 
 %% Digit is a digit character
-digit(Digit):- member(Digit, ['0','1','2','3','4','5','6','7','8','9']).
+%% digit(Digit):- member(Digit, ['0','1','2','3','4','5','6','7','8','9']).
+
+digit('0'). digit('1'). digit('2'). digit('3'). digit('4').
+digit('5'). digit('6'). digit('7'). digit('8'). digit('9').
 
 %% mptp_func with args
 mptp_func(X):- X =..[H|_],atom_chars(H,[F|_]),member(F,[k,g,u,'0','1','2','3','4','5','6','7','8','9']).
@@ -1820,6 +1823,56 @@ parse_snow_specs(File):-
 
 %%%%%%%%%%%%%%% generating numerical formulas %%%%%%%%%%%%%%%%%%%%
 
+%% this could become  MML-version specific
+req_RealNeg(k4_xcmplx_0).
+req_RealInv(k5_xcmplx_0).
+req_RealDiv(k7_xcmplx_0).
+
+
+%% Decode the Polish notation used for encoding numbers in MPTP
+%% formula names. The result is an MPTP term.
+%% Now only for rationals, using difference lists.
+%% ###TODO: complex numbers
+decode_number(Atom, Expr):-
+	ensure(atom_chars(Atom, Chars), decode_number(Atom)),
+	ensure(decd_rat_nr(Chars, Expr, []), decd_rat_nr(Chars)).
+
+decd_rat_nr([r,n|L1],Res,Hole):- !,
+	decd_signed_nr(L1, Num, [d|Rest]),
+	decd_signed_nr(Rest, Den, Hole),
+	req_RealDiv(Div),
+	Res =.. [Div, Num, Den].
+
+decd_rat_nr([r|L1],Res,Hole):- decd_signed_nr(L1,Res,Hole).
+
+decd_signed_nr([m|L1],Res,Hole):- !,
+	decd_nat_nr(L1, Res1, Hole),
+	req_RealNeg(Neg),
+	Res =.. [Neg, Res1].
+
+decd_signed_nr(L1,Res,Hole):- decd_nat_nr(L1,Res,Hole).
+
+decd_nat_nr([H|T],Res,Hole):-
+	digit(H),
+	decd_digits(T,Digs,Hole),
+	number_chars(Res, [H | Digs]).
+
+decd_digits([D|L],[D|Res1],Hole):-
+	digit(D),!,
+	decd_digits(L, Res1, Hole).
+
+decd_digits(Hole,[],Hole).
+
+
+%% decode_eval_name
+%%
+%% rqRealMult__k3_xcmplx_0__rnm1d2_rm2
+decode_eval_name(Name,Constructor,Formula):-
+	concat_atom([Req,Constructor,ArgsAtom], '__', Name),
+	concat_atom(ArgsAtoms,'_',ArgsAtom),
+	maplist(decode_number, ArgsAtoms, Args).
+	
+	
 
 
 %%%%%%%%%%%%%%% generating scheme instances  %%%%%%%%%%%%%%%%%%%%%%%
