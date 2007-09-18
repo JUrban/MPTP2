@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.6 $
+## $Revision: 1.7 $
 
 
 =head1 NAME
@@ -803,9 +803,12 @@ sub Learn
 # that we are running with high timelimit problems (e.g. when cheating)
 sub RunProblems
 {
-    my ($iter, $file_prefix, $file_postfix, $conjs, $spass, $vampire, $keep_cpu_limit) = @_;
+    my ($iter, $file_prefix, $file_postfix, $conjs, $threshold, $spass, $vampire, $keep_cpu_limit) = @_;
     my ($conj,%proved_by,$status,$spass_status,$vamp_status,%nonconj_refs);
     %proved_by = ();
+
+    if($gtimelimit<16) { $spass=1; $vampire=0}
+    if($threshold<16) {$spass=1; $vampire=0}
 
     open(PROVED_BY,">$filestem.proved_by_$iter");
     foreach $conj (@$conjs)
@@ -1005,7 +1008,7 @@ sub Iterate
     if($gdofull == 1)
     {
 	print "THRESHOLD: 0\nTIMELIMIT: $gtimelimit\n";
-	my $proved_by_1 = RunProblems(0,$file_prefix, $file_postfix,\@tmp_conjs,$gspass,$gvampire,1);
+	my $proved_by_1 = RunProblems(0,$file_prefix, $file_postfix,\@tmp_conjs,$threshold,$gspass,$gvampire,1);
 	delete @conjs_todo{ keys %{$proved_by_1}}; # delete the proved ones
 	@tmp_conjs = sort keys %conjs_todo;
 	PrintTrainingFromHash(1,$proved_by_1);
@@ -1020,7 +1023,7 @@ sub Iterate
 
     print "SYMBOL ONLY PASS\n";
     print "THRESHOLD: $threshold\nTIMELIMIT: $gtimelimit\n";
-    my $proved_by_2 = RunProblems(1,$file_prefix, $file_postfix,$to_solve,$gspass,$gvampire,0);  # creates initial .s_1.out files - omits solved in .proved_by_1
+    my $proved_by_2 = RunProblems(1,$file_prefix, $file_postfix,$to_solve,$threshold,$gspass,$gvampire,0);  # creates initial .s_1.out files - omits solved in .proved_by_1
     delete @conjs_todo{ keys %{$proved_by_2}}; # delete the proved ones
 
     @tmp_conjs = sort keys %conjs_todo;
@@ -1037,7 +1040,7 @@ sub Iterate
 
     while ($iter < 1000)
     {
-	my $proved_by = RunProblems($iter,$file_prefix, $file_postfix,$to_solve,$gspass,$gvampire,0);
+	my $proved_by = RunProblems($iter,$file_prefix, $file_postfix,$to_solve,$threshold,$gspass,$gvampire,0);
 	my @newly_proved = keys %$proved_by;
 	# we need a better variating policy here
 	if ($#newly_proved == -1)
@@ -1089,7 +1092,7 @@ sub Iterate
 		    $gtimelimit = $maxtimelimit;
 		    print "FOUND CHEATABLE: 1+$#cheated_conjs:\nTIMELIMIT: $gtimelimit\n";
 
-		    $proved_by = RunProblems($iter . "_cheat",$file_prefix, $file_postfix,\@cheated_conjs,$gspass,$gvampire,1);
+		    $proved_by = RunProblems($iter . "_cheat",$file_prefix, $file_postfix,\@cheated_conjs,$threshold,$gspass,$gvampire,1);
 
 		    PrintTrainingFromHash($iter . "_cheat_ok",$proved_by);
 
