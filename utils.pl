@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.96 $
+%% $Revision: 1.97 $
 %%
 %% File  : utils.pl
 %%
@@ -1823,34 +1823,67 @@ parse_snow_specs(File):-
 
 %%%%%%%%%%%%%%% generating numerical formulas %%%%%%%%%%%%%%%%%%%%
 
+%% ##TODO: represent the operators with TPTP language
+%% ##TODO: arithmetical evaluations take place in Mizar also during
+%%         term parsing (identify.pas:CollectInferConst), precisely:
+%%   - numerals and rqImaginaryUnit get a numvalue
+%%   - rqRealAdd, rqRealMult, rqRealDiff, rqRealDiv, rqRealNeg, rqRealInv
+%%     of arguments with numvalue get a numvalue
+%%  Parsing (CollectInferConst) can happen in other places than just
+%%  By justifications, so we probably have to do these evaluations
+%%  automatically, once we encounter such terms and the requirements
+%%  tell us to do so.
+
+%% axioms needed for any arithmetical problem:
+%% linearity of odering of reals (if rqLessOrEqual appeared)
+%% X+0 = X
+%% X + (-Y) = X - Y
+%% -(-X) = X
+%% X*0 = 0
+%% X*1 = X
+%% X*(-1) = -X
+%% (X")" = X   (what about 0?)
+%% 1/X = X"
+%% X*(Y/Z) = (X*Y)/Z
+%% succ(X) = X+1 ( only if both succ and + present in a problem)
+%% (X+Y)*Z= X*Z + Y*Z
+%% X <= X
+
 %% this could become  MML-version specific
 req_RealNeg(k4_xcmplx_0).
 req_RealInv(k5_xcmplx_0).
 req_RealDiv(k7_xcmplx_0).
 
 
+%% decode_pn_number(+Atom, [-MizExpr, -RatNr])
+%%
 %% Decode the Polish notation used for encoding numbers in MPTP
-%% formula names. The result is an MPTP term.
+%% formula names. The result is an MPTP term, encoded using
+%% the corresponding Mizar functors (see the req_Real... above),
+%% and a canonical prolog term r(NumInt,DenInt) (e.g. r(-1,3)),
+%% usable for prolog evaluation and comparison.
 %% Now only for rationals, using difference lists.
 %% ###TODO: complex numbers
-decode_number(Atom, Expr):-
-	ensure(atom_chars(Atom, Chars), decode_number(Atom)),
-	ensure(decd_rat_nr(Chars, Expr, []), decd_rat_nr(Chars)).
+decode_pn_number(Atom, [MizExpr, RatNr]):-
+	ensure(atom_chars(Atom, Chars), decode_pn_number(Atom)),
+	ensure(decd_rat_nr(Chars, MizExpr, RatNr, []), decd_rat_nr(Chars)).
 
-decd_rat_nr([r,n|L1],Res,Hole):- !,
-	decd_signed_nr(L1, Num, [d|Rest]),
-	decd_signed_nr(Rest, Den, Hole),
+decd_rat_nr([r,n|L1],MizRes,r(SNum,SDen),Hole):- !,
+	decd_signed_nr(L1, MizNum, SNum1, [d|Rest]),
+	decd_signed_nr(Rest, MizDen, SDen1, Hole),
+	ratnr_normalize_sgn(r(SNum1,SDen1), r(SNum,SDen)),	
 	req_RealDiv(Div),
-	Res =.. [Div, Num, Den].
+	MizRes =.. [Div, MizNum, MizDen].
 
-decd_rat_nr([r|L1],Res,Hole):- decd_signed_nr(L1,Res,Hole).
+decd_rat_nr([r|L1],MizRes,r(SNum,1),Hole):- decd_signed_nr(L1,MizRes,SNum,Hole).
 
-decd_signed_nr([m|L1],Res,Hole):- !,
+decd_signed_nr([m|L1],MizRes,SNum,Hole):- !,
 	decd_nat_nr(L1, Res1, Hole),
+	SNum is 0 - Res1,
 	req_RealNeg(Neg),
-	Res =.. [Neg, Res1].
+	MizRes =.. [Neg, Res1].
 
-decd_signed_nr(L1,Res,Hole):- decd_nat_nr(L1,Res,Hole).
+decd_signed_nr(L1,Res,Res,Hole):- decd_nat_nr(L1,Res,Hole).
 
 decd_nat_nr([H|T],Res,Hole):-
 	digit(H),
@@ -1863,17 +1896,78 @@ decd_digits([D|L],[D|Res1],Hole):-
 
 decd_digits(Hole,[],Hole).
 
+%% Normalize signum of a fraction so that there is at most
+%% one, and at the numerator (safety, Mizar ensures this).
+ratnr_normalize_sgn(r(SNum1,SDen1), r(SNum,SDen)):-
+	  SDen1 < 0, !,
+	  SDen is 0 - SDen1,
+	  SNum is 0 - SNum1.
 
-%% decode_eval_name
+ratnr_normalize_sgn(r(SNum,SDen), r(SNum,SDen)).
+
+%% compare two fractions in the standard numerical ordering
+ratnr_cmp(Order,r(A,B),r(C,D)):-
+	AD is A*D,
+	BC is B*C,
+	compare(Order, AD, BC).
+
+%% decode_eval_name(+Name,-Req,-Constructor,-Numbers)
 %%
-%% rqRealMult__k3_xcmplx_0__rnm1d2_rm2
-decode_eval_name(Name,Constructor,Formula):-
+%% Name is a reference like: rqRealMult__k3_xcmplx_0__rnm1d2_rm2.
+%% Returns the requirement (rqRealMult), constructor (k3_xcmplx_0),
+%% list of Mizar numbers like:
+%% [k7_xcmplx_0(k4_xcmplx_0(1), 2), k4_xcmplx_0(2)], and
+%% a list of corresponding prolog-friendly rational numbers like:
+%% [r(-1, 2), r(-2, 1)].
+decode_eval_name(Name,Req,Constructor,MizNumbers,RatNrs):-
 	concat_atom([Req,Constructor,ArgsAtom], '__', Name),
 	concat_atom(ArgsAtoms,'_',ArgsAtom),
-	maplist(decode_number, ArgsAtoms, Args).
-	
-	
+	maplist(decode_pn_number, ArgsAtoms, Numbers),
+	zip(MizNumbers, RatNrs, Numbers).
 
+
+%% create_eval_fla(Req, Constructor, MizNumbers, RatNrs, -Fla)
+create_eval_fla(rqLessOrEqual, Constructor, [MizNr1,MizNr2], [RatNr1,RatNr2], Fla):- !,
+	Fla1 =.. [Constructor, MizNr1, MizNr2],
+	(
+	  ratnr_cmp('>', RatNr1, RatNr2) ->
+	  Fla = (~ Fla1)
+	;
+	  Fla = Fla1
+	).
+
+%% ###TODO: check the Mizar result in prolog here
+create_eval_fla(_Req, Constructor, MizNumbers, _RatNrs, FuncTerm = MizRes):-
+	append(MizArgs, [MizRes], MizNumbers),
+	FuncTerm =.. [Constructor | MizArgs].
+	
+%% gen_eval_fof(+Name,-Fof,+Options)
+%%
+gen_eval_fof(Name,_Fof,_Options):- fof(Name,_,_,_,_),!.
+gen_eval_fof(Name,Fof,_Options):-
+	decode_eval_name(Name, Req, Constructor, MizNumbers, RatNrs),
+	create_eval_fla(Req, Constructor, MizNumbers, RatNrs, Fla),
+	Fof = fof(Name,theorem, Fla, file(arithm,Name),
+		  [mptp_info(0,[],theorem,position(0,0),[0])]).
+
+%% assert_arith_evals(-Names)
+%%
+%% Asserts arithmetical formulas for evaluations referenced
+%% anywhere, and returns their fof names.
+%% Cheats by going through the symbol table instead of
+%% traversing all formulas, a bit fragile as a result,
+%% it calls gen_eval_fof on all symbols starting with rq,
+%% and containing at least two '__' substrings. This check could be
+%% stronger if needed, and redundant correct eval fofs don't hurt.
+assert_arith_evals(Names):-
+	findall(L,(
+		   current_atom(L),
+		   atom_concat(rq,L1,L),
+		   concat_atom([_,_,_|_],'__',L1),
+		   gen_eval_fof(L,Fof,[]),
+		   assert(Fof)
+		  ),
+		Names).
 
 %%%%%%%%%%%%%%% generating scheme instances  %%%%%%%%%%%%%%%%%%%%%%%
 
