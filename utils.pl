@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.97 $
+%% $Revision: 1.98 $
 %%
 %% File  : utils.pl
 %%
@@ -49,7 +49,8 @@ opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme insta
 	       opt_PROB_PRINT_FUNC,	%% unary functor passing a special printing func
 	       opt_TPTPFIX_ND_ROLE,	%% make the role acceptable to GDV
 	       opt_ADD_INTEREST,	%% add interestingness to useful info
-	       opt_LINE_COL_NMS, %% problem are named LINE_COL instead
+	       opt_LINE_COL_NMS,        %% problem are named LINE_COL instead
+	       opt_CONJECTURE_NMS,      %% problem are named as its conjecture
 	       opt_LEVEL_REF_INFO,      %% .refspec file with immediate references is printed
 	       opt_NO_FRAENKEL_CONST_GEN %% do not generalize local consts when abstracting fraenkels
 	                                 %% (useful for fast translation, when consts are not loaded)
@@ -192,6 +193,12 @@ declare_mptp_predicates:-
  dynamic(fraenkels_loaded/1),
  abolish(article_position/2),
  dynamic(article_position/2),
+ abolish(zerotyp/2),
+ multifile(zerotyp/2),
+ dynamic(zerotyp/2),
+ abolish(nonzerotyp/2),
+ multifile(nonzerotyp/2),
+ dynamic(nonzerotyp/2),
  abolish(rec_sch_inst_name/2),
  dynamic(rec_sch_inst_name/2).
 % index(fof(1,1,0,1,1)),
@@ -776,20 +783,45 @@ one_pass(F,Pos,mizar_from,RefsIn,OldSyms,NewSyms,AddedRefs):-
 	flatten([Refs0,Refs2,Refs3,Refs5,Refs6], AddedRefs).
 
 
-
-%% add symbol references until nothing added
+%% fixpoint(+F,+Pos,+InfKind,+RefsIn,+OldSyms,+NewSyms,-RefsOut)
+%%
+%% Add symbol references until nothing added, OldSyms=[] when called first,
+%% it only serves during the recursion.
 %% ###TODO: keep the refs of different kinds in separate lists,
 %%          so that the lookup using member/2 is not so expensive
 %%          (or just use the recorded db
+fixpoint_new(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
+	retractall(fxp_refsin_(_)),
+	findall(d,(member(R,RefsIn),assert(fxp_refsin_(R))),_),
+	fixpoint_(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut).
 fixpoint(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
 	one_pass(F, Pos, InfKind, RefsIn, OldSyms, NewSyms, Refs1), !,
-	(Refs1 = [] -> RefsOut = RefsIn;
-	    union(Refs1, RefsIn, Refs2),
-	    union(OldSyms, NewSyms, OldSyms1),
-	    maplist(get_ref_fla, Refs1, Flas1),
-	    collect_symbols_top(Flas1, Syms1),
-	    subtract(Syms1, OldSyms1, NewSyms1),
-	    fixpoint(F, Pos, InfKind, Refs2, OldSyms1, NewSyms1, RefsOut)).
+	(
+	  Refs1 = [] ->
+	  RefsOut = RefsIn
+	;
+	  union(Refs1, RefsIn, Refs2),
+	  union(OldSyms, NewSyms, OldSyms1),
+	  maplist(get_ref_fla, Refs1, Flas1),
+	  collect_symbols_top(Flas1, Syms1),
+	  subtract(Syms1, OldSyms1, NewSyms1),
+	  fixpoint(F, Pos, InfKind, Refs2, OldSyms1, NewSyms1, RefsOut)
+	).
+
+
+fixpoint_old(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
+	one_pass(F, Pos, InfKind, RefsIn, OldSyms, NewSyms, Refs1), !,
+	(
+	  Refs1 = [] ->
+	  RefsOut = RefsIn
+	;
+	  union(Refs1, RefsIn, Refs2),
+	  union(OldSyms, NewSyms, OldSyms1),
+	  maplist(get_ref_fla, Refs1, Flas1),
+	  collect_symbols_top(Flas1, Syms1),
+	  subtract(Syms1, OldSyms1, NewSyms1),
+	  fixpoint(F, Pos, InfKind, Refs2, OldSyms1, NewSyms1, RefsOut)
+	).
 
 %% antecedent symbols needed for fcluster or ccluster
 cl_needed_syms_top(Fla,Syms):-
@@ -855,7 +887,34 @@ get_fc_clusters([F|Regs],Pos,RefsIn,OldSyms,NewSyms,AddedRefs):-
 		AddedRefs).
 
 
-%%
+%% nonempty_intersection(Set1, Set2)
+nonempty_intersection([H|_],Set2):- memberchk(H,Set2),!.
+nonempty_intersection([_|T],Set2):- nonempty_intersection(T,Set2),!.
+
+%% new version with intersection pre-check, before the expensive union is done
+get_requirements_new1(Files,RefsIn,OldSyms,NewSyms,AddedRefs):-
+	findall([Ref1,Syms], (
+			member(F1,Files),
+			(fof_req(F1,Ref1,Syms); hard_wired_req(F1,Ref1,Syms)),
+			not(member(Ref1, RefsIn)),
+			(Syms=[]; nonempty_intersection(Syms, NewSyms))
+		      ),
+		CandidateRefs1),
+	%% need to remove multiples introduced by hard_wired_req
+	sort(CandidateRefs1, CandidateRefs),
+	(
+	  CandidateRefs = [] ->
+	  AddedRefs = []
+	;
+	  union(OldSyms, NewSyms, AllSyms),
+	  findall(Ref2, (
+			  member([Ref2,Syms2],CandidateRefs),
+			  subset(Syms2, AllSyms)
+			),
+		  AddedRefs)
+	).
+
+%% old slow version
 get_requirements(Files,RefsIn,OldSyms,NewSyms,AddedRefs):-
 	union(OldSyms, NewSyms, AllSyms),
 	findall(Ref1, (member(F1,Files),
@@ -893,19 +952,47 @@ get_nr_type(File,N,Name):-
 	    assert(fof_section(Name,Id))
 	).
 
+%% ###TODO: change this system to the one used for assert_arith_evals
 
-get_nr_fof(boole,0,fof(spc0_boole,theorem, v1_xboole_0(0),
+get_nr_fof(boole,0,fof(spc0_boole,theorem, sort(0, v1_xboole_0),
 	       file(boole,spc0_boole),
-	       [mptp_info(0,[],theorem,position(0,0),[0])])):- !.
+	       [mptp_info(0,[],theorem,position(0,0),[0])])).
 get_nr_fof(boole,N,Res):-
 	integer(N), N > 0, concat_atom([spc,N,'_boole'],Name),
-	Res= fof(Name,theorem, ~ (v1_xboole_0(N)),
+	Res= fof(Name,theorem, sort(N, ~(v1_xboole_0)),
 		 file(boole,Name),[mptp_info(0,[],theorem,position(0,0),[0])]).
 
+%% positive Element of omega; for 0, Element of omega is ensured by NUMERALS:1
+%% ##TODO: it seems that this can become the redefined Element of NAT (widening to REAL)
+%%         see iocorrel:Load_EnvConstructors
+%% that may be needed for adding the 'complex' attribute, using
+%% cluster   -> complex Element of REAL ;
+%%
+%% The reason for not using custom (non)zerotyp (with upper cluster) is that the naming of
+%% such formulas becomes either inconsistent (different flas with the same name), or
+%% unstable (different name for the same fla).
+%% Following test should fail; if it does not fail, we should fix the default type.
+%% ##TEST: :- zerotyp(AR,K),AR \= numbers, constr2list(A, X, L,K),X\=m2_subset_1(k1_numbers, k5_numbers),theory(AR,T),member(requirements(R),T),member(numerals,R).
+
+%% done below now
+%% get_nr_fof(numerals,0,fof(spc0_numerals,theorem,sort(0,m2_subset_1(k1_numbers, k5_numbers)),
+%% 			  file(numerals,spc0_numerals),
+%% 			  [mptp_info(0,[],theorem,position(0,0),[0])])).
+
+%% ##NOTE: we have to add the original type explicitly here, and also the supertype,
+%%    because the redefinition subset_1.html#M2 requires nonemptiness of NAT,
+%%    and e.e. in square_1 this is not known. Mizar uses the redefined version anyway,
+%%    which seems to automatically make also the original version available.
+%% ###TODO: have a closer look at this redefinition issue; it ptobably caused also
+%%          the incomplete bg in one MPTP Challenge problem.
 get_nr_fof(numerals,N,Res):-
-	integer(N), N > 0, concat_atom([spc,N,'_numerals'],Name),
+	integer(N),
+%%	N > 0,
+	concat_atom([spc,N,'_numerals'],Name),
 	Res= fof(Name,theorem,
-		 sort(N,(v2_xreal_0 & m1_subset_1(k5_numbers))),
+		 (sort(N,(v2_xreal_0 & m2_subset_1(k1_numbers, k5_numbers)))
+		 & sort(N,(m1_subset_1(k5_numbers)))
+		 & sort(N,(m1_subset_1(k1_numbers)))),
 		 file(numerals,Name),
 		 [mptp_info(0,[],theorem,position(0,0),[0])]).
 
@@ -1820,9 +1907,60 @@ parse_snow_specs(File):-
 % 	  true
 % 	).
 
+%%%%%%%%%%%%%%% requirements switched on by directives %%%%%
+
+%% arithm.dre MML 930
+% req_RealAdd,             //12
+% req_RealMult,            //13
+% req_RealNeg,             //21
+% req_RealInv,             //22
+% req_RealDiff,            //23
+% req_RealDiv,             //24
+% req_ImaginaryUnit,       //29
+% req_Complex,             //30
+
+% %% boole.dre
+% req_Empty,               //4
+% req_EmptySet,            //5  
+% req_Union,               //16
+% req_Intersection,        //17
+% req_Subtraction,         //18
+% req_SymmetricDifference, //19
+% req_Meets,               //20  
+
+% %% hidden.dre
+% req_Any,                 //1
+% req_EqualsTo,            //2
+% req_BelongsTo,           //3
+
+
+% %% numerals.dre
+% req_Succ,                //15
+% req_Omega                //31
+
+
+% %% real.dre
+% req_LessOrEqual,         //14
+% req_Positive,            //26
+% req_Negative,            //27
+
+% %% subset.dre
+% req_Element,             //6
+% req_PowerSet,            //7
+% req_Inclusion,           //8
+% req_SubDomElem,          //9
+
+
+  
 
 %%%%%%%%%%%%%%% generating numerical formulas %%%%%%%%%%%%%%%%%%%%
 
+%% ## TEST: :- declare_mptp_predicates,load_mml,
+%%             findall(L,(current_atom(L), atom_concat(rq,L1,L), concat_atom([_,_,_|_],'__',L1)), Names),length(Names,N).
+%% There are 7456 different evaluations in MML 940 4.48
+%% (measured by previous, which may omit some evaluations in proofs of e.g. def. correctness)
+
+%% ###TODO: rqPositive, rqNegative
 %% ##TODO: represent the operators with TPTP language
 %% ##TODO: arithmetical evaluations take place in Mizar also during
 %%         term parsing (identify.pas:CollectInferConst), precisely:
@@ -1836,37 +1974,91 @@ parse_snow_specs(File):-
 
 %% axioms needed for any arithmetical problem:
 %% linearity of odering of reals (if rqLessOrEqual appeared)
-%% X+0 = X
-%% X + (-Y) = X - Y
-%% -(-X) = X
-%% X*0 = 0
-%% X*1 = X
-%% X*(-1) = -X
-%% (X")" = X   (what about 0?)
-%% 1/X = X"
-%% X*(Y/Z) = (X*Y)/Z
+%% X+0 = X   ARITHM:1 fof(t1_arithm,theorem,![B1: v1_xcmplx_0]: ( k2_xcmplx_0(B1,0) = B1 ),file(arithm,t1_arithm),
+%% X + (-Y) = X - Y  fof(spc1_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0) ]: ( k2_xcmplx_0(B1,k4_xcmplx_0(B2)) =
+%%                       k6_xcmplx_0(B1,B2) ),file(arithm,spc1_arithm),
+%% -(-X) = X  fof(involutiveness_k4_xcmplx_0
+%% X*0 = 0  ARITHM:2
+%% X*1 = X  ARITHM:3 
+%% X*(-1) = -X fof(spc2_arithm,theorem,![B1: v1_xcmplx_0]: ( k3_xcmplx_0(B1,k4_xcmplx_0(1)) =  k4_xcmplx_0(B1)),
+%%                       file(arithm,spc2_arithm),
+%% (X")" = X   (what about 0? - holds) fof(involutiveness_k5_xcmplx_0
+%% 1/X = X"  as special case of XCMPLX_0:def 9 (X/Y = X*Y"), let's have an spc3_arithm:
+%%              fof(spc3_arithm,theorem,![B1: v1_xcmplx_0]: ( k7_xcmplx_0(1,B1) =  k5_xcmplx_0(B1)),
+%%                       file(arithm,spc3_arithm),
+%% X/1 = X  ARITHM:6
+%% X*(Y/Z) = (X*Y)/Z  fof(spc4_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0),(B3: v1_xcmplx_0) ]:
+%%                         ( k3_xcmplx_0(B1,k7_xcmplx_0(B2,B3)) = k7_xcmplx_0(k3_xcmplx_0(B1,B2),B3)),
+%%                       file(arithm,spc4_arithm),
 %% succ(X) = X+1 ( only if both succ and + present in a problem)
-%% (X+Y)*Z= X*Z + Y*Z
-%% X <= X
+%% (X+Y)*Z= X*Z + Y*Z fof(spc5_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0),(B3: v1_xcmplx_0) ]:
+%%                         ( k3_xcmplx_0(k2_xcmplx_0(B1,B2),B3) = k2_xcmplx_0(k3_xcmplx_0(B1,B3),k3_xcmplx_0(B2,B3))),
+%%                       file(arithm,spc5_arithm),
+%% (X+Y)+Z = X+(Y+Z) fof(spc6_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0),(B3: v1_xcmplx_0) ]:
+%%                         ( k2_xcmplx_0(k2_xcmplx_0(B1,B2),B3) = k2_xcmplx_0(B1,k2_xcmplx_0(B2,B3))),
+%%                       file(arithm,spc6_arithm),
+%% (X*Y)*Z = X*(Y*Z) fof(spc7_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0),(B3: v1_xcmplx_0) ]:
+%%                         ( k3_xcmplx_0(k3_xcmplx_0(B1,B2),B3) = k3_xcmplx_0(B1,k3_xcmplx_0(B2,B3))),
+%%                       file(arithm,spc6_arithm),
+%% version of spc1 catching cases without rqRealDiff (was redundant for square_1, but needed by xreal_1)
+%% (-X) + (-Y) = -(X + Y)  fof(spc8_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0) ]:
+%%                           ( k2_xcmplx_0(k4_xcmplx_0(B1),k4_xcmplx_0(B2)) =
+%%                       k4_xcmplx_0(k2_xcmplx_0(B1,B2)) ),file(arithm,spc8_arithm),
+%% another strange phrasing of spc1, when + is not there    
+%% (-X) - (-Y) = Y - X    fof(spc9_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0) ]:
+%%                        ( k6_xcmplx_0(k4_xcmplx_0(B1),k4_xcmplx_0(B2))  =
+%%                          k6_xcmplx_0(B2,B1) ),file(arithm,spc9_arithm),
+%% (X") * (Y") = (X*Y)"
+%% (X") / (Y") = Y/X
+%% X*(Y") = X/Y
+
+
+%% (-X) - Y = -(X + Y)
+%% X <= X  reflexivity
+
 
 %% this could become  MML-version specific
+req_ImaginaryUnit(k1_xcmplx_0).
+req_RealAdd(k2_xcmplx_0).
+req_RealMult(k3_xcmplx_0).
 req_RealNeg(k4_xcmplx_0).
 req_RealInv(k5_xcmplx_0).
+req_RealDiff(k6_xcmplx_0).
 req_RealDiv(k7_xcmplx_0).
 
 
-%% decode_pn_number(+Atom, [-MizExpr, -RatNr])
+%% decode_pn_number(+Atom, [-MizExpr, -CmplxNr])
 %%
 %% Decode the Polish notation used for encoding numbers in MPTP
 %% formula names. The result is an MPTP term, encoded using
 %% the corresponding Mizar functors (see the req_Real... above),
-%% and a canonical prolog term r(NumInt,DenInt) (e.g. r(-1,3)),
+%% and a canonical prolog term c(Im,Re) for proper complex numbers, and
+%% r(NumInt,DenInt) (e.g. r(-1,3)) for those whose imaginary part is 0,
 %% usable for prolog evaluation and comparison.
-%% Now only for rationals, using difference lists.
-%% ###TODO: complex numbers
-decode_pn_number(Atom, [MizExpr, RatNr]):-
+decode_pn_number(Atom, [MizExpr, CmplxNr]):-
 	ensure(atom_chars(Atom, Chars), decode_pn_number(Atom)),
-	ensure(decd_rat_nr(Chars, MizExpr, RatNr, []), decd_rat_nr(Chars)).
+	ensure(decd_cmplx_nr(Chars, MizExpr, CmplxNr, []), decd_cmplx_nr(Chars)).
+
+decd_cmplx_nr([c|L1],MizRes,c(Im,Re),Hole):- !,
+	decd_rat_nr(L1, MizIm1, Im, [r|Rest]),
+	decd_rat_nr([r|Rest], MizRe1, Re, Hole),
+	req_ImaginaryUnit(ImU),
+	(
+	  MizIm1 = 1 ->
+	  MizIm = ImU
+	;
+	  req_RealMult(Mult),
+	  MizIm =.. [Mult, MizIm1, ImU]
+	),
+	(
+	  MizRe1 = 0 ->
+	  MizRes = MizIm
+	;
+	  req_RealAdd(Add),
+	  MizRes =.. [Add, MizIm, MizRe1]
+	).
+
+decd_cmplx_nr([r|L1],MizRes,RatNr,Hole):- decd_rat_nr([r|L1], MizRes, RatNr, Hole).
 
 decd_rat_nr([r,n|L1],MizRes,r(SNum,SDen),Hole):- !,
 	decd_signed_nr(L1, MizNum, SNum1, [d|Rest]),
@@ -1943,7 +2135,7 @@ create_eval_fla(_Req, Constructor, MizNumbers, _RatNrs, FuncTerm = MizRes):-
 	
 %% gen_eval_fof(+Name,-Fof,+Options)
 %%
-gen_eval_fof(Name,_Fof,_Options):- fof(Name,_,_,_,_),!.
+gen_eval_fof(Name,_Fof,_Options):- fof(Name,_,_,_,_),!,fail.
 gen_eval_fof(Name,Fof,_Options):-
 	decode_eval_name(Name, Req, Constructor, MizNumbers, RatNrs),
 	create_eval_fla(Req, Constructor, MizNumbers, RatNrs, Fla),
@@ -1968,6 +2160,33 @@ assert_arith_evals(Names):-
 		   assert(Fof)
 		  ),
 		Names).
+
+%% assert_arith_reqs(Names)
+%%
+assert_arith_reqs([spc1_arithm,spc2_arithm,spc3_arithm,spc4_arithm,spc5_arithm]):-
+	assert(fof(spc1_arithm,theorem,![(B11: v1_xcmplx_0),(B12: v1_xcmplx_0) ]:
+		  ( k2_xcmplx_0(B11,k4_xcmplx_0(B12)) = k6_xcmplx_0(B11,B12) ),
+		   file(arithm,spc1_arithm), [mptp_info(0,[],theorem,position(0,0),[0])])),
+	assert(fof(spc2_arithm,theorem,![B21: v1_xcmplx_0]:
+		  ( k3_xcmplx_0(B21,k4_xcmplx_0(1)) =  k4_xcmplx_0(B21)),
+		   file(arithm,spc2_arithm), [mptp_info(0,[],theorem,position(0,0),[0])])),
+	assert(fof(spc3_arithm,theorem,![B31: v1_xcmplx_0]:
+		  ( k7_xcmplx_0(1,B31) =  k5_xcmplx_0(B31)),
+		   file(arithm,spc3_arithm), [mptp_info(0,[],theorem,position(0,0),[0])])),
+	assert(fof(spc4_arithm,theorem,![(B41: v1_xcmplx_0),(B42: v1_xcmplx_0),(B43: v1_xcmplx_0) ]:
+		  ( k3_xcmplx_0(B41,k7_xcmplx_0(B42,B43)) = k7_xcmplx_0(k3_xcmplx_0(B41,B42),B43)),
+		   file(arithm,spc4_arithm), [mptp_info(0,[],theorem,position(0,0),[0])])),
+	assert(fof(spc5_arithm,theorem,![(B51: v1_xcmplx_0),(B52: v1_xcmplx_0),(B53: v1_xcmplx_0) ]:
+		  ( k3_xcmplx_0(k2_xcmplx_0(B51,B52),B53) = k2_xcmplx_0(k3_xcmplx_0(B51,B53),k3_xcmplx_0(B52,B53))),
+		   file(arithm,spc5_arithm), [mptp_info(0,[],theorem,position(0,0),[0])])),
+	assert(fof(spc6_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0),(B3: v1_xcmplx_0) ]:
+		  ( k2_xcmplx_0(k2_xcmplx_0(B1,B2),B3) = k2_xcmplx_0(B1,k2_xcmplx_0(B2,B3))),
+		   file(arithm,spc6_arithm), [mptp_info(0,[],theorem,position(0,0),[0])])),
+	assert(fof(spc7_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0),(B3: v1_xcmplx_0) ]:
+		  ( k3_xcmplx_0(k3_xcmplx_0(B1,B2),B3) = k3_xcmplx_0(B1,k3_xcmplx_0(B2,B3))),
+		   file(arithm,spc6_arithm), [mptp_info(0,[],theorem,position(0,0),[0])])).
+
+
 
 %%%%%%%%%%%%%%% generating scheme instances  %%%%%%%%%%%%%%%%%%%%%%%
 
@@ -3187,6 +3406,8 @@ load_proper_article(Article,Options,PostLoadFiles):-
 	sublist(exists_file,[DCO],ToLoad1),
 	load_files(ToLoad1,[silent(true)]),
 	consult(File),
+	assert_arith_evals(_),
+	assert_arith_reqs(_),
 	install_article_positions(Article),
 	install_index,
 	once(assert_sch_instances(Article,Options)),
@@ -3360,9 +3581,17 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	;
 	  true
 	),
-	(member(opt_LINE_COL_NMS, Options) ->
-	    concat_atom([Prefix,F,'__',Line,'_',Col],Outfile);
+	(
+	  member(opt_LINE_COL_NMS, Options) ->
+	  concat_atom([Prefix,F,'__',Line,'_',Col],Outfile)
+	;
+	  (abs_name(P,AbsP) -> true; AbsP = P),
+	  (
+	    member(opt_CONJECTURE_NMS, Options) ->
+	    concat_atom([Prefix,AbsP],Outfile)
+	  ;	   
 	    concat_atom([Prefix,F,'__',P],Outfile)
+	  )
 	),
 	(
 	  member(snow_spec, Rest) ->
@@ -3527,11 +3756,15 @@ get_transformed_fla(Q,Fla):-
 	numbervars([Fla,Q3,Q4],0,_).
 
 %% list2constr(BinConstr, Nil, List , Terms)
-%% replace cons and nil with BinConstr and Nil, creating term
+%%
+%% Replace cons and nil with BinConstr and Nil, creating term
+%% Now can laso be called with unknown Nil (meybe even BinConstr)
+%% and List, to translate Terms to List.
+list2constr(BinConstr, Nil, [H,H1|T],Res):-
+	Res =.. [BinConstr, H, Tmp],!,
+	constr2list(BinConstr, Nil, [H1|T], Tmp).
+list2constr(_BinConstr, T, [T], T):- !.
 list2constr(_BinConstr, Nil, [], Nil).
-list2constr(BinConstr, Nil, [H|T],Res):-
-	list2constr(BinConstr, Nil, T, Tmp),
-	Res =.. [BinConstr, H, Tmp].
 
 print_refs_as_one_fla(Conjecture, AllRefs, _Options):-
 	delete(AllRefs, Conjecture, ProperRefs1),
@@ -3969,7 +4202,7 @@ print_for_nd(Q,InfKind,Refs,Assums,Options):- throw(print_for_nd(Q,InfKind,Refs,
 %%%%%%%%%%%%%%%%%%%% MML loading and indexing %%%%%%%%%%%%%%%%%%%%
 
 %% allowed file estensions for theory files
-theory_exts([dcl,dco,evl,sch,the,lem]).
+theory_exts([dcl,dco,evl,sch,the,lem,zrt]).
 
 %% Kind must be in theory_exts
 load_theory_files(Kind):-
@@ -3989,12 +4222,13 @@ load_environs:- load_theory_files(evl).
 load_schemes:- load_theory_files(sch).
 load_theorems:- load_theory_files(the).
 load_lemmas:- load_theory_files(lem).
+load_numtypes:- load_theory_files(zrt).
 
 %% do not load top-level lemmas by default;
 %% if you do, take care of their local constants and similar stuff
 load_mml:-
 	load_clusters,load_theorems,load_schemes,
-	load_constructors,load_environs.
+	load_constructors,load_environs,load_numtypes.
 
 
 % should fail - load with theorems and propositions first
