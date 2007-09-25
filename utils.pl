@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.98 $
+%% $Revision: 1.99 $
 %%
 %% File  : utils.pl
 %%
@@ -77,6 +77,9 @@ append_l1([H|T],Done,Res):-
 	append(H,Done,Res1),
 	append_l1(T,Res1,Res).
 
+%% nonempty_intersection(Set1, Set2) (not used for anything now)
+nonempty_intersection([H|_],Set2):- memberchk(H,Set2),!.
+nonempty_intersection([_|T],Set2):- nonempty_intersection(T,Set2),!.
 
 %% succeed once or throw ecxeption
 ensure(Goal, Exception):- Goal,!; throw(Exception).
@@ -193,6 +196,10 @@ declare_mptp_predicates:-
  dynamic(fraenkels_loaded/1),
  abolish(article_position/2),
  dynamic(article_position/2),
+ abolish(fxp_refsin_/1),
+ dynamic(fxp_refsin_/1),
+ abolish(fxp_allsyms_/1),
+ dynamic(fxp_allsyms_/1),
  abolish(zerotyp/2),
  multifile(zerotyp/2),
  dynamic(zerotyp/2),
@@ -790,22 +797,27 @@ one_pass(F,Pos,mizar_from,RefsIn,OldSyms,NewSyms,AddedRefs):-
 %% ###TODO: keep the refs of different kinds in separate lists,
 %%          so that the lookup using member/2 is not so expensive
 %%          (or just use the recorded db
-fixpoint_new(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
+fixpoint(F,Pos,InfKind,RefsIn,[],NewSyms,RefsOut):-
 	retractall(fxp_refsin_(_)),
+	retractall(fxp_allsyms_(_)),
 	findall(d,(member(R,RefsIn),assert(fxp_refsin_(R))),_),
-	fixpoint_(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut).
-fixpoint(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
+	findall(d,(member(S,NewSyms),assert(fxp_allsyms_(S))),_),
+	fixpoint_(F,Pos,InfKind,RefsIn,[],NewSyms,RefsOut).
+
+fixpoint_(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
 	one_pass(F, Pos, InfKind, RefsIn, OldSyms, NewSyms, Refs1), !,
 	(
 	  Refs1 = [] ->
 	  RefsOut = RefsIn
 	;
 	  union(Refs1, RefsIn, Refs2),
+	  findall(d,(member(R,Refs1),assert(fxp_refsin_(R))),_),
 	  union(OldSyms, NewSyms, OldSyms1),
+	  findall(d,(member(S,NewSyms),assert(fxp_allsyms_(S))),_),
 	  maplist(get_ref_fla, Refs1, Flas1),
 	  collect_symbols_top(Flas1, Syms1),
 	  subtract(Syms1, OldSyms1, NewSyms1),
-	  fixpoint(F, Pos, InfKind, Refs2, OldSyms1, NewSyms1, RefsOut)
+	  fixpoint_(F, Pos, InfKind, Refs2, OldSyms1, NewSyms1, RefsOut)
 	).
 
 
@@ -820,7 +832,7 @@ fixpoint_old(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
 	  maplist(get_ref_fla, Refs1, Flas1),
 	  collect_symbols_top(Flas1, Syms1),
 	  subtract(Syms1, OldSyms1, NewSyms1),
-	  fixpoint(F, Pos, InfKind, Refs2, OldSyms1, NewSyms1, RefsOut)
+	  fixpoint_old(F, Pos, InfKind, Refs2, OldSyms1, NewSyms1, RefsOut)
 	).
 
 %% antecedent symbols needed for fcluster or ccluster
@@ -864,6 +876,29 @@ check_cluster_position(_,_,_,_).
 
 %% fof_cluster contains precomputed info
 %% assumes that F is the current article
+get_clusters_new([F|Regs],Pos,_RefsIn,_OldSyms,_NewSyms,AddedRefs):-
+	findall(Ref1, (member(F1,[F|Regs]),
+			  fof_cluster(F1,Ref1,AnteSyms),
+			  check_cluster_position(F,Pos,F1,Ref1),
+			  not(fxp_refsin_(Ref1)),
+			  checklist(fxp_allsyms_,AnteSyms)),
+		AddedRefs1),
+	sort(AddedRefs1,AddedRefs).
+
+%% as get_clusters, but only conditional and functor clusters
+%% (i.e. avoids existential ones)
+get_fc_clusters_new([F|Regs],Pos,_RefsIn,_OldSyms,_NewSyms,AddedRefs):-
+	findall(Ref1, (member(F1,[F|Regs]),
+			  fof_cluster(F1,Ref1,AnteSyms),
+			  atom_chars(Ref1,[Char|_]),
+			  member(Char,[c,f]),
+			  check_cluster_position(F,Pos,F1,Ref1),
+			  not(fxp_refsin_(Ref1)),
+			  checklist(fxp_allsyms_,AnteSyms)),
+		AddedRefs1),
+	sort(AddedRefs1,AddedRefs).
+
+%% old slow versions
 get_clusters([F|Regs],Pos,RefsIn,OldSyms,NewSyms,AddedRefs):-
 	union(OldSyms, NewSyms, AllSyms),
 	findall(Ref1, (member(F1,[F|Regs]),
@@ -873,8 +908,6 @@ get_clusters([F|Regs],Pos,RefsIn,OldSyms,NewSyms,AddedRefs):-
 			  subset(AnteSyms, AllSyms)),
 		AddedRefs).
 
-%% as get_clusters, but only conditional and functor clusters
-%% (i.e. avoids existential ones)
 get_fc_clusters([F|Regs],Pos,RefsIn,OldSyms,NewSyms,AddedRefs):-
 	union(OldSyms, NewSyms, AllSyms),
 	findall(Ref1, (member(F1,[F|Regs]),
@@ -886,36 +919,21 @@ get_fc_clusters([F|Regs],Pos,RefsIn,OldSyms,NewSyms,AddedRefs):-
 			  subset(AnteSyms, AllSyms)),
 		AddedRefs).
 
-
-%% nonempty_intersection(Set1, Set2)
-nonempty_intersection([H|_],Set2):- memberchk(H,Set2),!.
-nonempty_intersection([_|T],Set2):- nonempty_intersection(T,Set2),!.
-
-%% new version with intersection pre-check, before the expensive union is done
-get_requirements_new1(Files,RefsIn,OldSyms,NewSyms,AddedRefs):-
-	findall([Ref1,Syms], (
+%% there are now 7469 requirements arithm (MML 930)
+get_requirements(Files,_RefsIn,_OldSyms,_NewSyms,AddedRefs):-
+	findall(Ref1, (
 			member(F1,Files),
 			(fof_req(F1,Ref1,Syms); hard_wired_req(F1,Ref1,Syms)),
-			not(member(Ref1, RefsIn)),
-			(Syms=[]; nonempty_intersection(Syms, NewSyms))
+			not(fxp_refsin_(Ref1)),
+			checklist(fxp_allsyms_,Syms)
 		      ),
-		CandidateRefs1),
+		AddedRefs1),
 	%% need to remove multiples introduced by hard_wired_req
-	sort(CandidateRefs1, CandidateRefs),
-	(
-	  CandidateRefs = [] ->
-	  AddedRefs = []
-	;
-	  union(OldSyms, NewSyms, AllSyms),
-	  findall(Ref2, (
-			  member([Ref2,Syms2],CandidateRefs),
-			  subset(Syms2, AllSyms)
-			),
-		  AddedRefs)
-	).
+	sort(AddedRefs1, AddedRefs).
+
 
 %% old slow version
-get_requirements(Files,RefsIn,OldSyms,NewSyms,AddedRefs):-
+get_requirements_old(Files,RefsIn,OldSyms,NewSyms,AddedRefs):-
 	union(OldSyms, NewSyms, AllSyms),
 	findall(Ref1, (member(F1,Files),
 			  (fof_req(F1,Ref1,Syms);
@@ -2008,9 +2026,17 @@ parse_snow_specs(File):-
 %% (-X) - (-Y) = Y - X    fof(spc9_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0) ]:
 %%                        ( k6_xcmplx_0(k4_xcmplx_0(B1),k4_xcmplx_0(B2))  =
 %%                          k6_xcmplx_0(B2,B1) ),file(arithm,spc9_arithm),
-%% (X") * (Y") = (X*Y)"
-%% (X") / (Y") = Y/X
-%% X*(Y") = X/Y
+%% (X") * (Y") = (X*Y)"   fof(spc10_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0) ]:
+%%                           ( k3_xcmplx_0(k5_xcmplx_0(B1),k5_xcmplx_0(B2)) =
+%%                       k5_xcmplx_0(k3_xcmplx_0(B1,B2)) ),file(arithm,spc10_arithm),
+%% (X") / (Y") = Y/X     fof(spc11_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0) ]:
+%%                        ( k7_xcmplx_0(k5_xcmplx_0(B1),k5_xcmplx_0(B2))  =
+%%                          k7_xcmplx_0(B2,B1) ),file(arithm,spc11_arithm),
+%% X*(Y") = X/Y      fof(spc12_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0) ]: ( k3_xcmplx_0(B1,k5_xcmplx_0(B2)) =
+%%                       k7_xcmplx_0(B1,B2) ),file(arithm,spc12_arithm),
+%% -(X - Y) = Y - X    
+%%                     
+%%                     
 
 
 %% (-X) - Y = -(X + Y)
@@ -2163,7 +2189,8 @@ assert_arith_evals(Names):-
 
 %% assert_arith_reqs(Names)
 %%
-assert_arith_reqs([spc1_arithm,spc2_arithm,spc3_arithm,spc4_arithm,spc5_arithm]):-
+assert_arith_reqs([spc1_arithm,spc2_arithm,spc3_arithm,spc4_arithm,spc5_arithm,spc6_arithm,
+		   spc7_arithm,spc8_arithm,spc9_arithm,spc10_arithm,spc11_arithm,spc12_arithm]):-
 	assert(fof(spc1_arithm,theorem,![(B11: v1_xcmplx_0),(B12: v1_xcmplx_0) ]:
 		  ( k2_xcmplx_0(B11,k4_xcmplx_0(B12)) = k6_xcmplx_0(B11,B12) ),
 		   file(arithm,spc1_arithm), [mptp_info(0,[],theorem,position(0,0),[0])])),
@@ -2184,7 +2211,23 @@ assert_arith_reqs([spc1_arithm,spc2_arithm,spc3_arithm,spc4_arithm,spc5_arithm])
 		   file(arithm,spc6_arithm), [mptp_info(0,[],theorem,position(0,0),[0])])),
 	assert(fof(spc7_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0),(B3: v1_xcmplx_0) ]:
 		  ( k3_xcmplx_0(k3_xcmplx_0(B1,B2),B3) = k3_xcmplx_0(B1,k3_xcmplx_0(B2,B3))),
-		   file(arithm,spc6_arithm), [mptp_info(0,[],theorem,position(0,0),[0])])).
+		   file(arithm,spc6_arithm), [mptp_info(0,[],theorem,position(0,0),[0])])),
+	assert(fof(spc8_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0) ]:
+		  ( k2_xcmplx_0(k4_xcmplx_0(B1),k4_xcmplx_0(B2)) = k4_xcmplx_0(k2_xcmplx_0(B1,B2)) ),
+		   file(arithm,spc8_arithm), [mptp_info(0,[],theorem,position(0,0),[0])])),
+	assert(fof(spc9_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0) ]:
+		  ( k6_xcmplx_0(k4_xcmplx_0(B1),k4_xcmplx_0(B2))  = k6_xcmplx_0(B2,B1) ),
+		   file(arithm,spc9_arithm), [mptp_info(0,[],theorem,position(0,0),[0])])),
+	assert(fof(spc10_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0) ]:
+		  ( k3_xcmplx_0(k5_xcmplx_0(B1),k5_xcmplx_0(B2)) = k5_xcmplx_0(k3_xcmplx_0(B1,B2)) ),
+		   file(arithm,spc10_arithm), [mptp_info(0,[],theorem,position(0,0),[0])])),
+	assert(fof(spc11_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0) ]:
+		  ( k7_xcmplx_0(k5_xcmplx_0(B1),k5_xcmplx_0(B2))  = k7_xcmplx_0(B2,B1) ),
+		   file(arithm,spc11_arithm), [mptp_info(0,[],theorem,position(0,0),[0])])),
+	assert(fof(spc12_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0) ]:
+		  ( k3_xcmplx_0(B1,k5_xcmplx_0(B2)) = k7_xcmplx_0(B1,B2) ),
+		   file(arithm,spc12_arithm), [mptp_info(0,[],theorem,position(0,0),[0])])).
+
 
 
 
