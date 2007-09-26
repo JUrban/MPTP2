@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.99 $
+%% $Revision: 1.100 $
 %%
 %% File  : utils.pl
 %%
@@ -2051,6 +2051,7 @@ req_RealNeg(k4_xcmplx_0).
 req_RealInv(k5_xcmplx_0).
 req_RealDiff(k6_xcmplx_0).
 req_RealDiv(k7_xcmplx_0).
+req_LessOrEqual(r1_xreal_0).
 
 
 %% decode_pn_number(+Atom, [-MizExpr, -CmplxNr])
@@ -2228,8 +2229,59 @@ assert_arith_reqs([spc1_arithm,spc2_arithm,spc3_arithm,spc4_arithm,spc5_arithm,s
 		  ( k3_xcmplx_0(B1,k5_xcmplx_0(B2)) = k7_xcmplx_0(B1,B2) ),
 		   file(arithm,spc12_arithm), [mptp_info(0,[],theorem,position(0,0),[0])])).
 
+%%%%%%%%%%%% export arithmetical formulas for testing with E %%%%%%%%%%%%
 
+%% test integer stuff only, numerals only
+%% req_RealAdd(k2_xcmplx_0).
+%% req_RealMult(k3_xcmplx_0).
+%% req_RealNeg(k4_xcmplx_0).
+%% req_RealInv(k5_xcmplx_0).
+%% req_RealDiff(k6_xcmplx_0).
+%% req_RealDiv(k7_xcmplx_0).
+%% req_LessOrEqual(r1_xreal_0).
 
+retract_tptp_int_names:-
+	retractall(constr_name(k2_xcmplx_0,_,_)),
+	retractall(constr_name(k3_xcmplx_0,_,_)),
+	retractall(constr_name(k4_xcmplx_0,_,_)),
+	retractall(constr_name(k6_xcmplx_0,_,_)),
+	retractall(constr_name(k7_xcmplx_0,_,_)),
+	retractall(constr_name(r1_xreal_0,_,_)).
+
+assert_tptp_int_names:-
+	assert(constr_name(k2_xcmplx_0,$plus_int,0)),
+	assert(constr_name(k3_xcmplx_0,$times_int,0)),
+	assert(constr_name(k4_xcmplx_0,$uminus_int,0)),
+	assert(constr_name(k6_xcmplx_0,$minus_int,0)),
+	assert(constr_name(k7_xcmplx_0,$divide_int,0)),
+	assert(constr_name(r1_xreal_0,$lesseq_int,0)).
+
+%% argument is a rational number incoding an integer
+is_int_rat(r(_,1)).
+
+%% print_int_evals(Names)
+%%
+%% Print arithmetical evaluations involving only integers to stdout,
+%% using the suggested TPTP syntax.
+%%
+%% ##TEST: :- declare_mptp_predicates,load_mml,print_int_evals(_).
+print_int_evals(Names):-
+	retract_tptp_int_names,
+	assert_tptp_int_names,
+	findall(L,(
+		   current_atom(L),
+		   atom_concat(rq,L1,L),
+		   concat_atom([_,_,_|_],'__',L1),
+		   decode_eval_name(L, Req, Constructor, MizNumbers, RatNrs),
+		   Req \= rqRealInv,
+		   Req \= rqSucc,
+		   checklist(is_int_rat,RatNrs),
+		   create_eval_fla(Req, Constructor, MizNumbers, RatNrs, Fla),
+%%		   gen_eval_fof(L,Fof,[]),
+		   print(fof(L,conjecture, Fla)),
+		   write('.'),nl
+		  ),
+		Names).
 
 %%%%%%%%%%%%%%% generating scheme instances  %%%%%%%%%%%%%%%%%%%%%%%
 
@@ -4397,6 +4449,10 @@ assert_syms(theorem,Ref1,_,_,Fla1,File1,_,LogicSyms,_,_):-
 	collect_symbols_top(Fla1,AllSyms),
 	subtract(AllSyms,LogicSyms,Syms),
 	assert(fof_req(File1,Ref1,Syms)).
+
+%% Adds a link from a Symbol to Requirements containing
+%% that Symbol.
+% req_graph(Symbol,Reqs)
 
 assert_syms(_,_,_,_,_,_,_,_,_,_) :- !.
 
