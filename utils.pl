@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.100 $
+%% $Revision: 1.101 $
 %%
 %% File  : utils.pl
 %%
@@ -186,6 +186,7 @@ declare_mptp_predicates:-
  dynamic(fof_parentlevel/2),
  abolish(fof_cluster/3),
  abolish(fof_req/3),
+ abolish(sym_ref_graph/2),
  abolish(abs_name/2),
  dynamic(abs_name/2),
  abolish(fof_redefines/4),
@@ -802,6 +803,7 @@ fixpoint(F,Pos,InfKind,RefsIn,[],NewSyms,RefsOut):-
 	retractall(fxp_allsyms_(_)),
 	findall(d,(member(R,RefsIn),assert(fxp_refsin_(R))),_),
 	findall(d,(member(S,NewSyms),assert(fxp_allsyms_(S))),_),
+	init_fxp_sym_flags,
 	fixpoint_(F,Pos,InfKind,RefsIn,[],NewSyms,RefsOut).
 
 fixpoint_(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
@@ -813,10 +815,10 @@ fixpoint_(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
 	  union(Refs1, RefsIn, Refs2),
 	  findall(d,(member(R,Refs1),assert(fxp_refsin_(R))),_),
 	  union(OldSyms, NewSyms, OldSyms1),
-	  findall(d,(member(S,NewSyms),assert(fxp_allsyms_(S))),_),
 	  maplist(get_ref_fla, Refs1, Flas1),
 	  collect_symbols_top(Flas1, Syms1),
 	  subtract(Syms1, OldSyms1, NewSyms1),
+	  findall(d,(member(S,NewSyms1),assert(fxp_allsyms_(S))),_),
 	  fixpoint_(F, Pos, InfKind, Refs2, OldSyms1, NewSyms1, RefsOut)
 	).
 
@@ -876,7 +878,7 @@ check_cluster_position(_,_,_,_).
 
 %% fof_cluster contains precomputed info
 %% assumes that F is the current article
-get_clusters_new([F|Regs],Pos,_RefsIn,_OldSyms,_NewSyms,AddedRefs):-
+get_clusters([F|Regs],Pos,_RefsIn,_OldSyms,_NewSyms,AddedRefs):-
 	findall(Ref1, (member(F1,[F|Regs]),
 			  fof_cluster(F1,Ref1,AnteSyms),
 			  check_cluster_position(F,Pos,F1,Ref1),
@@ -887,7 +889,7 @@ get_clusters_new([F|Regs],Pos,_RefsIn,_OldSyms,_NewSyms,AddedRefs):-
 
 %% as get_clusters, but only conditional and functor clusters
 %% (i.e. avoids existential ones)
-get_fc_clusters_new([F|Regs],Pos,_RefsIn,_OldSyms,_NewSyms,AddedRefs):-
+get_fc_clusters([F|Regs],Pos,_RefsIn,_OldSyms,_NewSyms,AddedRefs):-
 	findall(Ref1, (member(F1,[F|Regs]),
 			  fof_cluster(F1,Ref1,AnteSyms),
 			  atom_chars(Ref1,[Char|_]),
@@ -899,7 +901,7 @@ get_fc_clusters_new([F|Regs],Pos,_RefsIn,_OldSyms,_NewSyms,AddedRefs):-
 	sort(AddedRefs1,AddedRefs).
 
 %% old slow versions
-get_clusters([F|Regs],Pos,RefsIn,OldSyms,NewSyms,AddedRefs):-
+get_clusters_old([F|Regs],Pos,RefsIn,OldSyms,NewSyms,AddedRefs):-
 	union(OldSyms, NewSyms, AllSyms),
 	findall(Ref1, (member(F1,[F|Regs]),
 			  fof_cluster(F1,Ref1,AnteSyms),
@@ -908,7 +910,7 @@ get_clusters([F|Regs],Pos,RefsIn,OldSyms,NewSyms,AddedRefs):-
 			  subset(AnteSyms, AllSyms)),
 		AddedRefs).
 
-get_fc_clusters([F|Regs],Pos,RefsIn,OldSyms,NewSyms,AddedRefs):-
+get_fc_clusters_old([F|Regs],Pos,RefsIn,OldSyms,NewSyms,AddedRefs):-
 	union(OldSyms, NewSyms, AllSyms),
 	findall(Ref1, (member(F1,[F|Regs]),
 			  fof_cluster(F1,Ref1,AnteSyms),
@@ -2277,7 +2279,6 @@ print_int_evals(Names):-
 		   Req \= rqSucc,
 		   checklist(is_int_rat,RatNrs),
 		   create_eval_fla(Req, Constructor, MizNumbers, RatNrs, Fla),
-%%		   gen_eval_fof(L,Fof,[]),
 		   print(fof(L,conjecture, Fla)),
 		   write('.'),nl
 		  ),
@@ -4375,6 +4376,10 @@ install_index:-
 	dynamic(fof_parentlevel/2),
 	abolish(fof_cluster/3),
 	abolish(fof_req/3),
+	abolish(sym_ref_graph/2),
+	abolish(fof_ante_sym_cnt/4),
+	dynamic(sym_ref_graph/2),
+	dynamic(fof_ante_sym_cnt/4),
 	abolish(fof_redefines/4),
 	dynamic(fof_redefines/4),
 %	index(fof_name(1,1)),
@@ -4416,7 +4421,8 @@ assert_level(_,_).
 assert_syms(rcluster,Ref1,_,_,Fla1,File1,_,LogicSyms,_,_):- !,
 	    collect_symbols_top(Fla1,AllSyms),
 	    subtract(AllSyms,LogicSyms,Syms),
-	    assert(fof_cluster(File1,Ref1,Syms)).
+	    assert(fof_cluster(File1,Ref1,Syms)),
+	    assert_fxp_data(Ref1,File1,rcluster,Syms).
 
 assert_syms(definition,_,definition,[],Fla1,_,Id,_,_,_):-
 	strip_univ_quant(Fla1, ( KTerm = _)),
@@ -4438,24 +4444,64 @@ assert_syms(_,Ref1,definition,[],_,_,Id,_,Sec1,[redefinition(_,_,_,Sec2)|_]):-
 
 assert_syms(fcluster,Ref1,_,_,Fla1,File1,_,_,_,_):- !,
 	cl_needed_syms_top(Fla1,AnteSyms),
-	assert(fof_cluster(File1,Ref1,AnteSyms)).
+	assert(fof_cluster(File1,Ref1,AnteSyms)),
+	assert_fxp_data(Ref1,File1,fcluster,AnteSyms).
 
 assert_syms(ccluster,Ref1,_,_,Fla1,File1,_,_,_,_):- !,
 	cl_needed_syms_top(Fla1,AnteSyms),
-	assert(fof_cluster(File1,Ref1,AnteSyms)).
+	assert(fof_cluster(File1,Ref1,AnteSyms)),
+	assert_fxp_data(Ref1,File1,ccluster,AnteSyms).
 
 assert_syms(theorem,Ref1,_,_,Fla1,File1,_,LogicSyms,_,_):-
 	member(File1,[numerals, boole, subset, arithm, real]),!,
 	collect_symbols_top(Fla1,AllSyms),
 	subtract(AllSyms,LogicSyms,Syms),
-	assert(fof_req(File1,Ref1,Syms)).
-
-%% Adds a link from a Symbol to Requirements containing
-%% that Symbol.
-% req_graph(Symbol,Reqs)
+	assert(fof_req(File1,Ref1,Syms)),
+	assert_fxp_data(Ref1,File1,req,Syms).
 
 assert_syms(_,_,_,_,_,_,_,_,_,_) :- !.
 
+%% Adds a link from a Symbol to Requirements containing
+%% that Symbol. When the symbol becomes available in fixpoint,
+%% all counts (implemented as flags) of Refs are decreased,
+%% and if they reach zero, the Refs are activated.
+%% sym_ref_graph(Symbol,Reqs)
+assert_fxp_data(Ref,File,MKind,AnteSyms):-
+	checklist(assert_sym_ref_link(Ref),AnteSyms),
+	length(AnteSyms,SymsLength),
+	assert(fof_ante_sym_cnt(Ref,File,MKind,SymsLength)).
+
+assert_sym_ref_link(Ref,Sym):- assert(sym_ref_graph(Sym,Ref)).
+
+%% Initialize the symbol counters for each references registered
+%% by fof_ante_sym_cnt. Intended for fixpoint.
+init_fxp_sym_flags:-
+	repeat,
+	(
+	  fof_ante_sym_cnt(Ref,_File,_MKind,SymsLength),
+	  flag(Ref,_,SymsLength),
+	  fail
+	;
+	  true
+	).
+
+%% decrease_fxp_sym_flags(+NewSyms, -ZeroedRefs)
+%%
+%% Decrease the fxp symbol counts (flags) for references
+%% containing NewSyms.
+%% Return the references which were zeroed.
+decrease_fxp_sym_flags(NewSyms, ZeroedRefs):-
+	maplist(decrease_fxp_sym_flags1,NewSyms,Refs_l),
+	append_l(Refs_l,ZeroedRefs).
+
+decrease_fxp_sym_flags1(NewSym, ZeroedRefs):-	
+	findall(Ref,
+		(
+		  sym_ref_graph(NewSym,Ref),
+		  flag(Ref,N,N-1),
+		  N=1
+		),
+		ZeroedRefs).
 
 fraenkel_ths(S):-
 	findall(A,(fof(A,theorem,D,_,_),collect_symbols_top(D,L),
