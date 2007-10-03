@@ -133,6 +133,10 @@ initialize:-
 	(assert_rec_deps;true),
 	(assert_structural;true).
 
+%% print all nonumerical articles, which are roots (nothing depends on them)
+%% ##TEST: :- initialize,findall(A,(nonnumeric(A),not(depends(_,A))),S),length(S,N), print(S).
+
+%% ##TEST: :- print_in_order.
 print_in_order:-
 	initialize,all_articles(L),!,order1(L,_).
 
