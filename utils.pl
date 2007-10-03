@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.103 $
+%% $Revision: 1.104 $
 %%
 %% File  : utils.pl
 %%
@@ -1252,6 +1252,7 @@ mk_problems_from_file(File):-
 	mk_problems_from_list(List).
 
 %% ##TEST: :- mk_problems_from_file('mptp_chall_problems',[opt_PROB_PRINT_FUNC(print_refs_as_one_fla)]).
+%% ##TEST: :- mk_problems_from_file('rootsnonnum246',[opt_TPTP_SHORT]).
 mk_problems_from_file(File, AddOptions):-
 	open(File,read,S),
 	read_lines(S,List),
@@ -1493,7 +1494,39 @@ mml2tptp(OutDirectory):-
 	once(mptp2tptp(InFile,Options,OutFile)),
 	fail.
 
+%% article2tptp_include(+OutDirectory, +A)
+%%
+%% Generate include file ( .ax) in TPTP format from MML article A,
+%% and place it into OutDirectory.
+article2tptp_include(OutDirectory,A):-
+	concat_atom([OutDirectory, A, '.', ax], OutFile),
+	tell(OutFile),
+	repeat,
+	(
+	  fof_file(A,AId),
+	  clause(fof(Name,_Role,Fla,file(A,_Sec),_Info),_,AId),
+	  sort_transform_top(Fla,Fla1),
+	  numbervars(Fla1,0,_),
+	  print(fof(Name,axiom,Fla1)),
+	  write('.'),nl,
+	  fail
+	;
+	  told
+	).
 
+%% Generate include files in TPTP format from each MML article.
+%% Fraenkels are generated, but scheme instances and special
+%% on-demand requirement formulas are not included (they rather
+%% belong to particular problems). Lemmas are not included.
+%% ##TEST: :- mml2tptp_includes('00tmp6/').
+mml2tptp_includes(OutDirectory):-
+	declare_mptp_predicates,
+	load_mml,
+	install_index,
+	all_articles(ArticleNames),
+	checklist(abstract_fraenkels_if, ArticleNames),
+	install_index,
+	checklist(article2tptp_include(OutDirectory), [hidden, tarski | ArticleNames]).
 
 %% For all articles create the inference dag of its top-level theorems
 %% (and lemmas and schemes), including needed stuff from other articles
