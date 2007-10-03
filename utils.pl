@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.102 $
+%% $Revision: 1.103 $
 %%
 %% File  : utils.pl
 %%
@@ -1841,7 +1841,38 @@ print_nn_chain_for_dot(LastTh,Options):-
 	once(findall(d,(member(R1,Refs1),write(R1),format(" -> "),write(Name),format(";"),nl),_)),
 	fail.
 
+%% select only references from article
+filter_article_refs(Article,RefsIn,RefsOut):-
+	findall(Ref,
+		(
+		  member(Ref, RefsIn),
+		  fof_name(Ref, Id),
+		  clause(fof(Ref,_,_,file(Article,_),_),_,Id)
+		),
+		RefsOut
+	       ).
 
+%% find article root theorems (i.e. those not referenced by other theorems in the article)
+find_article_roots(A,Roots):-
+	findall([Ref,Refs1],
+		(
+		  fof_file(A,I),
+		  clause(fof(Ref,theorem,_,file(A,_),[mptp_info(_,_,_,_,_), inference(_,_,[R1|Refs])| _]),_,I),
+		  filter_article_refs(A,[R1|Refs],Refs1)
+		),
+		Pairs
+	       ),
+	zip(Ths, Refs2, Pairs),
+	flatten(Refs2, Refs3),
+	sort(Refs3, Refs4),
+	subtract(Ths, Refs4, Roots).
+
+%% ###TODO: pepin.lem2 is broken because of very large integer evaluations there
+%% Print the nr. of roots of articles asserted in predicate good/1, print the roots
+%% of each such article, and count how many roots are in all good articles
+%% ##TEST: :- assert(good(aff_3)),declare_mptp_predicates,load_mml,install_index,
+%%            findall(N,(good(X),find_article_roots(X,Roots),length(Roots,N),print(roots(X,N)),nl,print(Roots),nl),L),
+%%            sumlist(L,M),length(L,L1),print(L).
 
 
 %%%%%%%%%%%%%%%%%%%% Create training data for SNoW %%%%%%%%%%%%%%%%%%%%
