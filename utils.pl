@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.104 $
+%% $Revision: 1.105 $
 %%
 %% File  : utils.pl
 %%
@@ -675,6 +675,7 @@ mk_fraenkel_defs(File, [[V,C,Trm,GrC]|T], GrCopiesIn, GrCopiesOut, FrSyms, Cache
 
 % should be unique for Ref
 get_ref_fla(Ref,Fla):- fof_name(Ref,Id),!,clause(fof(Ref,_,Fla,_,_),_,Id),!.
+get_ref_file(Ref,File):- fof_name(Ref,Id),!,clause(fof(Ref,_,_,file(File,_),_),_,Id),!.
 get_ref_fof(Ref,fof(Ref,R1,R2,R3,R4)):-
 	fof_name(Ref,Id),!,
 	clause(fof(Ref,R1,R2,R3,R4),_,Id),!.
@@ -1253,6 +1254,7 @@ mk_problems_from_file(File):-
 
 %% ##TEST: :- mk_problems_from_file('mptp_chall_problems',[opt_PROB_PRINT_FUNC(print_refs_as_one_fla)]).
 %% ##TEST: :- mk_problems_from_file('rootsnonnum246',[opt_TPTP_SHORT]).
+%% ##TEST: :- mk_problems_from_file('rootsnonnum246',[opt_TPTP_SHORT,opt_PROB_PRINT_FUNC(print_refs_as_tptp_includes)]).
 mk_problems_from_file(File, AddOptions):-
 	open(File,read,S),
 	read_lines(S,List),
@@ -3550,10 +3552,7 @@ inference DAG:
 */
 
 
-%% ensure that fraenkels are abstracted in all prerequisities
-%% of Article (changes the fraenkels_loaded/1 predicate).
-%% calling install_index after this is a good idea
-abstract_prereq_fraenkels(Article):-
+needed_environ(Article, Articles):-
 	theory(Article, Theory),
 	member(constructors(Constrs),Theory),
 	member(registrations(Regs),Theory),
@@ -3561,9 +3560,14 @@ abstract_prereq_fraenkels(Article):-
 	member(definitions(Defs),Theory),
 	member(theorems(Thms),Theory),
 	member(schemes(Schms),Theory),
-	union1([Constrs,Regs,Reqs,Defs,Thms,Schms],[],Prereqs),
-	checklist(abstract_fraenkels_if, Prereqs).
+	union1([Constrs,Regs,Reqs,Defs,Thms,Schms],[],Articles).
 
+%% ensure that fraenkels are abstracted in all prerequisities
+%% of Article (changes the fraenkels_loaded/1 predicate).
+%% calling install_index after this is a good idea
+abstract_prereq_fraenkels(Article):-
+	needed_environ(Article, Prereqs),
+	checklist(abstract_fraenkels_if, Prereqs).
 
 %% should be used only right after loading a full article File
 %% current usage is for determining clusters' area of validity in fixpoint
@@ -3972,6 +3976,80 @@ print_refs_as_one_fla(Conjecture, AllRefs, _Options):-
 	print(fof(Q,conjecture,(AxiomsConjunction => SR2),Q3)),
 	write('.'),
 	nl.
+
+%% get_include_refs(+Refs, -IncludeRefs, -NonIncludeRefs, -IncludeFiles)
+%%
+%% Divide Refs into the standard ones contained in include files (see
+%% mml2tptp_includes/1 for them), and the rest. Make a list of
+%% include files for the includable ones.
+%% ##ASSUMES: that fraenkels are ok, and the only special formulas
+%%    are either scheme instances (starting with sNr) or requirements,
+%%    starting with spcNr.
+get_include_refs(Refs, IncludeRefs, NonIncludeRefs, IncludeArticles):-
+	findall(Ref,
+		(
+		  member(Ref, Refs),
+		  concat_atom([H|_],'_',Ref),
+		  (
+		    atom_concat(spc, Nr, H) ->
+		    atom_chars(Nr, NrChars),
+		    checklist(digit,NrChars)
+		  ;
+		    atom_concat(s, Nr, H),
+		    atom_chars(Nr, NrChars),
+		    checklist(digit,NrChars),
+		    get_ref_fof(Ref,_,_,_,[mptp_info(_,_,scheme_instance,_,_)|_])
+		  )
+		),
+		NonIncludeRefs
+	       ),
+	subtract(Refs, NonIncludeRefs, IncludeRefs),
+	maplist(get_ref_file, IncludeRefs, IncludeArticles1),
+	sort(IncludeArticles1, IncludeArticles).
+
+print_include_directive(Article):-
+	concat_atom(['Axioms/', Article, '.ax'], IncludeFile),
+	print(include(IncludeFile)),
+	write('.'),
+	nl.
+
+get_preceding_article_refs(Article, Ref, Refs):-
+	ensure(article_position(Ref,Pos), throw(article_position(Article,Ref))),
+	findall(Ref1,
+		(
+		  article_position(Ref1,Pos1),
+		  Pos1 < Pos,
+		  fof_name(Ref1, Id),
+		  clause(fof(Ref1,_,_,file(Article,_), [mptp_info(_,[],_,_,_)|_]),_,Id)
+		),
+		Refs
+	       ).
+
+%% All standard axioms (coming from other articles than the conjecture)
+%% which were printed to include files
+%% by mml2tptp_includes/1 are omitted, and only the include
+%% directive is generated for them. The conjecture, all formulas from
+%% its article, and other special formulas not printed by mml2tptp_includes/1
+%% are printed explicitly.
+print_refs_as_tptp_includes(Conjecture, AllRefs, Options):-
+	delete(AllRefs, Conjecture, ProperRefs1),
+	ensure(get_ref_file(Conjecture, Article), bad_conjecture(Conjecture)),
+	findall(ARef,
+		(
+		  member(ARef, ProperRefs1),
+		  get_ref_fof(ARef,fof(ARef,_,_,file(Article,_),_))
+		),
+		ArticleRefs
+	       ),
+	subtract(ProperRefs1, ArticleRefs, NonArticleRefs),
+	get_include_refs(NonArticleRefs, _IncludeRefs, NonIncludeRefs, _IncludeArticles0),
+	get_preceding_article_refs(Article, Conjecture, PrecedingRefs),
+	union(ArticleRefs, PrecedingRefs, AllArticleRefs),
+	needed_environ(Article, IncludeArticles),
+	checklist(print_include_directive, IncludeArticles),
+	checklist(print_ref_as_axiom(Options), NonIncludeRefs),
+	checklist(print_ref_as_axiom(Options), AllArticleRefs),
+	print_ref_as_conjecture(Options, ProperRefs1, Conjecture).
 
 
 %%%%%%%%%%%%%%%%%%% ND problem creation %%%%%%%%%%%%%%%%%%%%%%%%%
