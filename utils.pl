@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.105 $
+%% $Revision: 1.106 $
 %%
 %% File  : utils.pl
 %%
@@ -47,6 +47,8 @@ opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme insta
 	       opt_TPTP_SHORT,	        %% short tptp format (parsable by vampire too)
 	       opt_NO_EX_BG_FLAS,       %% do not include existential background in fixpoint
 	       opt_PROB_PRINT_FUNC,	%% unary functor passing a special printing func
+	       opt_PP_SMALLER_INCLUDES, %% unary functor passing a list of possible includes,
+	                                %% used with print_refs_as_tptp_includes
 	       opt_TPTPFIX_ND_ROLE,	%% make the role acceptable to GDV
 	       opt_ADD_INTEREST,	%% add interestingness to useful info
 	       opt_LINE_COL_NMS,        %% problem are named LINE_COL instead
@@ -198,6 +200,8 @@ declare_mptp_predicates:-
  dynamic(fraenkel_cached/3),
  abolish(fraenkels_loaded/1),
  dynamic(fraenkels_loaded/1),
+ abolish(articles_numbered/0),
+ dynamic(articles_numbered/0),
  abolish(article_position/2),
  dynamic(article_position/2),
  abolish(fxp_refsin_/1),
@@ -1153,6 +1157,12 @@ read_lines(S,Res):-
 	    string_to_atom(C,C1),
 	    Res = [C1|Res1]).
 
+read_file_lines(File, List):-
+	open(File,read,S),
+	read_lines(S,List),
+	close(S),!.
+
+
 %% Top level predicate for creating problems for
 %% first 100 MML articles.
 mk_first100:-
@@ -1255,6 +1265,8 @@ mk_problems_from_file(File):-
 %% ##TEST: :- mk_problems_from_file('mptp_chall_problems',[opt_PROB_PRINT_FUNC(print_refs_as_one_fla)]).
 %% ##TEST: :- mk_problems_from_file('rootsnonnum246',[opt_TPTP_SHORT]).
 %% ##TEST: :- mk_problems_from_file('rootsnonnum246',[opt_TPTP_SHORT,opt_PROB_PRINT_FUNC(print_refs_as_tptp_includes)]).
+%% ##TEST: :- read_file_lines('00includes_with_problem_articles',AllIncludes),mk_problems_from_file('rootsnonnum246',[opt_TPTP_SHORT,opt_PROB_PRINT_FUNC(print_refs_as_tptp_includes),opt_PP_SMALLER_INCLUDES(AllIncludes)]).
+%% ##TEST: :- all_articles(AllIncludes),mk_problems_from_file('rootsnonnum246',[opt_TPTP_SHORT,opt_PROB_PRINT_FUNC(print_refs_as_tptp_includes),opt_PP_SMALLER_INCLUDES([hidden,tarski|AllIncludes])]).
 mk_problems_from_file(File, AddOptions):-
 	open(File,read,S),
 	read_lines(S,List),
@@ -1838,14 +1850,41 @@ cmp_in_mml_order(Delta, Name1, Name2):-
 %% debugging
 cmp_in_mml_order(_,Name1,Name2):- throw(cmp_in_mml_order(Name1,Name2)).
 
-%% sort fof names, using the article ordering, item numbers, and  positions
-sort_in_mml_order(U,U1):-
+
+%% for articles only
+cmp_articles_in_mml_order(Delta, Article1, Article2):-
+	atom(Article1),
+	atom(Article2),
+	article_nr(Article1,ANr1),
+	article_nr(Article2,ANr2),!,
+	compare(Delta, ANr1, ANr2).
+
+%% debugging
+cmp_articles_in_mml_order(_,Name1,Name2):- throw(cmp_articles_in_mml_order(Name1,Name2)).
+
+
+%% number MML articles if needed
+number_articles:-  articles_numbered,!.
+number_articles:-
 	all_articles(L1),
-	L = [tarski|L1],
+	L = [hidden,tarski|L1],
 	abolish(article_nr/2),
 	dynamic(article_nr/2),!,
 	findall(foo, ( nth1(N,L,A), assert(article_nr(A,N))), _),
+	assert(articles_numbered).
+
+
+
+%% sort fof names, using the article ordering, item numbers, and  positions
+sort_in_mml_order(U,U1):-
+	number_articles,
 	predsort(cmp_in_mml_order,U,U1).
+
+%% sort articles using the article ordering
+sort_articles_in_mml_order(ArticlesIn,ArticlesOut):-
+	number_articles,
+	predsort(cmp_articles_in_mml_order,ArticlesIn,ArticlesOut).
+
 
 %% prints the graph in a .dot format
 print_nn_chain_for_dot(LastTh):- print_nn_chain_for_dot(LastTh,[]).
@@ -3551,7 +3590,15 @@ inference DAG:
 
 */
 
+%% get_smaller_includes(+Article, +AllIncludes, -SmallerIncludes)
+%%
+%% Select into SmallerIncludes all articles from AllIncludes
+%% smaller than Article, sort them by MML order.
+get_smaller_includes(Article, AllIncludes, SmallerIncludes):-
+	sublist(cmp_articles_in_mml_order(>, Article), AllIncludes, SmallerIncludes0),
+	sort_articles_in_mml_order(SmallerIncludes0, SmallerIncludes).
 
+%% needed_environ(+Article, -Articles)
 needed_environ(Article, Articles):-
 	theory(Article, Theory),
 	member(constructors(Constrs),Theory),
@@ -3560,7 +3607,8 @@ needed_environ(Article, Articles):-
 	member(definitions(Defs),Theory),
 	member(theorems(Thms),Theory),
 	member(schemes(Schms),Theory),
-	union1([Constrs,Regs,Reqs,Defs,Thms,Schms],[],Articles).
+	union1([Constrs,Regs,Reqs,Defs,Thms,Schms],[],Articles0),
+	sort_articles_in_mml_order(Articles0, Articles).
 
 %% ensure that fraenkels are abstracted in all prerequisities
 %% of Article (changes the fraenkels_loaded/1 predicate).
@@ -4045,7 +4093,12 @@ print_refs_as_tptp_includes(Conjecture, AllRefs, Options):-
 	get_include_refs(NonArticleRefs, _IncludeRefs, NonIncludeRefs, _IncludeArticles0),
 	get_preceding_article_refs(Article, Conjecture, PrecedingRefs),
 	union(ArticleRefs, PrecedingRefs, AllArticleRefs),
-	needed_environ(Article, IncludeArticles),
+	(
+	  member(opt_PP_SMALLER_INCLUDES(AllIncludes), Options) ->
+	  get_smaller_includes(Article, AllIncludes, IncludeArticles)
+	;
+	  needed_environ(Article, IncludeArticles)
+	),
 	checklist(print_include_directive, IncludeArticles),
 	checklist(print_ref_as_axiom(Options), NonIncludeRefs),
 	checklist(print_ref_as_axiom(Options), AllArticleRefs),
