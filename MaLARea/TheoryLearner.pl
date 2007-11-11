@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.10 $
+## $Revision: 1.11 $
 
 
 =head1 NAME
@@ -218,7 +218,42 @@ sub LoadTables
 	    push(@{$grefsyms{$ref}}, $1);
 	}
     }
+
+    LoadTermTable("$filestem.trmstd",\%greftrmstd,$gstdtrmoffset) if($gdotrmstd > 0);
+    LoadTermTable("$filestem.trmnrm",\%greftrmnrm,$gnrmtrmoffset) if($gdotrmnrm > 0);
+
+    $gtargetsnr = $#gnrref;
 }
+
+# LoadTermTable($filename,$ref2trm_hash,$offset)
+#
+# Expects a file created by running fofshared, containing list of 
+# shared term codes for references. Loads them into $ref2trm_hash,
+# shifting the features numbering by $offset.
+sub LoadTermTable
+{
+    my ($filename,$ref2trm_hash,$offset) = @_;
+
+    open(TRMSTD, "$filename") or die "Cannot read $filename file";
+    while($_=<TRMSTD>)
+    {
+	chop; 
+	m/^terms\( *([a-z0-9A-Z_]+) *, *\[(.*)\] *\)\./ 
+	    or die "Bad terms info: $_";
+	my ($ref, $trms) = ($1, $2);
+	my @trms = split(/\,/, $trms);
+	die "Duplicate reference $ref in $_" if exists $$ref2trm_hash{$ref};
+	$$ref2trm_hash{$ref} = [];
+	my ($sym);
+	foreach $sym (@trms)
+	{
+	    $sym =~ m/^ *([0-9]+) */ or die "Bad term code $sym in $_";
+	    push(@{$$ref2trm_hash{$ref}}, $1 + $offset);
+	}
+    }
+    close TRMSTD;
+}
+
 
 # Create the symbol and reference numbering files
 # from the refsyms file. Loads these tables and the refsym table too.
@@ -269,46 +304,10 @@ sub CreateTables
     }
     close SYMNR;
     close REFSYMS;
-    if($gdotrmstd > 0)
-    {
-	open(TRMSTD, "$filestem.trmstd") or die "Cannot read trmstd file";
-	while($_=<TRMSTD>)
-	{
-	    chop; 
-	    m/^terms\( *([a-z0-9A-Z_]+) *, *\[(.*)\] *\)\./ 
-		or die "Bad terms info: $_";
-	    ($ref, $trms) = ($1, $2);
-	    my @trms = split(/\,/, $trms);
-	    die "Duplicate reference $ref in $_" if exists $greftrmstd{$ref};
-	    $greftrmstd{$ref} = [];
-	    foreach $sym (@trms)
-	    {
-		$sym =~ m/^ *([0-9]+) */ or die "Bad term code $sym in $_";
-		push(@{$greftrmstd{$ref}}, $1 + $gstdtrmoffset);
-	    }
-	}
-	close TRMSTD;
-    }
-    if($gdotrmnrm > 0)
-    {
-	open(TRMNRM, "$filestem.trmnrm") or die "Cannot read trmnrm file";
-	while($_=<TRMNRM>)
-	{
-	    chop; 
-	    m/^terms\( *([a-z0-9A-Z_]+) *, *\[(.*)\] *\)\./ 
-		or die "Bad terms info: $_";
-	    ($ref, $trms) = ($1, $2);
-	    my @trms = split(/\,/, $trms);
-	    die "Duplicate reference $ref in $_" if exists $greftrmnrm{$ref};
-	    $greftrmnrm{$ref} = [];
-	    foreach $sym (@trms)
-	    {
-		$sym =~ m/^ *([0-9]+) */ or die "Bad term code $sym in $_";
-		push(@{$greftrmnrm{$ref}}, $1 + $gnrmtrmoffset);
-	    }
-	}
-	close TRMNRM;
-    }
+
+    LoadTermTable("$filestem.trmstd",\%greftrmstd,$gstdtrmoffset) if($gdotrmstd > 0);
+    LoadTermTable("$filestem.trmnrm",\%greftrmnrm,$gnrmtrmoffset) if($gdotrmnrm > 0);
+
     $gtargetsnr = $#gnrref;
 }
 
