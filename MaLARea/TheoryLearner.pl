@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.11 $
+## $Revision: 1.12 $
 
 
 =head1 NAME
@@ -574,7 +574,7 @@ sub LoadResults
 	$gresults{$conj} = [];
 	if ($load_proved_by == 0)
 	{
-	    while ($results_str =~ m/res\(([^,]+),([0-9]+),([0-9]+),\[([^\]]*)\],\[([^\]]*)\]\)/g)
+	    while ($results_str =~ m/res\(([^,]+),([\-0-9]+),([\-0-9]+),\[([^\]]*)\],\[([^\]]*)\]\)/g)
 	    {
 		my @spec_refs = split(/\,/, $4);
 		my @needed_refs = split(/\,/, $5);
@@ -584,7 +584,7 @@ sub LoadResults
 	}
 	else
 	{
-	    while ($results_str =~ m/res\(([^,]+),([0-9]+),([0-9]+),\[([^\]]*)\]\)/g)
+	    while ($results_str =~ m/res\(([^,]+),([\-0-9]+),([\-0-9]+),\[([^\]]*)\]\)/g)
 	    {
 		my @spec_refs = split(/\,/, $4);
 		my $new_res = [$1, $2, $3, [@spec_refs], [] ];
