@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.8 $
+## $Revision: 1.9 $
 
 
 =head1 NAME
@@ -16,7 +16,13 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
  Options:
    --fileprefix=<arg>,      -e<arg>
    --filepostfix=<arg>,     -s<arg>
+   --dofull=<arg>,          -f<arg>
+   --runspass=<arg>,        -S<arg>
+   --runvampire=<arg>,      -V<arg>
+   --similarity=<arg>,      -i<arg>
+   --recadvice=<arg>,       -a<arg>
    --refsbgcheat=<arg>,     -r<arg>
+   --alwaysmizrefs=<arg>,   -m<arg>
    --help,                  -h
    --man
 
