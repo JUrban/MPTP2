@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.12 $
+## $Revision: 1.13 $
 
 
 =head1 NAME
@@ -17,6 +17,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --fileprefix=<arg>,      -e<arg>
    --filepostfix=<arg>,     -s<arg>
    --dofull=<arg>,          -f<arg>
+   --iterrecover=<arg>,     -I<arg>
    --runspass=<arg>,        -S<arg>
    --runvampire=<arg>,      -V<arg>
    --similarity=<arg>,      -i<arg>
@@ -45,6 +46,12 @@ It is appended to the conjecture name (typically a file extension).
 If 1, the first pass is a max-timelimit run on full problems. If 0,
 that pass is omitted, and the symbol-only pass is the first run.
 Default is 1.
+
+=item B<<< --iterrecover=<arg>, -I<arg> >>>
+
+Instead of starting fresh, assume that iteration passed as arg
+was already done. Load the result table and all other needed
+tables, and continue with the next iteration.
 
 =item B<<< --runspass=<arg>, -S<arg> >>>
 
@@ -133,8 +140,8 @@ my %gsuperrefs;   # contains additions to bg inherited from direct lemmas
 
 my $maxthreshold = 256;
 my $minthreshold = 4;
-my ($gfileprefix,$gfilepostfix,$gdofull,$gspass,$gvampire,$grecadvice,$grefsbgcheat,
-    $galwaysmizrefs,$gsimilarity);
+my ($gfileprefix,$gfilepostfix,$gdofull,$giterrecover,$gspass,
+    $gvampire,$grecadvice,$grefsbgcheat, $galwaysmizrefs,$gsimilarity);
 my ($help, $man);
 my $maxtimelimit = 64;  # should be power of 4
 my $mintimelimit = 1;
@@ -147,6 +154,7 @@ Getopt::Long::Configure ("bundling");
 GetOptions('fileprefix|e=s'    => \$gfileprefix,
 	   'filepostfix|s=s'    => \$gfilepostfix,
 	   'dofull|f=i'    => \$gdofull,
+	   'iterrecover|I=i' => \$giterrecover,
 	   'runspass|S=i'    => \$gspass,
 	   'runvampire|V=i'    => \$gvampire,
 	   'similarity|i=i'  => \$gsimilarity,
@@ -165,6 +173,7 @@ pod2usage(2) if ($#ARGV != 0);
 my $filestem   = shift(@ARGV);
 
 $gdofull = 1 unless(defined($gdofull));
+$giterrecover = -1 unless(defined($giterrecover));
 $gspass = 1 unless(defined($gspass));
 $gvampire = 0 unless(defined($gvampire));
 $grecadvice = 0 unless(defined($grecadvice));
@@ -554,6 +563,24 @@ sub DumpResults
 	print RESULTS "]).\n";
     }
     close RESULTS;
+}
+
+# return hash of conjectures with szs_THEOREM in %gresults
+sub GetProvedFromResults
+{
+    my ($conj,$result);
+    my %proved = ();
+    foreach $conj (sort keys %gresults)
+    {
+	foreach $result (@{$gresults{$conj}})
+	{
+	    if($result->[res_STATUS] eq szs_THEOREM)
+	    {
+		$proved{$conj} = ();
+	    }
+	}
+    }
+    return \%proved;
 }
 
 
@@ -1040,21 +1067,22 @@ sub RunProblems
     return \%proved_by;
 }
 
-sub Iterate
+# NormalizeAndCreateInitialSpecs($file_prefix, $file_postfix);
+#
+# Preprocess each file by tptp4X to have no comments, no useful info,
+# and one fof per line.
+# Create the initial specs file, copy each file to $file.s_0
+sub NormalizeAndCreateInitialSpecs
 {
     my ($file_prefix, $file_postfix) = @_;
-    my ($conj,$i,@tmp_conjs,$to_solve);
-    my %conjs_todo = ();
-    my $threshold = $maxthreshold;
-
-    # create the initial specs file, copy each file to $file.s_0
+    my ($i);
     open(INISPECS,">$filestem.specs");
     foreach $i (`ls $file_prefix*$file_postfix`)
     {
 	chop $i;
 	`bin/tptp4X -f tptp:short  -u machine -c $i > $i.tmp1`;
 	`mv $i.tmp1 $i`;
-	$conj = "";
+	my $conj = "";
 	my %h = ();
 	open(PROBLEM,$i);
 	while($_=<PROBLEM>)
@@ -1074,85 +1102,118 @@ sub Iterate
 #	system(cp,($i, "$i.s_0"));
     }
     close(INISPECS);
+}
 
-    # create the refsyms file
-    `cat $file_prefix*$file_postfix | sort -u | bin/GetSymbols |sort -u > $filestem.refsyms`;
+sub Iterate
+{
+    my ($file_prefix, $file_postfix) = @_;
+    my ($conj,$i,@tmp_conjs,$to_solve);
+    my %conjs_todo = ();
+    my $threshold = $maxthreshold;
 
-    # create the trmstd and trmnrm files
-    if($gdotrmstd > 0)
+    # only initialize if we are not recovering
+    if($giterrecover == -1)
     {
-	`cat $file_prefix*$file_postfix | sort -u | bin/fofshared -|sort -u > $filestem.trmstd`;
-    }
-    if($gdotrmnrm > 0)
-    {
-	my @lines1 = `cat $file_prefix*$file_postfix | sort -u`;
-	my $line;
-	my $fofsh_pid = open(FOFSH,"|bin/fofshared -|sort -u > $filestem.trmnrm");
-	foreach $line (@lines1)
-	{
-	    $line =~ s/([\(, ])[A-Z][a-zA-Z0-9_]*/$1A/g;
-	    print FOFSH $line;
+	# normalize problems and create the initial specs file, copy each file to $file.s_0
+	NormalizeAndCreateInitialSpecs($file_prefix, $file_postfix);
+
+	# create the refsyms file
+	`cat $file_prefix*$file_postfix | sort -u | bin/GetSymbols |sort -u > $filestem.refsyms`;
+
+	# create the trmstd and trmnrm files
+	if ($gdotrmstd > 0) {
+	    `cat $file_prefix*$file_postfix | sort -u | bin/fofshared -|sort -u > $filestem.trmstd`;
 	}
-	close(FOFSH);
-    }
-    # create the refnr and symnr files, load these tables and the refsyms table
-    CreateTables();
+	if ($gdotrmnrm > 0) {
+	    my @lines1 = `cat $file_prefix*$file_postfix | sort -u`;
+	    my $line;
+	    my $fofsh_pid = open(FOFSH,"|bin/fofshared -|sort -u > $filestem.trmnrm");
+	    foreach $line (@lines1) {
+		$line =~ s/([\(, ])[A-Z][a-zA-Z0-9_]*/$1A/g;
+		print FOFSH $line;
+	    }
+	    close(FOFSH);
+	}
+	# create the refnr and symnr files, load these tables and the refsyms table
+	CreateTables();
 
-    # create the initial .proved_by_0 table (telling that each reference can be proved by itself)
-    # it gets overwritten by the first RunProblems(), so cat-ing all proved_by_* files
-    # together while running still gives all solved problems
-    open(PROVED_BY_0,">$filestem.proved_by_0");
-    foreach $i (keys %grefnr) { print PROVED_BY_0 "proved_by($i,[$i]).\n" }
-#    `sed -e 's/\(.*\)/proved_by(\1,[\1])./' <$filestem.refnr > $filestem.proved_by_0`;
-    close(PROVED_BY_0);
+	# create the initial .proved_by_0 table (telling that each reference can be proved by itself)
+	# it gets overwritten by the first RunProblems(), so cat-ing all proved_by_* files
+	# together while running still gives all solved problems
+	open(PROVED_BY_0,">$filestem.proved_by_0");
+	foreach $i (keys %grefnr) {
+	    print PROVED_BY_0 "proved_by($i,[$i]).\n";
+	}
+	#    `sed -e 's/\(.*\)/proved_by(\1,[\1])./' <$filestem.refnr > $filestem.proved_by_0`;
+	close(PROVED_BY_0);
 
-    # print the $filestem.train_0 file from .proved_by_0, train on it
-    PrintTraining(0);
-    print "trained 0\n";
-    # die "";
-    `bin/snow -train -I $filestem.train_0 -F $filestem.net_1  -B :0-$gtargetsnr`;
+	# print the $filestem.train_0 file from .proved_by_0, train on it
+	PrintTraining(0);
+	print "trained 0\n";
+	# die "";
+	`bin/snow -train -I $filestem.train_0 -F $filestem.net_1  -B :0-$gtargetsnr`;
 
-    `cat $file_prefix*.refspec > $filestem.subrefs` if ($grefsbgcheat == 1);
-    LoadSpecs();   # initialises %gspec and %gresults
-    @conjs_todo{ keys %gspec }  = (); # initialize with all conjectures
+	`cat $file_prefix*.refspec > $filestem.subrefs` if ($grefsbgcheat == 1);
+	LoadSpecs();		# initialises %gspec and %gresults
+	@conjs_todo{ keys %gspec }  = (); # initialize with all conjectures
 
-    @tmp_conjs = sort keys %conjs_todo;
-
-
-    # creates the $proved_by_1 hash table, and creates initial .out,out1 files;
-    # modifies $gresults! - need to initialize first
-    if($gdofull == 1)
-    {
-	print "THRESHOLD: 0\nTIMELIMIT: $gtimelimit\n";
-	my $proved_by_1 = RunProblems(0,$file_prefix, $file_postfix,\@tmp_conjs,$threshold,$gspass,$gvampire,1);
-	delete @conjs_todo{ keys %{$proved_by_1}}; # delete the proved ones
 	@tmp_conjs = sort keys %conjs_todo;
-	PrintTrainingFromHash(1,$proved_by_1);
+
+
+	# creates the $proved_by_1 hash table, and creates initial .out,out1 files;
+	# modifies $gresults! - need to initialize first
+	if ($gdofull == 1) {
+	    print "THRESHOLD: 0\nTIMELIMIT: $gtimelimit\n";
+	    my $proved_by_1 = RunProblems(0,$file_prefix, $file_postfix,\@tmp_conjs,$threshold,$gspass,$gvampire,1);
+	    delete @conjs_todo{ keys %{$proved_by_1}}; # delete the proved ones
+	    @tmp_conjs = sort keys %conjs_todo;
+	    PrintTrainingFromHash(1,$proved_by_1);
+	}
+    }
+    else
+    {
+	LoadTables();
+	LoadSpecs();
+	LoadResults("$filestem.results_$giterrecover",0);
+	my $proved_before = GetProvedFromResults();
+	@conjs_todo{ keys %gspec }  = ();            # initialize with all conjectures
+	delete @conjs_todo{ keys %{$proved_before}}; # delete the proved ones
+	@tmp_conjs = sort keys %conjs_todo;
     }
 
-    $gtimelimit = $mintimelimit;
+    if($giterrecover < 1)
+    {
+	$gtimelimit = $mintimelimit;
 
 
-    PrintTestingFromArray(1, \@tmp_conjs);    # write testing file for still unproved
+	PrintTestingFromArray(1, \@tmp_conjs);    # write testing file for still unproved
 
-    $to_solve = SelectRelevantFromSpecs(1,$threshold, $file_prefix, $file_postfix); # write spec_1 file and .s_1 input files
+	$to_solve = SelectRelevantFromSpecs(1,$threshold, $file_prefix, $file_postfix); # write spec_1 file and .s_1 input files
 
-    print "SYMBOL ONLY PASS\n";
-    print "THRESHOLD: $threshold\nTIMELIMIT: $gtimelimit\n";
-    my $proved_by_2 = RunProblems(1,$file_prefix, $file_postfix,$to_solve,$threshold,$gspass,$gvampire,0);  # creates initial .s_1.out files - omits solved in .proved_by_1
-    delete @conjs_todo{ keys %{$proved_by_2}}; # delete the proved ones
+	print "SYMBOL ONLY PASS\n";
+	print "THRESHOLD: $threshold\nTIMELIMIT: $gtimelimit\n";
+	my $proved_by_2 = RunProblems(1,$file_prefix, $file_postfix,$to_solve,$threshold,$gspass,$gvampire,0);  # creates initial .s_1.out files - omits solved in .proved_by_1
+	delete @conjs_todo{ keys %{$proved_by_2}}; # delete the proved ones
 
-    @tmp_conjs = sort keys %conjs_todo;
-    PrintTestingFromArray(3,\@tmp_conjs);
+	@tmp_conjs = sort keys %conjs_todo;
+	PrintTestingFromArray(3,\@tmp_conjs);
 
 
-    PrintTrainingFromHash(2,$proved_by_2);
-    `cat $filestem.train_* > $filestem.alltrain_2`;
-    Learn(2);
+	PrintTrainingFromHash(2,$proved_by_2);
+    }
 
-    $to_solve = SelectRelevantFromSpecs(3,$threshold, $file_prefix, $file_postfix);
+    my $iter = $giterrecover;
 
-    my $iter = 3;
+    if($giterrecover < 3)
+    {
+
+	`cat $filestem.train_* > $filestem.alltrain_2`;
+	Learn(2);
+
+	$to_solve = SelectRelevantFromSpecs(3,$threshold, $file_prefix, $file_postfix);
+
+	$iter = 3;
+    }
 
     while ($iter < 1000)
     {
