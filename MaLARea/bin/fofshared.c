@@ -91,7 +91,8 @@ bool TBPrintTermCompact1(FILE* out, TB_p bank, Term_p term, bool comma)
    bool res = comma;
    if((!SigQueryFuncProp(bank->sig, term->f_code, FPFOFOp)) && 
       (bank->sig->qex_code !=  term->f_code) &&
-      (bank->sig->qall_code !=  term->f_code))
+      (bank->sig->qall_code !=  term->f_code) &&
+      (SIG_TRUE_CODE != term->f_code))
    {
       if(comma) { fputc(',', out); } 
       fprintf(out, "%ld", term->entry_no);
