@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.7 $
+## $Revision: 1.8 $
 
 
 =head1 NAME
@@ -47,6 +47,16 @@ If 1, run SPASS. Default is 1.
 =item B<<< --runvampire=<arg>, -V<arg> >>>
 
 If 1, run Vampire. Default is 0.
+
+=item B<<< --similarity=<arg>, -i<arg> >>>
+
+The similarity measure for formulas. If 1, only vector of symbols
+is used, if 2, only codes of shared terms are used, if 4, the shared terms
+are first normalized by renaming all variables to just one generic variable.
+Combinations of these basic methods can be done by summing their codes
+(i.e., value 7 would tell to use all of them).
+Default is 1 (symbols only).
+
 
 =item B<<< --recadvice=<arg>, -a<arg> >>>
 
@@ -98,6 +108,8 @@ use IO::Socket;
 
 my (%gsyms,$grefs,$client);
 my $gsymoffset=100000; # offset at which symbol numbering starts
+my $gstdtrmoffset=200000; # offset at which standard term numbering starts
+my $gnrmtrmoffset=300000; # offset at which normalized term numbering starts
 my %grefnr;     # Ref2Nr hash for references
 my @gnrref;     # Nr2Ref array for references
 
@@ -105,6 +117,8 @@ my %gsymnr;   # Sym2Nr hash for symbols
 my @gnrsym;   # Nr2Sym array for symbols - takes gsymoffset into account!
 
 my %grefsyms;   # Ref2Sym hash for each reference array of its symbols
+my %greftrmstd;   # Ref2Sym hash for each reference array of its stdterms (their shared-entry numbers)
+my %greftrmnrm;   # Ref2Sym hash for each reference array of its nrmterms (their shared-entry numbers)
 my %gspec;   # Ref2Spec hash for each reference hash of its initial references
 my %gresults; # hash of results
 my %gsubrefs; # contains direct lemmas for those proved by mizar_proof,
@@ -114,7 +128,8 @@ my %gsuperrefs; # contains additions to bg inherited from direct lemmas
 
 my $maxthreshold = 256;
 my $minthreshold = 4;
-my ($gfileprefix,$gfilepostfix,$gdofull,$gspass,$gvampire,$grecadvice,$grefsbgcheat,$galwaysmizrefs);
+my ($gfileprefix,$gfilepostfix,$gdofull,$gspass,$gvampire,$grecadvice,$grefsbgcheat,
+    $galwaysmizrefs,$gsimilarity);
 my ($help, $man);
 my $maxtimelimit = 64;  # should be power of 4
 my $mintimelimit = 1;
@@ -129,6 +144,7 @@ GetOptions('fileprefix|e=s'    => \$gfileprefix,
 	   'dofull|f=i'    => \$gdofull,
 	   'runspass|S=i'    => \$gspass,
 	   'runvampire|V=i'    => \$gvampire,
+	   'similarity|i=i'  => \$gsimilarity,
 	   'recadvice|a=i'    => \$grecadvice,
 	   'refsbgcheat|r=i'    => \$grefsbgcheat,
 	   'alwaysmizrefs|m=i'    => \$galwaysmizrefs,
@@ -148,10 +164,14 @@ $gspass = 1 unless(defined($gspass));
 $gvampire = 0 unless(defined($gvampire));
 $grecadvice = 0 unless(defined($grecadvice));
 $grefsbgcheat = 0 unless(defined($grefsbgcheat));
+$gsimilarity = 1 unless(defined($gsimilarity));
 $galwaysmizrefs = 0 unless(defined($galwaysmizrefs));
 $gfileprefix = "" unless(defined($gfileprefix));
 $gfilepostfix = "" unless(defined($gfilepostfix));
 
+my $gdotrmstd = $gsimilarity & 2;
+my $gdotrmnrm = $gsimilarity & 4;
+my $gdosyms = $gsimilarity & 1;
 
 # change for verbose logging
 sub LOGGING { 0 };
@@ -202,7 +222,7 @@ sub LoadTables
 sub CreateTables
 {
     my $i = 0;
-    my ($ref,$sym,@syms,$psyms,$fsyms,%tmpsyms);
+    my ($ref,$sym,$trms,@syms,$psyms,$fsyms,%tmpsyms);
 
     open(REFSYMS, "$filestem.refsyms") or die "Cannot read refsyms file";
     open(REFNR, ">$filestem.refnr") or die "Cannot write refnr file";
@@ -244,6 +264,46 @@ sub CreateTables
     }
     close SYMNR;
     close REFSYMS;
+    if($gdotrmstd > 0)
+    {
+	open(TRMSTD, "$filestem.trmstd") or die "Cannot read trmstd file";
+	while($_=<TRMSTD>)
+	{
+	    chop; 
+	    m/^terms\( *([a-z0-9A-Z_]+) *, *\[(.*)\] *\)\./ 
+		or die "Bad terms info: $_";
+	    ($ref, $trms) = ($1, $2);
+	    my @trms = split(/\,/, $trms);
+	    die "Duplicate reference $ref in $_" if exists $greftrmstd{$ref};
+	    $greftrmstd{$ref} = [];
+	    foreach $sym (@trms)
+	    {
+		$sym =~ m/^ *([0-9]+) */ or die "Bad term code $sym in $_";
+		push(@{$greftrmstd{$ref}}, $1 + $gstdtrmoffset);
+	    }
+	}
+	close TRMSTD;
+    }
+    if($gdotrmnrm > 0)
+    {
+	open(TRMNRM, "$filestem.trmnrm") or die "Cannot read trmnrm file";
+	while($_=<TRMNRM>)
+	{
+	    chop; 
+	    m/^terms\( *([a-z0-9A-Z_]+) *, *\[(.*)\] *\)\./ 
+		or die "Bad terms info: $_";
+	    ($ref, $trms) = ($1, $2);
+	    my @trms = split(/\,/, $trms);
+	    die "Duplicate reference $ref in $_" if exists $greftrmnrm{$ref};
+	    $greftrmnrm{$ref} = [];
+	    foreach $sym (@trms)
+	    {
+		$sym =~ m/^ *([0-9]+) */ or die "Bad term code $sym in $_";
+		push(@{$greftrmnrm{$ref}}, $1 + $gnrmtrmoffset);
+	    }
+	}
+	close TRMNRM;
+    }
     $gtargetsnr = $#gnrref;
 }
 
@@ -376,6 +436,16 @@ sub PrintTesting
 	exists $grefsyms{$ref} or die "Unknown reference $ref";
 	my @syms = @{$grefsyms{$ref}};
 	my @syms_nrs   = map { $gsymnr{$_} if(exists($gsymnr{$_})) } @syms;
+	if($gdotrmstd > 0)
+	{
+	    my @trmstd_nrs   = @{$greftrmstd{$ref}};
+	    push(@syms_nrs, @trmstd_nrs);
+	}
+	if($gdotrmnrm > 0)
+	{
+	    my @trmnrm_nrs   = @{$greftrmnrm{$ref}};
+	    push(@syms_nrs, @trmnrm_nrs);
+	}
 	push(@syms_nrs, $grefnr{$ref});
 	my $testing_exmpl = join(",", @syms_nrs);
 	print TEST "$testing_exmpl:\n";
@@ -398,6 +468,16 @@ sub PrintTestingFromArray
 	exists $grefsyms{$ref} or die "Unknown reference $ref";
 	my @syms = @{$grefsyms{$ref}};
 	my @syms_nrs   = map { $gsymnr{$_} if(exists($gsymnr{$_})) } @syms;
+	if($gdotrmstd > 0)
+	{
+	    my @trmstd_nrs   = @{$greftrmstd{$ref}};
+	    push(@syms_nrs, @trmstd_nrs);
+	}
+	if($gdotrmnrm > 0)
+	{
+	    my @trmnrm_nrs   = @{$greftrmnrm{$ref}};
+	    push(@syms_nrs, @trmnrm_nrs);
+	}
 	push(@syms_nrs, $grefnr{$ref});
 	my $testing_exmpl = join(",", @syms_nrs);
 	print TEST "$testing_exmpl:\n";
@@ -419,13 +499,28 @@ sub PrintTestingFromArrArray
     {
 	my @spec = @$spec1;
 	my %symsh = ();
+	my %trmsh = ();
 	my $ref;
 	foreach $ref (@spec)
 	{
 	    exists $grefsyms{$ref} or die "Unknown reference $ref";
 	    @symsh{ @{$grefsyms{$ref}} } = ();
+	    if($gdotrmstd > 0)
+	    {
+		my @trmstd_nrs   = @{$greftrmstd{$ref}};
+		@trmsh{ @{$greftrmstd{$ref}} } = ();
+	    }
+	    if($gdotrmnrm > 0)
+	    {
+		my @trmnrm_nrs   = @{$greftrmnrm{$ref}};
+		@trmsh{ @{$greftrmnrm{$ref}} } = ();
+	    }
 	}
 	my @syms_nrs   = map { $gsymnr{$_} if(exists($gsymnr{$_})) } (keys %symsh);
+	if(($gdotrmstd > 0) || ($gdotrmnrm > 0))
+	{
+	    push(@syms_nrs, (keys %trmsh));
+	}
 	push(@syms_nrs, $grefnr{$spec[0]});
 	my $testing_exmpl = join(",", @syms_nrs);
 	print TEST "$testing_exmpl:\n";
@@ -979,6 +1074,23 @@ sub Iterate
     # create the refsyms file
     `cat $file_prefix*$file_postfix | sort -u | bin/GetSymbols |sort -u > $filestem.refsyms`;
 
+    # create the trmstd and trmnrm files
+    if($gdotrmstd > 0)
+    {
+	`cat $file_prefix*$file_postfix | sort -u | bin/fofshared -|sort -u > $filestem.trmstd`;
+    }
+    if($gdotrmnrm > 0)
+    {
+	my @lines1 = `cat $file_prefix*$file_postfix | sort -u`;
+	my $line;
+	my $fofsh_pid = open(FOFSH,"|bin/fofshared -|sort -u > $filestem.trmnrm");
+	foreach $line (@lines1)
+	{
+	    $line =~ s/([\(, ])[A-Z][a-zA-Z0-9_]*/$1A/g;
+	    print FOFSH $line;
+	}
+	close(FOFSH);
+    }
     # create the refnr and symnr files, load these tables and the refsyms table
     CreateTables();
 
@@ -1354,6 +1466,16 @@ sub PrintTraining
 	my @syms = @{$grefsyms{$ref}};
 	my @syms_nrs   = map { $gsymnr{$_} if(exists($gsymnr{$_})) } @syms;
 	my @all_nrs = (@refs_nrs, @syms_nrs);
+	if($gdotrmstd > 0)
+	{
+	    my @trmstd_nrs   = @{$greftrmstd{$ref}};
+	    push(@all_nrs, @trmstd_nrs);
+	}
+	if($gdotrmnrm > 0)
+	{
+	    my @trmnrm_nrs   = @{$greftrmnrm{$ref}};
+	    push(@all_nrs, @trmnrm_nrs);
+	}
 	# just a sanity check
 	foreach $ref (@refs)
 	{
@@ -1383,6 +1505,16 @@ sub PrintTrainingFromHash
 	my @syms = @{$grefsyms{$ref}};
 	my @syms_nrs   = map { $gsymnr{$_} if(exists($gsymnr{$_})) } @syms;
 	my @all_nrs = (@refs_nrs, @syms_nrs);
+	if($gdotrmstd > 0)
+	{
+	    my @trmstd_nrs   = @{$greftrmstd{$ref}};
+	    push(@all_nrs, @trmstd_nrs);
+	}
+	if($gdotrmnrm > 0)
+	{
+	    my @trmnrm_nrs   = @{$greftrmnrm{$ref}};
+	    push(@all_nrs, @trmnrm_nrs);
+	}
 	# just a sanity check
 	foreach $ref (@refs)
 	{
