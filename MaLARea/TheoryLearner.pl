@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.9 $
+## $Revision: 1.10 $
 
 
 =head1 NAME
@@ -112,25 +112,24 @@ use Pod::Usage;
 use Getopt::Long;
 use IO::Socket;
 
-my (%gsyms,$grefs,$client);
-my $gsymoffset=100000; # offset at which symbol numbering starts
-my $gstdtrmoffset=200000; # offset at which standard term numbering starts
-my $gnrmtrmoffset=300000; # offset at which normalized term numbering starts
-my %grefnr;     # Ref2Nr hash for references
-my @gnrref;     # Nr2Ref array for references
+my $gsymoffset    = 100000; # offset at which symbol numbering starts
+my $gstdtrmoffset = 200000; # offset at which standard term numbering starts
+my $gnrmtrmoffset = 300000; # offset at which normalized term numbering starts
+my %grefnr;                 # Ref2Nr hash for references
+my @gnrref;                 # Nr2Ref array for references
 
-my %gsymnr;   # Sym2Nr hash for symbols
-my @gnrsym;   # Nr2Sym array for symbols - takes gsymoffset into account!
+my %gsymnr;                 # Sym2Nr hash for symbols
+my @gnrsym;                 # Nr2Sym array for symbols - takes gsymoffset into account!
 
-my %grefsyms;   # Ref2Sym hash for each reference array of its symbols
+my %grefsyms;     # Ref2Sym hash for each reference array of its symbols
 my %greftrmstd;   # Ref2Sym hash for each reference array of its stdterms (their shared-entry numbers)
 my %greftrmnrm;   # Ref2Sym hash for each reference array of its nrmterms (their shared-entry numbers)
-my %gspec;   # Ref2Spec hash for each reference hash of its initial references
-my %gresults; # hash of results
-my %gsubrefs; # contains direct lemmas for those proved by mizar_proof,
-              # only if $grefsbgcheat == 0
-my %gsuperrefs; # contains additions to bg inherited from direct lemmas
-                # for those proved by mizar_proof, only if $grefsbgcheat == 0
+my %gspec;        # Ref2Spec hash for each reference hash of its initial references
+my %gresults;     # hash of results
+my %gsubrefs;     # contains direct lemmas for those proved by mizar_proof,
+                  # only if $grefsbgcheat == 0
+my %gsuperrefs;   # contains additions to bg inherited from direct lemmas
+                  # for those proved by mizar_proof, only if $grefsbgcheat == 0
 
 my $maxthreshold = 256;
 my $minthreshold = 4;
