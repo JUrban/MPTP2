@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.106 $
+%% $Revision: 1.107 $
 %%
 %% File  : utils.pl
 %%
@@ -786,7 +786,10 @@ one_pass(F,Pos,mizar_no_existence,RefsIn,OldSyms,NewSyms,_ZeroedRefs,AddedRefs):
 
 %% version for mizar_from
 %% OldSyms are used only for clusters and requirements,
-%% fraenkel defs should not be needed
+%% fraenkel defs should not be needed --
+%% NO: unfortunately, fraenkel defs are needed, see e1_46__relset_2
+%% ###TODO: also another possible problem there: fraenkel definitions don't seem
+%%          to be instantiated properly in scheme instances
 one_pass(F,Pos,mizar_from,RefsIn,OldSyms,NewSyms,_ZeroedRefs,AddedRefs):-
 	theory(F, Theory),
 	member(registrations(Regs),Theory),
@@ -796,7 +799,8 @@ one_pass(F,Pos,mizar_from,RefsIn,OldSyms,NewSyms,_ZeroedRefs,AddedRefs):-
 	get_types(RefsIn,NewSyms,Refs3),
 	get_clusters([F|Regs],Pos,RefsIn,OldSyms,NewSyms,Refs5),
 	get_nr_types(Reqs,RefsIn,NewSyms,Refs6),
-	flatten([Refs0,Refs2,Refs3,Refs5,Refs6], AddedRefs).
+	get_fraenkel_defs(RefsIn,NewSyms,Refs7),
+	flatten([Refs0,Refs2,Refs3,Refs5,Refs6,Refs7], AddedRefs).
 
 
 %% fixpoint(+F,+Pos,+InfKind,+RefsIn,+OldSyms,+NewSyms,-RefsOut)
