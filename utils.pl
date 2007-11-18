@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.109 $
+%% $Revision: 1.110 $
 %%
 %% File  : utils.pl
 %%
@@ -200,6 +200,8 @@ declare_mptp_predicates:-
  dynamic(fraenkel_cached/3),
  abolish(fraenkels_loaded/1),
  dynamic(fraenkels_loaded/1),
+ abolish(sch_orig_copy/2),
+ dynamic(sch_orig_copy/2),
  abolish(articles_numbered/0),
  dynamic(articles_numbered/0),
  abolish(article_position/2),
@@ -2531,18 +2533,17 @@ add_univ_context([H|T], Fla, ( ! [H|T] : ( Fla) )).
 %%   have is its instance (which involves only type checking, no 
 %%   special knowledge about the constant); therefore any object 
 %%   (with the same type) can be used at the place of the constant.
-%% ###TODO: if fraenkel is in the original scheme, it could be
-%%       (and likely is) deanonymized at this point. If it contains
-%%       scheme functors/predicates, then we have to instantiate them
-%%       too, and deanonymize the resulting new fraenkel. Another
-%%       easy option is just to instantiate the fraenkel_def,  creating
-%%       a new fraenkel def
+%% 
+%% ##NOTE: fraenkels in schemes are already deanonymized here, therefore
+%%       we have to check sch_orig_copy/2 for instantiation: incase the 
+%%       original scheme contained a fraenkel, we'll use the original.
+%%       This assumes that fraenkels will be abstracted after this (which is true).
 gen_sch_instance(SI_Name,F,Res,Options):-
 	fof(Ref,_,_,file(F,_),
 	    [MPTPInfo,inference(mizar_from,[InstInfo|_],_Refs)|_]),
 	InstInfo = scheme_instance(SI_Name,S_Name,Ref,_,Substs),
 	MPTPInfo= mptp_info(_Nr,Lev,_Kind,Pos,_Args),
-	once(fof(S_Name,theorem,Fla,_,_)),
+	once((sch_orig_copy(S_Name,Fla); fof(S_Name,theorem,Fla,_,_))),
 	copy_term(Fla,Tmp),
 	apply_sch_substs_top(Substs,Tmp,Fla0),
 	(member(opt_REM_SCH_CONSTS,Options) ->
@@ -3296,15 +3297,27 @@ print_nl(X):- print(X), nl, !.
 
 %% abstract_fraenkels(+Article, +Options, -NewFrSyms, -NewFlaNames)
 %%
-%% create definitions for all fraenkel terms in Article,
+%% Create definitions for all fraenkel terms in Article,
 %% in which the possible local consts are generalized-out;
 %% assert these definitions as new fofs, erase the original clauses
 %% with fraenkel terms and assert instead of them their versions
-%% with fraenkel terms replaced by the new fraenkel functors
+%% with fraenkel terms replaced by the new fraenkel functors.
+%% Schemes containing fraenkels are saved for possible instantiations
+%% in sch_orig_copy/2 .
 abstract_fraenkels(Article, Options, NewFrSyms, NewFlaNames):-
 	findall(Id,(fof_file(Article,Id),
 		    clause(fof(_,_,Fla,file(_,_),_),_,Id),
 		    check_if_symbol(Fla, all)),Ids), !,
+	%% keep original form of schemes with fraenkel in sch_orig_copy/2 -
+	%% needed for correct scheme instantiation
+	findall([SchRef, SchFla],
+		(
+		  member(Id,Ids),
+		  clause(fof(SchRef,theorem,SchFla,file(_,_),[mptp_info(_,_,scheme,_,_)|_]),_,Id),
+		  retractall(sch_orig_copy(SchRef,_)),
+		  assert(sch_orig_copy(SchRef, SchFla))
+		),
+		_),
 	%% collect fraenkel infos and put variables into fraenkel flas
 	findall([[fof(R,R1,Out,R3,R4),Subst],Info],
 		(member(Id,Ids), clause(fof(R,R1,R2,R3,R4),_,Id),
