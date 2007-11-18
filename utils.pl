@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.107 $
+%% $Revision: 1.108 $
 %%
 %% File  : utils.pl
 %%
@@ -684,14 +684,20 @@ get_ref_fof(Ref,fof(Ref,R1,R2,R3,R4)):-
 	fof_name(Ref,Id),!,
 	clause(fof(Ref,R1,R2,R3,R4),_,Id),!.
 
-% not unique for Sec and Info
+
+%% get_sec_info_refs(+RefsIn, +Secs, +Info, -NewRefs)
+%%
+%% Find all fofs with fof_section in Secs, and Info slot as prescribed.
+%% Those not in RefsIn return in NewRefs.
+%% Is not unique for Sec and Info.
 get_sec_info_refs(RefsIn, Secs, Info, NewRefs):- !,
 	findall(Ref1, (member(Sec1,Secs), fof_section(Sec1,Id),
 			  clause(fof(Ref1,_,_,file(_,Sec1), Info),_,Id)), Refs1),
 	subtract(Refs1, RefsIn, NewRefs).
+
 %% this was very slow for many clauses, even with maximum prolog indexing
-%% so the previous clause is used instead with hommade indexing
-get_sec_info_refs(RefsIn, Secs, Info, NewRefs):-
+%% so the previous clause is used instead with homemade indexing
+get_sec_info_refs_old(RefsIn, Secs, Info, NewRefs):-
 	findall(Ref1, (member(Sec1,Secs), fof(Ref1,_,_,file(_,Sec1), Info)), Refs1),
 	subtract(Refs1, RefsIn, NewRefs).
 
@@ -2509,6 +2515,12 @@ add_univ_context([H|T], Fla, ( ! [H|T] : ( Fla) )).
 %%   have is its instance (which involves only type checking, no 
 %%   special knowledge about the constant); therefore any object 
 %%   (with the same type) can be used at the place of the constant.
+%% ###TODO: if fraenkel is in the original scheme, it could be
+%%       (and likely is) deanonymized at this point. If it contains
+%%       scheme functors/predicates, then we have to instantiate them
+%%       too, and deanonymize the resulting new fraenkel. Another
+%%       easy option is just to instantiate the fraenkel_def,  creating
+%%       a new fraenkel def
 gen_sch_instance(SI_Name,F,Res,Options):-
 	fof(Ref,_,_,file(F,_),
 	    [MPTPInfo,inference(mizar_from,[InstInfo|_],_Refs)|_]),
@@ -3124,10 +3136,13 @@ strip_exist(Fla, _, _, _) :- throw(strip_exist(Fla)).
 
 %%%%%%%%%%%% Constant generalization (abstraction) %%%%%%%%%%%%%%%%%%%%
 
-%% add_const_vars(+RefsIn, +ConstsIn, +AddedConsts, -RefsOut, -ConstsOut)
+%% get_consts_and_refs(+RefsIn, +ConstsIn, +AddedConsts, -RefsOut, -ConstsOut)
 %%
-%% collect all constants together with their type definitions
-add_consts(RefsIn, ConstsIn, AddedConsts, RefsOut, ConstsOut):-
+%% Collect all constants together with their type definitions.
+%% Start with a list of references (type defs) and known constants, 
+%% and recursively add all references and constants mentioned in the
+%% type defs.
+get_consts_and_refs(RefsIn, ConstsIn, AddedConsts, RefsOut, ConstsOut):-
 	get_sec_info_refs(RefsIn, AddedConsts,
 			  [mptp_info(_,_,constant,_,[_,type|_])|_], NewRefs),
 	([] = NewRefs ->
@@ -3139,7 +3154,7 @@ add_consts(RefsIn, ConstsIn, AddedConsts, RefsOut, ConstsOut):-
 	    subtract( Consts0, ConstsIn, Consts1),
 	    union(ConstsIn, Consts1, AllConsts1),
 	    union(RefsIn, NewRefs, AllRefs1),
-	    add_consts(AllRefs1, AllConsts1, Consts1, RefsOut, ConstsOut)
+	    get_consts_and_refs(AllRefs1, AllConsts1, Consts1, RefsOut, ConstsOut)
 	).
 
 %% this ensures that the infos are comparable and different
@@ -3215,7 +3230,7 @@ make_const_var_substs([H|T], [(H/_NewVar)|NewVars]):-
 generalize_consts(In, Out, UnivContext, NewConstSubst):-
 	collect_symbols_top(In, Syms0),
 	sublist(mptp_local_const, Syms0, Consts0),
-	add_consts([], Consts0, Consts0, SortRefs, AllConsts),
+	get_consts_and_refs([], Consts0, Consts0, SortRefs, AllConsts),
 	length(AllConsts, N),
 	ensure(length(SortRefs, N), gen_consts(In,AllConsts,SortRefs)),
 	maplist(get_ref_fof, SortRefs, SortFofs),
