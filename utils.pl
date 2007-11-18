@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.108 $
+%% $Revision: 1.109 $
 %%
 %% File  : utils.pl
 %%
@@ -460,14 +460,12 @@ sort_transform(X1,X2):-
 
 %%%%%%%%%%%%%%%%%%%% Fraenkel de-anonymization %%%%%%%%%%%%%%%%%%%%
 
-% First we replace fraenkels by placeholder variables which we remember, and collect
-% the fraenkels (with their context) into a list corresponding to the variables.
-% Then we find optimal 'skolem' definitions corresponding to the fraenkels,
-% instantiate such functors for each frankel with its context, and
-% put them into the formulas by unifying them with the placeholder variables.
-% GroundCopy is kept for exact comparisons envolving context
-% all_collect(+InTerm,-OutTerm,+Context=[(Var:Sort1)|RestV],
-%             -Info=[[NewVar,Context,all(Svars1,Trm1,Frm1),GroundCopy]|RestI])
+%% First we replace fraenkels by placeholder variables which we remember, and collect
+%% the fraenkels (with their context) into a list corresponding to the variables.
+%% Then we find optimal 'skolem' definitions corresponding to the fraenkels,
+%% instantiate such functors for each frankel with its context, and
+%% put them into the formulas by unifying them with the placeholder variables.
+%% GroundCopy is kept for exact comparisons envolving context
 
 all_collect_qlist([],[],C,C,[]).
 all_collect_qlist([(X:S)|T],[(X:S1)|T1],Context,NewContext,Info):-
@@ -479,8 +477,25 @@ all_collect_qlist([(X:S)|T],[(X:S1)|T1],Context,NewContext,Info):-
 fr_vars(FrInfo, FrVars):- maplist(nth1(1), FrInfo, FrVars).
 split_svars(Vars,Sorts,Svars):- zip_s(':', Vars, Sorts, Svars).
 
+
+%% all_collect_top(+In,-Out,-Infos)
+%%
+%% Replace fraenkels in In by variables in Out, putting the needed
+%% info (for creating fraenkel defs) in Infos.
 all_collect_top(In,Out,Info):- all_collect(In,Out,[],Info),!.
-% end of traversal
+
+
+%% all_collect(+InTerm,-OutTerm,+Context=[(Var:Sort1)|RestV],
+%%             -Info=[[NewVar,Context,all(Svars1,Trm1,Frm1),GroundCopy]|RestI])
+%%
+%% First we replace fraenkels by placeholder variables which we remember, and collect
+%% the fraenkels (with their context) into a list corresponding to the variables.
+%% Then we find optimal 'skolem' definitions corresponding to the fraenkels,
+%% instantiate such functors for each frankel with its context, and
+%% put them into the formulas by unifying them with the placeholder variables.
+%% GroundCopy is kept for exact comparisons envolving context
+
+%% end of traversal
 all_collect(X,X,_,[]):- atomic(X); var(X).
 
 all_collect(! Svars : Y, ! Svars1 : Y1, Context, Info_r):-
@@ -2498,7 +2513,8 @@ apply_sch_substs(Substs,X1,X2):-
 	maplist(apply_sch_substs(Substs),T1,T2),
 	X2 =.. [H1|T2].
 
-
+%% add_univ_context(+VarDecls,+FlaIn,-FlaOut)
+%%
 add_univ_context([],Fla,Fla).
 add_univ_context([H|T], Fla, ( ! [H|T] : ( Fla) )).
 
@@ -3157,7 +3173,13 @@ get_consts_and_refs(RefsIn, ConstsIn, AddedConsts, RefsOut, ConstsOut):-
 	    get_consts_and_refs(AllRefs1, AllConsts1, Consts1, RefsOut, ConstsOut)
 	).
 
-%% this ensures that the infos are comparable and different
+%% cmp_const_info(-Res, +Fof1, +Fof2)
+%%
+%% Compare two Fofs (##ASSUME: containining type defs of consts,
+%% with proper (and different) info). Const in sublevel is always
+%% larger than const on superlevel (##TODO: not consistent with positions!),
+%% on the same level, compare just by const number.
+%% This ensures that the infos are comparable and different
 cmp_const_info(Res, fof(_,_,_,_,[mptp_info(Nr1,Lev1,_,_,_)|_]),
 	       fof(_,_,_,_,[mptp_info(Nr2,Lev2,_,_,_)|_])):- !,
 	(Lev1 = Lev2 ->
@@ -3183,8 +3205,9 @@ insrt_by_info(F1, [F2|T], Sorted):-
 		Sorted = [F2|Sorted1])
 	).
 
-%% this is an insert sort by mptp_info
-%% all consts must be comparable
+%% This is an insert sort by mptp_info.
+%% All consts must be comparable, and different.
+%% Could be done using article_position/2 .
 sort_by_const_names([], Sorted, Sorted).
 sort_by_const_names([H|T], Sorted, Res):-
 	insrt_by_info(H, Sorted, Sorted1),
@@ -3215,15 +3238,17 @@ apply_const_substs(Substs,X1,X2):-
 	maplist(apply_const_substs(Substs),T1,T2),
 	X2 =.. [H1|T2].
 
-%% make new variables for the constants
+%% make_const_var_substs(+Consts, -Substs).
+%%
+%% Make new variable substitutions for the constants.
 make_const_var_substs([], []).
-make_const_var_substs([H|T], [(H/_NewVar)|NewVars]):-
-	make_const_var_substs(T, NewVars).
+make_const_var_substs([H|T], [(H/_NewVar)|NewSubsts]):-
+	make_const_var_substs(T, NewSubsts).
 
 %% generalize_consts(+In, -Out, -UnivContext, -Subst)
 %%
-%% generalize local constants into universally bound variables
-%% all local consts in +In are replaced with new vars in Out, these vars
+%% Generalize local constants into free (later universally bound) variables.
+%% All local consts in +In are replaced with new vars in Out, these vars
 %% are collected in UnivContext (with their sorts),
 %% -Subst is the substitution which turns -Out into +In again
 %% (actually vice versa - it has format: [Constant1/Var1,...])
