@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.15 $
+## $Revision: 1.16 $
 
 
 =head1 NAME
@@ -1163,7 +1163,7 @@ sub Iterate
     if($giterrecover == -1)
     {
 	# normalize problems and create the initial specs file, copy each file to $file.s_0
-	NormalizeAndCreateInitialSpecs($file_prefix, $file_postfix);
+	NormalizeAndCreateInitialSpecs($file_prefix, $file_postfix, $gcommonfile);
 
 	# create the refsyms file
 	`cat $file_prefix*$file_postfix | sort -u | bin/GetSymbols |sort -u > $filestem.refsyms`;
