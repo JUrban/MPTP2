@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.16 $
+## $Revision: 1.17 $
 
 
 =head1 NAME
@@ -58,17 +58,17 @@ If 1, the first pass is a max-timelimit run on full problems. If 0,
 that pass is omitted, and the symbol-only pass is the first run.
 Default is 1.
 
-=item B<<< --iterrecover=<arg>, -I<arg> >>>
+=item B<<< --iterrecover=<arg>, -B<I><arg> >>>
 
 Instead of starting fresh, assume that iteration passed as arg
 was already done. Load the result table and all other needed
 tables, and continue with the next iteration.
 
-=item B<<< --runspass=<arg>, -S<arg> >>>
+=item B<<< --runspass=<arg>, -B<S><arg> >>>
 
 If 1, run SPASS. Default is 1.
 
-=item B<<< --runvampire=<arg>, -V<arg> >>>
+=item B<<< --runvampire=<arg>, -B<V><arg> >>>
 
 If 1, run Vampire. Default is 0.
 
