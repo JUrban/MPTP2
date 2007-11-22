@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.18 $
+## $Revision: 1.19 $
 
 
 =head1 NAME
@@ -18,6 +18,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --fileprefix=<arg>,      -e<arg>
    --filepostfix=<arg>,     -s<arg>
    --maxcpulimit=<arg>,     -C<arg>
+   --mincpulimit=<arg>,     -u<arg>
    --maxaxiomlimit=<arg>,   -A<arg>
    --dofull=<arg>,          -f<arg>
    --iterrecover=<arg>,     -I<arg>
@@ -59,6 +60,11 @@ It is appended to the conjecture name (typically a file extension).
 Upper limit to which the CPU time for one ATP attempt is grown
 exponentially (multiplied by 4 and starting from 1 second base). 
 The default is 16 seconds (should be power of 4)
+
+=item B<<< --mincpulimit=<arg>, -u<arg> >>>
+
+Lower limit for the CPU time for one ATP attempt.
+The default is 1 second (should be power of 4).
 
 =item B<<< --maxaxiomlimit=<arg>, -B<A><arg> >>>
 
@@ -168,10 +174,9 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $maxtimelimit, $gdofull,        $giterrecover,
     $gspass,       $gvampire,       $grecadvice,
     $grefsbgcheat, $galwaysmizrefs, $gsimilarity,
-    $maxthreshold);
+    $maxthreshold, $mintimelimit);
 
 my ($help, $man);
-my $mintimelimit = 1;
 my $gtargetsnr = 1233;
 
 
@@ -181,6 +186,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'fileprefix|e=s'    => \$gfileprefix,
 	   'filepostfix|s=s'    => \$gfilepostfix,
 	   'maxcpulimit|C=i'    => \$maxtimelimit,
+	   'mincpulimit|u=i'    => \$mintimelimit,
 	   'maxaxiomlimit|A=i'  => \$maxthreshold,
 	   'dofull|f=i'    => \$gdofull,
 	   'iterrecover|I=i' => \$giterrecover,
@@ -213,6 +219,7 @@ $gcommonfile = "" unless(defined($gcommonfile));
 $gfileprefix = "" unless(defined($gfileprefix));
 $gfilepostfix = "" unless(defined($gfilepostfix));
 $maxtimelimit = 16 unless(defined($maxtimelimit));  # should be power of 4
+$mintimelimit = 1 unless(defined($mintimelimit));  # should be power of 4
 $maxthreshold = 128 unless(defined($maxthreshold)); # should be power of 2
 
 
