@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.20 $
+## $Revision: 1.21 $
 
 
 =head1 NAME
@@ -1006,7 +1006,7 @@ sub RunProblems
 	    $proved_by{$conj} = [];
 	    while ($_=<EP>)
 	    {
-		m/.*,file\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $file: $_";
+		m/.*, *file\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $file: $_";
 		my $ref = $1;
 		exists $grefnr{$ref} or die "Unknown reference $ref in $file: $_";
 		push( @{$proved_by{$conj}}, $ref);
@@ -1083,7 +1083,7 @@ sub RunProblems
 		my $vamp_pid = open(VP,"cat $file.vout |grep file|") or die("Cannot start grep");
 		while ($_=<VP>)
 		{
-		    m/.*,file\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $file: $_";
+		    m/.*, *file\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $file: $_";
 		    my $ref = $1;
 		    exists $grefnr{$ref} or die "Unknown reference $ref in $file.vout: $_";
 		    push( @{$proved_by{$conj}}, $ref);
