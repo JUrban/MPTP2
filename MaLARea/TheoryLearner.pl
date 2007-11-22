@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.19 $
+## $Revision: 1.20 $
 
 
 =head1 NAME
@@ -18,7 +18,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --fileprefix=<arg>,      -e<arg>
    --filepostfix=<arg>,     -s<arg>
    --maxcpulimit=<arg>,     -C<arg>
-   --mincpulimit=<arg>,     -u<arg>
+   --mincpulimit=<arg>,     -U<arg>
    --maxaxiomlimit=<arg>,   -A<arg>
    --dofull=<arg>,          -f<arg>
    --iterrecover=<arg>,     -I<arg>
@@ -61,7 +61,7 @@ Upper limit to which the CPU time for one ATP attempt is grown
 exponentially (multiplied by 4 and starting from 1 second base). 
 The default is 16 seconds (should be power of 4)
 
-=item B<<< --mincpulimit=<arg>, -u<arg> >>>
+=item B<<< --mincpulimit=<arg>, -B<U><arg> >>>
 
 Lower limit for the CPU time for one ATP attempt.
 The default is 1 second (should be power of 4).
@@ -186,7 +186,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'fileprefix|e=s'    => \$gfileprefix,
 	   'filepostfix|s=s'    => \$gfilepostfix,
 	   'maxcpulimit|C=i'    => \$maxtimelimit,
-	   'mincpulimit|u=i'    => \$mintimelimit,
+	   'mincpulimit|U=i'    => \$mintimelimit,
 	   'maxaxiomlimit|A=i'  => \$maxthreshold,
 	   'dofull|f=i'    => \$gdofull,
 	   'iterrecover|I=i' => \$giterrecover,
