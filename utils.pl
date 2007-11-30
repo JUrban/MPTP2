@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.110 $
+%% $Revision: 1.111 $
 %%
 %% File  : utils.pl
 %%
@@ -4705,6 +4705,16 @@ assert_level([H|T],Id):- !,level_atom([H|T],Lev1), assert(fof_level(Lev1, Id)).
 assert_level(_,_).
 
 
+%% ###TODO: requiring all rc symbols seems to be too restrictive, and
+%%   probably leads to incompleteness of e3_41__waybel33, due to
+%%   lack of rc3_waybel19; the right condition is that all symbols
+%%   involved in rc's universally quantified variables (i.e. those on which
+%%   the last existantial var depends) have to be already present in the problem,
+%%   and probably also the radix mode (with possible functors inside);
+%%   this could however get quite wild, and we should probably watch the set
+%%   of constants and variables in the problem, and only add to the fixpoint algo
+%%   those attributes which appear in their types; also we shouldn't add an rc
+%%   when it only takes care of a const/var type which is already taken care of
 assert_syms(rcluster,Ref1,_,_,Fla1,File1,_,LogicSyms,_,_):- !,
 	    collect_symbols_top(Fla1,AllSyms),
 	    subtract(AllSyms,LogicSyms,Syms),
