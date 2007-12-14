@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.111 $
+%% $Revision: 1.112 $
 %%
 %% File  : utils.pl
 %%
@@ -46,6 +46,7 @@ opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme insta
 	       opt_MK_TPTP_INF,		%% better tptp inference slot and no mptp_info
 	       opt_TPTP_SHORT,	        %% short tptp format (parsable by vampire too)
 	       opt_NO_EX_BG_FLAS,       %% do not include existential background in fixpoint
+	       opt_FXP_CHECK_CNSDR,     %% add rclusters for suspisous consider_justifications
 	       opt_PROB_PRINT_FUNC,	%% unary functor passing a special printing func
 	       opt_PP_SMALLER_INCLUDES, %% unary functor passing a list of possible includes,
 	                                %% used with print_refs_as_tptp_includes
@@ -187,6 +188,7 @@ declare_mptp_predicates:-
  abolish(fof_parentlevel/2),
  dynamic(fof_parentlevel/2),
  abolish(fof_cluster/3),
+ abolish(rc_syms_for_consider/7),
  abolish(fof_req/3),
  abolish(sym_ref_graph/2),
  dynamic(sym_ref_graph/2),
@@ -285,10 +287,14 @@ digit('0'). digit('1'). digit('2'). digit('3'). digit('4').
 digit('5'). digit('6'). digit('7'). digit('8'). digit('9').
 
 %% mptp_func with args
-mptp_func(X):- X =..[H|_],atom_chars(H,[F|_]),member(F,[k,g,u,'0','1','2','3','4','5','6','7','8','9']).
+mptp_func(X):- X =..[H|_],mptp_func_sym(H).
 ground_mptp_func(X):- ground(X),mptp_func(X).
 sch_symbol(X):- atom_chars(X,[F|_]),member(F,[f,p]).
 mptp_local_const(X):- atom_chars(X,[c|_]).
+mptp_func_sym(X):- atom_chars(X,[F|_]),member(F,[k,g,u,'0','1','2','3','4','5','6','7','8','9']).
+mptp_attr_sym(X):- atom_chars(X,[v|_]).
+mptp_mode_sym(X):- atom_chars(X,[F|_]),member(F,[m,l]).
+mptp_attr_or_mode_sym(X):- atom_chars(X,[F|_]),member(F,[v,m,l]).
 
 %% collect ground counts into buk/3, stack failure otherwise
 %% then print and run perl -e 'while(<>) { /.([0-9]+), (.*)./; $h{$2}+=$1;} foreach $k (sort {$h{$b} <=> $h{$a}} (keys %h)) {print "$h{$k}:$k\n";}'
@@ -702,6 +708,15 @@ get_ref_fof(Ref,fof(Ref,R1,R2,R3,R4)):-
 	clause(fof(Ref,R1,R2,R3,R4),_,Id),!.
 
 
+%% ref_mpropkind(?MPropKind, +Ref)
+%%
+%% Tell the MPropKind of Refs. The arguments are in the opposite order
+%% to make sublist(ref_mpropkind(Kind), RefsIn, RefsOut) calls possible.
+ref_mpropkind(MPropKind, Ref):-
+	get_ref_fof(Ref,fof(Ref,_,_,_,[mptp_info(_,_,MPropKind,_,_)|_])).
+
+ref_is_rcluster(Ref):- ref_mpropkind(rcluster, Ref).
+
 %% get_sec_info_refs(+RefsIn, +Secs, +Info, -NewRefs)
 %%
 %% Find all fofs with fof_section in Secs, and Info slot as prescribed.
@@ -717,6 +732,24 @@ get_sec_info_refs(RefsIn, Secs, Info, NewRefs):- !,
 get_sec_info_refs_old(RefsIn, Secs, Info, NewRefs):-
 	findall(Ref1, (member(Sec1,Secs), fof(Ref1,_,_,file(_,Sec1), Info)), Refs1),
 	subtract(Refs1, RefsIn, NewRefs).
+
+get_consider_empty_justif_types(RefsIn, ConsEmptyJustifTypes):-
+	findall(Type,
+		(
+		  member(Ref, RefsIn),
+		  get_ref_fof(Ref,fof(Ref,_,_,_,
+				      [mptp_info(_,_,_,_,
+						 [_,mizar_item(consider_justification),
+						  considered_constants(Consts)|_]),
+				       inference(mizar_by,[],[])|_])),
+		  member(Const,Consts),
+		  fof_section(Const,Id),
+		  clause(fof(_,_,sort(Const,Type),file(_,Const),
+			     [mptp_info(_,_,constant,_,[consider,type|_])|_]),_,Id)
+
+		),
+		ConsEmptyJustifTypes).
+
 
 %%%%%%%%%%%%%%%%%%%% Background computation %%%%%%%%%%%%%%%%%%%%
 
@@ -848,7 +881,27 @@ fixpoint_(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
 	one_pass(F, Pos, InfKind, RefsIn, OldSyms, NewSyms, ZeroedRefs, Refs1), !,
 	(
 	  Refs1 = [] ->
-	  RefsOut = RefsIn
+	  (
+	    (
+%%	      member(opt_FXP_CHECK_CNSDR, Options),
+	      member(InfKind,[mizar_by,mizar_proof]),
+	      get_consider_empty_justif_types(RefsIn, ConsEmptyJustifTypes),
+	      ConsEmptyJustifTypes = [_ | _]
+	    ) ->
+	    findall(ConsInfo,
+		    (
+		      member(ConsType, ConsEmptyJustifTypes),
+		      create_type_info_for_consider(ConsType, ConsInfo)
+		    ),
+		    ConsInfos0
+		  ),
+	    sort(ConsInfos0, ConsInfos),
+	    union(OldSyms, NewSyms, AllSyms),
+	    add_rclusters_for_unhandled(F, Pos, RefsIn, AllSyms, ConsInfos, NewRClusters),
+	    union(RefsIn, NewRClusters, RefsOut)	    
+	  ;
+	    RefsOut = RefsIn
+	  )
 	;
 	  union(Refs1, RefsIn, Refs2),
 	  findall(d,(member(R,Refs1),assert(fxp_refsin_(R))),_),
@@ -858,6 +911,183 @@ fixpoint_(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
 	  subtract(Syms1, OldSyms1, NewSyms1),
 	  findall(d,(member(S,NewSyms1),assert(fxp_allsyms_(S))),_),
 	  fixpoint_(F, Pos, InfKind, Refs2, OldSyms1, NewSyms1, RefsOut)
+	).
+
+
+%% create_type_info_for_consider(ConsType, -ConsInfo)
+%%
+create_type_info_for_consider(ConsType, ConsInfo):-
+	constr2list('&', _Last, AndList, ConsType),!,
+	process_attrsmode_list_for_cons(AndList, ConsAttrs0, Radix),
+	create_cons_info(ConsAttrs0, Radix, ConsInfo).
+
+create_cons_info(ConsAttrs0, Radix, ConsInfo):-
+	(
+	  Radix = $true ->
+	  ConsMode = $true,
+	  ConsFuncs = []
+	;
+	  Radix =.. [ConsMode | Args],
+	  collect_symbols_top(Args, RadixArgSyms),
+	  sublist(mptp_func_sym, RadixArgSyms, ConsFuncs0),
+	  sort(ConsFuncs0, ConsFuncs)
+	),
+	length(ConsFuncs, ConsFuncsNr),
+	sort(ConsAttrs0, ConsAttrs),
+	length(ConsAttrs, ConsAttrsNr),
+	ConsInfo = [ConsMode, ConsFuncsNr, ConsAttrsNr, ConsFuncs, ConsAttrs],!.
+
+%% process_attrsmode_list_for_cons(+AndList, -ConsAttrs0, -Radix),
+%%
+%% Expects a list possibly ending with a radix. Coverts the negated atributes
+%% to 'w'-symbols, and forgest their arguments. If there is no radix, it
+%% pretends to be $true
+process_attrsmode_list_for_cons([AttrTermOrRadix | Rest], [ AttrSym | ConsAttrsRest], Radix):-
+	process_attrterm_for_cons(AttrTermOrRadix, AttrSym), !,
+	process_attrsmode_list_for_cons(Rest, ConsAttrsRest, Radix).
+
+process_attrsmode_list_for_cons([Radix], [], Radix).
+process_attrsmode_list_for_cons([], [], $true).
+
+
+%% process_attrterm_for_cons(+AttrTerm, -AttrSym)
+process_attrterm_for_cons(~(AttrTerm), NegAttrSym):- !,
+	AttrTerm =.. [PosAttrSym | _],
+	ensure(atom_chars(PosAttrSym, [v | Rest]), process_attrterm_for_cons),
+	atom_chars(NegAttrSym, [ w | Rest]), !.
+
+process_attrterm_for_cons(AttrTerm, PosAttrSym):-
+	AttrTerm =.. [PosAttrSym | _],
+	atom_chars(PosAttrSym, [v | _]).
+
+
+%% get_current_rclusters(+RefsIn, ?Rclusters)
+%%
+get_current_rclusters(RefsIn, Rclusters):-
+	sublist(ref_is_rcluster, RefsIn, Rclusters).
+
+%% rcluster_covers_consider(+RCl, [+ConsMode, +ConsFuncsNr, +ConsAttrsNr, +ConsFuncs, +ConsAttrs])
+%%
+%% Ensure that all attributes in the consider are also in the rcluster,
+%% that the rcluster's mode is same as in consider, and that all
+%% functors in the rcluster are also in the consider.
+%% Note if we know all this, the additional condition for the consider to be
+%% fully covered by the rcluster is just that ConsFuncsNr = FuncsNr.
+%% ###TODO: if this is still too weak, take care also of the context vars/consts on
+%%          which the rcluster/consider depends.
+rcluster_covers_consider(RCl, ConsInfo):-
+	ConsInfo = [ConsMode, ConsFuncsNr, ConsAttrsNr, ConsFuncs, ConsAttrs],
+	rc_syms_for_consider(RCl, _File, ConsMode, FuncsNr, AttrsNr, FuncSyms, AttrSyms),
+	FuncsNr =< ConsFuncsNr,
+	ConsAttrsNr =< AttrsNr,
+	subset(FuncSyms, ConsFuncs),
+	subset(ConsAttrs, AttrSyms),!.
+
+
+%% get_covered_consider(+Rclusters, +ConsInfos, -Covered)
+%%
+%% Select the ConsInfos covered by some of Rclusters into Covered.
+%% We don't have to check the file and position here - it has already been checked
+%% at this point.
+%% Note that we use setof, to only check Rclusters until we find the first covering
+%% for a particul ConsInfo.
+get_covered_consider(Rclusters, ConsInfos, Covered):-
+	setof(ConsInfo,
+		(
+		  member(ConsInfo, ConsInfos),
+		  member(RCl, Rclusters),
+		  rcluster_covers_consider(RCl, ConsInfo)
+		),
+	      Covered),!.
+
+%% to fix the failure above when the setof is empty
+get_covered_consider(_Rclusters, _ConsInfos, []).
+
+
+%% get_first_rcluster_cover(+Rclusters, +ConsInfo, -RCl):-
+get_first_rcluster_cover(Rclusters, ConsInfo, RCl):-
+	member(RCl, Rclusters),
+	rcluster_covers_consider(RCl, ConsInfo), !.
+
+%% as a first hack, no optimization here;
+%% ##TODO: optimize this better, using ALGO above
+cover_remaining_consider(Rclusters, ConsInfos, Covered, Covering):-
+	findall([ConsInfo,RCl],
+		(
+		  member(ConsInfo, ConsInfos),
+		  get_first_rcluster_cover(Rclusters, ConsInfo, RCl)
+		),
+		Res),
+	zip(Covered, Covering, Res).
+
+%% get_eligible_rclusters(+File, +Pos, +CurrentRclusters, -Eligible)
+%%
+%% Get rclusters usable for File and Pos, and not included in CurrentRclusters.
+get_eligible_rclusters(F, Pos, CurrentRclusters, Eligible):-
+	theory(F, Theory),
+	member(registrations(Regs),Theory),
+	findall(Ref1,
+		(
+		  member(F1,[F|Regs]),
+		  fof_cluster(F1,Ref1,_),
+		  atom_chars(Ref1,[r|_]),
+		  check_cluster_position(F,Pos,F1,Ref1),
+		  not(member(Ref1, CurrentRclusters))
+		  %% this is faster but a bit hackier way at this point:
+%%		  not(fxp_refsin_(Ref1))
+		),
+		Eligible).
+
+%% add_rclusters_for_unhandled(+F, +Pos, +RefsIn, +AllSyms, +ConsInfos, -NewRClusters)
+%%
+%% Finish the fixpoint algo by finding NewRClusters needed for considers with
+%% empty justifications (passed already preprocessed as ConsInfos).
+%% ##TODO: add some debug info, when not all ConsInfos are covered.
+%%
+%% Longer & older rant:
+%%
+%% Add needed rclusters for ConsInfos coming from consider justifications.
+%% Each	ConsInfo has the form [ConsMode, ConsFuncsNr, ConsAttrsNr, ConsFuncs, ConsAttrs],
+%% and we require thet the ConsMode and the ConsAttrs be covered by som rcluster
+%% If an appropriate rcluster is in RefsIn, we use it, otherwise we try to add
+%% rcluster constrained by F's theory and position Pos.
+%% We are intentionally not looking for additional mode existence fofs, because they
+%% should already be there.
+%% We need the following info about rclusters for this:
+%% - which symbols certainly have to be present in the consider statement:
+%%         the mode symbol, and the functor symbols in the rcluster
+%% - which symbols form the upper bound, and we only require that the
+%%         consider statement does not contain more than them:
+%%         the attributes forming the proper cluster, could be also
+%%         with functors, but the functors will be present in the mode
+%%         anyway, so we don't need them; we however need the polarity
+%%         (could be done by using  the 'w' version of the symbol for negation)
+%% Indexing requirements: we have to ensure that all attributes in the consider are
+%%         also in the rcluster; but typically, we'll have many rclusters, and just a few
+%%         considers to deal with; so we'll just prune the rclusters by the mode & functor
+%%         syms, and then check each rcluster's attrs for being superset of the consider's
+%%         attrs; finally, we should also collect the optional info whether all consider's functor
+%%         syms are covered by the rcluster
+%% following indexing is used:
+%%     rc_syms_for_consider(+RCl, -File, -ConsMode, -FuncsNr, -AttrsNr, -FuncSyms, -AttrSyms)
+%% ##PROBLEM: redefinitions could mess things, e.g. the FuncSyms might differ; ignore now.
+%% ##ALGO: each SymPair which is not covered by RefsIn increases the "cover count" for
+%%         all eligible rclusters which cover it, and is added to their "cover list".
+%%         Then we greedily choose the rclusters with largest "cover count", until
+%%         all SymPairs are covered. (not done yet: This is attempted first in the "Func-mode",
+%%         i.e. trying to use only rclusters that cover the SymPair also with its
+%%         FuncSyms, and only with the remaining clusters we try in the AttrOrModeSyms
+%%         only.)
+add_rclusters_for_unhandled(F, Pos, RefsIn, _AllSyms, ConsInfos, NewRClusters):-
+	get_current_rclusters(RefsIn, CurrentRclusters),
+	get_covered_consider(CurrentRclusters, ConsInfos, Covered),
+	subtract(ConsInfos, Covered, Uncovered),
+	(
+	  Uncovered = [] ->
+	  NewRClusters = []
+	;
+	  get_eligible_rclusters(F, Pos, CurrentRclusters, Eligible),
+	  cover_remaining_consider(Eligible, Uncovered, _NewlyCovered, NewRClusters)
 	).
 
 
@@ -1269,7 +1499,7 @@ mk_sub_problems_from_list(List):-
 %% Create problems whose names are in the list.
 %% Names should have the form xboole_1__t40_xboole_1 (i.e.: Article__Problem)
 mk_problems_from_list(List,AddOptions):-
-	declare_mptp_predicates,load_mml,
+%	declare_mptp_predicates,load_mml,
 	findall([Article, Problem],
 		( member(Name,List), concat_atom([Article,Problem], '__', Name)),
 		Pairs), !,
@@ -4059,16 +4289,24 @@ get_transformed_fla(Q,Fla):-
 	sort_transform_top(Q2,Fla),
 	numbervars([Fla,Q3,Q4],0,_).
 
-%% list2constr(BinConstr, Nil, List , Terms)
+%% list2constr(+BinConstr, +Nil, +List , -Term)
 %%
-%% Replace cons and nil with BinConstr and Nil, creating term
-%% Now can laso be called with unknown Nil (meybe even BinConstr)
-%% and List, to translate Terms to List.
-list2constr(BinConstr, Nil, [H,H1|T],Res):-
-	Res =.. [BinConstr, H, Tmp],!,
-	constr2list(BinConstr, Nil, [H1|T], Tmp).
-list2constr(_BinConstr, T, [T], T):- !.
+%% Replace cons and nil with BinConstr and Nil, creating Term.
 list2constr(_BinConstr, Nil, [], Nil).
+list2constr(BinConstr, Nil, [H|T],Res):-
+	list2constr(BinConstr, Nil, T, Tmp),
+	Res =.. [BinConstr, H, Tmp].
+
+%% constr2list(+BinConstr, -Last, -List , +Term)
+%%
+%% While BinConstr, replace with cons creating List
+%% (having Last element).
+%% Order of params is compatible with list2constr.
+constr2list(BinConstr, Last, [H,H1|T],Res):-
+	Res =.. [BinConstr, H, Tmp],!,
+	constr2list(BinConstr, Last, [H1|T], Tmp).
+constr2list(_BinConstr, T, [T], T):- !.
+
 
 print_refs_as_one_fla(Conjecture, AllRefs, _Options):-
 	delete(AllRefs, Conjecture, ProperRefs1),
@@ -4662,6 +4900,7 @@ install_index:-
 	abolish(fof_parentlevel/2),
 	dynamic(fof_parentlevel/2),
 	abolish(fof_cluster/3),
+	abolish(rc_syms_for_consider/7),
 	abolish(fof_req/3),
 	abolish(sym_ref_graph/2),
 	dynamic(sym_ref_graph/2),
@@ -4704,6 +4943,13 @@ install_index:-
 assert_level([H|T],Id):- !,level_atom([H|T],Lev1), assert(fof_level(Lev1, Id)).
 assert_level(_,_).
 
+assert_rc_syms(RCl, Fla, File):-
+	strip_univ_quant(Fla, (? [Var : Radix] : sort(Var, Attrs) )),
+	constr2list('&', _Last, AndList, Attrs),!,
+	process_attrsmode_list_for_cons(AndList, ConsAttrs0, _),
+	create_cons_info(ConsAttrs0, Radix, [ConsMode, FuncsNr, AttrsNr, FuncSyms, AttrSyms]),
+	assert(rc_syms_for_consider(RCl, File, ConsMode, FuncsNr,
+					  AttrsNr, FuncSyms, AttrSyms)).
 
 %% ###TODO: requiring all rc symbols seems to be too restrictive, and
 %%   probably leads to incompleteness of e3_41__waybel33, due to
@@ -4719,7 +4965,8 @@ assert_syms(rcluster,Ref1,_,_,Fla1,File1,_,LogicSyms,_,_):- !,
 	    collect_symbols_top(Fla1,AllSyms),
 	    subtract(AllSyms,LogicSyms,Syms),
 	    assert(fof_cluster(File1,Ref1,Syms)),
-	    assert_fxp_data(Ref1,File1,rcluster,Syms).
+	    assert_fxp_data(Ref1,File1,rcluster,Syms),
+	    assert_rc_syms(Ref1, Fla1, File1).
 
 assert_syms(definition,_,definition,[],Fla1,_,Id,_,_,_):-
 	strip_univ_quant(Fla1, ( KTerm = _)),
