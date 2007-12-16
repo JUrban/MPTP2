@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.22 $
+## $Revision: 1.23 $
 
 
 =head1 NAME
@@ -1294,6 +1294,9 @@ sub Iterate
 
     if($giterrecover > 2)
     {
+
+	$gtimelimit = $mintimelimit;
+	$threshold = $minthreshold;
 
 	my $previter = $giterrecover - 1;
 	`cat $filestem.train_* > $filestem.alltrain_$previter`;
