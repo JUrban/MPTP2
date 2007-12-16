@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.23 $
+## $Revision: 1.24 $
 
 
 =head1 NAME
@@ -218,7 +218,7 @@ $galwaysmizrefs = 0 unless(defined($galwaysmizrefs));
 $gcommonfile = "" unless(defined($gcommonfile));
 $gfileprefix = "" unless(defined($gfileprefix));
 $gfilepostfix = "" unless(defined($gfilepostfix));
-$maxtimelimit = 16 unless(defined($maxtimelimit));  # should be power of 4
+$maxtimelimit = 64 unless(defined($maxtimelimit));  # should be power of 4
 $mintimelimit = 1 unless(defined($mintimelimit));  # should be power of 4
 $maxthreshold = 128 unless(defined($maxthreshold)); # should be power of 2
 
