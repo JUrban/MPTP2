@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.21 $
+## $Revision: 1.22 $
 
 
 =head1 NAME
@@ -1291,6 +1291,19 @@ sub Iterate
 
 	$iter = 3;
     }
+
+    if($giterrecover > 2)
+    {
+
+	my $previter = $giterrecover - 1;
+	`cat $filestem.train_* > $filestem.alltrain_$previter`;
+	Learn($previter);
+
+	$to_solve = SelectRelevantFromSpecs($giterrecover,$threshold, $file_prefix, $file_postfix);
+
+	$iter = $giterrecover;
+    }
+
 
     while ($iter < 1000)
     {
