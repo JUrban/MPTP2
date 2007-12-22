@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.24 $
+## $Revision: 1.25 $
 
 
 =head1 NAME
@@ -985,7 +985,7 @@ sub RunProblems
 	print "$conj: ";
 	my $status_line = `bin/eprover -tAuto -xAuto --tstp-format -s --cpu-limit=$gtimelimit $file 2>$file.err | grep "SZS status" |tee $file.out`;
 
-	if ($status_line=~m/.*SZS status *: *(.*)/)
+	if ($status_line=~m/.*SZS status[ :]*(.*)/)
 	{
 	    $status = $1;
 	}
