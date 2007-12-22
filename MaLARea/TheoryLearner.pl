@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.25 $
+## $Revision: 1.26 $
 
 
 =head1 NAME
@@ -1308,7 +1308,7 @@ sub Iterate
     }
 
 
-    while ($iter < 1000)
+    while ($iter < 10000)
     {
 	my $proved_by = RunProblems($iter,$file_prefix, $file_postfix,$to_solve,$threshold,$gspass,$gvampire,0);
 	my @newly_proved = keys %$proved_by;
