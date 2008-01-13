@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.112 $
+%% $Revision: 1.113 $
 %%
 %% File  : utils.pl
 %%
@@ -3974,6 +3974,14 @@ prepare_for_article(Article,Options,Dir,PostLoadFiles):-
 %%		waybel_7, waybel_9, wellord1, wellord2, xboole_0, xboole_1, yellow_0,
 %%		yellow_1, yellow19, yellow_6, zfmisc_1], member(A,L),
 %%            mk_article_nd_problems(A,_,[opt_REM_SCH_CONSTS,opt_MK_TPTP_INF, opt_ADD_INTEREST]),fail.
+%%
+%% generate GDV derivations for 20 articles for CASC batch division:
+%% (first abstract all fraenkels, to keep them consistent):
+%% ##TEST:  declare_mptp_predicates, load_mml, install_index, all_articles(ArticleNames),
+%%          checklist(abstract_fraenkels_if, ArticleNames), install_index, !,
+%%          L=[autgroup,closure3,conlat_2,filter_2,isocat_2,latsubgr,latsum_1,lopclset,
+%%	       relset_2,rmod_5,tsp_2,waybel22,waybel33,waybel34,yellow17,yoneda_1], member(A,L),
+%%	    mk_article_nd_problems(A,_,[opt_REM_SCH_CONSTS,opt_MK_TPTP_INF, opt_ADD_INTEREST]),fail.
 %%
 %% generate GDV derovations for all articles:
 %% ##TEST: :- declare_mptp_predicates,load_mml,install_index,all_articles(L),!, member(A,L),
