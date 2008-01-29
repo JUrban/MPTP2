@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.113 $
+%% $Revision: 1.114 $
 %%
 %% File  : utils.pl
 %%
@@ -4688,13 +4688,14 @@ print_for_nd(Q,InfKind,Refs,Assums,Options):-
 	get_ref_fof(Q, fof(Q,Q_1,Q2,Q3,Q4)),
 	Q4 = [mptp_info(_,Lev,_,_,MpInfoRest)|_],
 	compute_interest(InfKind,Lev,Intrst),
-	%% fix the old lemm-derived format
-	%% ###TODO: regenerate the constructor files, then remove this
 	(
-	  (Q_1 == lemma_conjecture; Q_1 == lemma-derived; Q_1 == thesis),!,
+	  (Q_1 == lemma_conjecture; Q_1 == thesis),!,
 	  Q1 = plain
 	;
-	  Q_1 == sort,!,
+	  %% fix the old lemma-derived format
+	  %% ###TODO: regenerate the constructor files, then remove this
+	  %%          it is dangerous, and relies on having lemma-derived only in constr. files
+	  (Q_1 == sort; Q_1 == lemma-derived),!,
 	  Q1 = axiom
 	;
 	  Q_1 == axiom, MpInfoRest = [_,henkin_axiom|_],!,
