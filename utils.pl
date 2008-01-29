@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.114 $
+%% $Revision: 1.115 $
 %%
 %% File  : utils.pl
 %%
@@ -20,7 +20,7 @@
 %% set this to the location of Prolog files created from MML
 %% ('pl' directory in the distro).
 %mml_dir("/home/urban/miztmp/distro/pl/").
-mml_dir("/home/urban/mptp0.2/pl/").
+mml_dir("/home/urban/mptp/pl/").
 %mml_dir("/big/urban/miztmp/mml3/tmp/").
 mml_dir_atom(A):- mml_dir(S), string_to_atom(S,A).
 
