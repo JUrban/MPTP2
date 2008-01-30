@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.27 $
+## $Revision: 1.28 $
 
 
 =head1 NAME
@@ -20,6 +20,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --maxcpulimit=<arg>,     -C<arg>
    --mincpulimit=<arg>,     -U<arg>
    --maxaxiomlimit=<arg>,   -A<arg>
+   --permutetimelimit=<arg>, -P<arg>
    --dofull=<arg>,          -f<arg>
    --iterrecover=<arg>,     -I<arg>
    --runspass=<arg>,        -S<arg>
@@ -71,6 +72,15 @@ The default is 1 second (should be power of 4).
 Upper limit to which the number of axioms used for one ATP attempt is grown
 exponentially (multiplied by 2 and starting from 4 axioms).
 The default is 128 axioms (should be power of 2).
+
+=item B<<< --permutetimelimit=<arg>, -B<P><arg> >>>
+
+Upper time limit upto which fixing of subsumed specifications is done.
+I.e. if a specification suggested by the adviser is subsumed, and
+the suggested timelimit is less or equal to permutetimelimit, then
+the specification will be fixed by adding additional axioms
+in order of their relevance.
+Default is equal to mincpulimit. If 0, no fixing is done.
 
 =item B<<< --dofull=<arg>, -f<arg> >>>
 
@@ -175,7 +185,7 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $maxtimelimit, $gdofull,        $giterrecover,
     $gspass,       $gvampire,       $grecadvice,
     $grefsbgcheat, $galwaysmizrefs, $gsimilarity,
-    $maxthreshold, $mintimelimit);
+    $maxthreshold, $mintimelimit,   $permutetimelimit);
 
 my ($help, $man);
 my $gtargetsnr = 1233;
@@ -188,6 +198,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'filepostfix|s=s'    => \$gfilepostfix,
 	   'maxcpulimit|C=i'    => \$maxtimelimit,
 	   'mincpulimit|U=i'    => \$mintimelimit,
+	   'permutetimelimit|P=i'    => \$permutetimelimit,
 	   'maxaxiomlimit|A=i'  => \$maxthreshold,
 	   'dofull|f=i'    => \$gdofull,
 	   'iterrecover|I=i' => \$giterrecover,
@@ -221,6 +232,7 @@ $gfileprefix = "" unless(defined($gfileprefix));
 $gfilepostfix = "" unless(defined($gfilepostfix));
 $maxtimelimit = 64 unless(defined($maxtimelimit));  # should be power of 4
 $mintimelimit = 1 unless(defined($mintimelimit));  # should be power of 4
+$permutetimelimit = $mintimelimit unless(defined($permutetimelimit));
 $maxthreshold = 128 unless(defined($maxthreshold)); # should be power of 2
 
 
@@ -734,7 +746,7 @@ sub HandleSpec
 		 (szs_COUNTERSAT eq $result->[res_STATUS]) ||
 		 (szs_UNKNOWN eq $result->[res_STATUS])))  # the last one means that systems died on the same input
 	    {
-		if (($#reserve >= 0) && ($gtimelimit == $mintimelimit))
+		if (($#reserve >= 0) && ($gtimelimit <= $permutetimelimit))
 		{
 		    my $added = shift @reserve;
 		    push(@spec, $added);
