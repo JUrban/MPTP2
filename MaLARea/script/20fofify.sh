@@ -43,5 +43,5 @@ echo "##############################"
 for i in `cat 03`; do j=`grep 'ju_hack.*conjecture' $i|sed -e 's/^fof(\([^,]*\),conjecture.*/\1/'` ; echo $j; cp $i $j.new; done
 echo "copying all to .new"
 for i in `ls *.p`; do cp $i $i.new; done
-for i in `cat 02`; do rm $i; done
+for i in `cat 02`; do rm $i.new; done
 # for i in `ls *.p`; do j=`echo -n $i| sed -e 's/.p$//'`; echo $j; sed -e "s/^fof([^,]*,conjecture/fof($j,conjecture/" $i >$i.new; done
