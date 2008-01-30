@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.26 $
+## $Revision: 1.27 $
 
 
 =head1 NAME
@@ -74,8 +74,9 @@ The default is 128 axioms (should be power of 2).
 
 =item B<<< --dofull=<arg>, -f<arg> >>>
 
-If 1, the first pass is a max-timelimit run on full problems. If 0,
-that pass is omitted, and the symbol-only pass is the first run.
+If 1, the first pass is a max-timelimit run on full problems. 
+If 2, the first pass is a min-timelimit run on full problems. 
+If 0, that pass is omitted, and the symbol-only pass is the first run.
 Default is 1.
 
 =item B<<< --iterrecover=<arg>, -B<I><arg> >>>
@@ -975,8 +976,8 @@ sub RunProblems
     my ($conj,%proved_by,$status,$spass_status,$vamp_status,%nonconj_refs);
     %proved_by = ();
 
-    if($gtimelimit<16) { $spass=1; $vampire=0}
-    if($threshold<16) {$spass=1; $vampire=0}
+#    if($gtimelimit<16) { $spass=1; $vampire=0}
+#    if($threshold<16) {$spass=1; $vampire=0}
 
     open(PROVED_BY,">$filestem.proved_by_$iter");
     foreach $conj (@$conjs)
@@ -1239,7 +1240,8 @@ sub Iterate
 
 	# creates the $proved_by_1 hash table, and creates initial .out,out1 files;
 	# modifies $gresults! - need to initialize first
-	if ($gdofull == 1) {
+	if ($gdofull > 0) {
+	    $gtimelimit = ($gdofull == 1) ? $maxtimelimit : $mintimelimit;
 	    print "THRESHOLD: 0\nTIMELIMIT: $gtimelimit\n";
 	    my $proved_by_1 = RunProblems(0,$file_prefix, $file_postfix,\@tmp_conjs,$threshold,$gspass,$gvampire,1);
 	    delete @conjs_todo{ keys %{$proved_by_1}}; # delete the proved ones
