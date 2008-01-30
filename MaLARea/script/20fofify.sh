@@ -34,6 +34,14 @@ cd ../renamed
 echo "finding problems with not their own conjecture (see file 02)"
 echo "##############################"
 for i in `ls *.p`; do j=`echo -n $i| sed -e 's/.p$//'`; grep -L "^fof($j,conjecture" $i; done |tee 02
-echo "renaming conjectures"
+echo "finding ju_hack-renamable problems with not their own conjecture (see file 03)"
 echo "##############################"
-for i in `ls *.p`; do j=`echo -n $i| sed -e 's/.p$//'`; echo $j; sed -e "s/^fof([^,]*,conjecture/fof($j,conjecture/" $i >$i.new; done
+grep -l "ju_hack.*conjecture" `cat 02` | tee 03
+grep -L "ju_hack.*conjecture" `cat 02` | tee 04
+echo "renaming ju_hack conjectures (the rest of 02 problems will not be used)"
+echo "##############################"
+for i in `cat 03`; do j=`grep 'ju_hack.*conjecture' $i|sed -e 's/^fof(\([^,]*\),conjecture.*/\1/'` ; echo $j; cp $i $j.new; done
+echo "copying all to .new"
+for i in `ls *.p`; do cp $i $i.new; done
+for i in `cat 02`; do rm $i; done
+# for i in `ls *.p`; do j=`echo -n $i| sed -e 's/.p$//'`; echo $j; sed -e "s/^fof([^,]*,conjecture/fof($j,conjecture/" $i >$i.new; done
