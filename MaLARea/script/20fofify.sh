@@ -40,7 +40,7 @@ grep -l "ju_hack.*conjecture" `cat 02` | tee 03
 grep -L "ju_hack.*conjecture" `cat 02` | tee 04
 echo "renaming ju_hack conjectures (the rest of 02 problems will not be used)"
 echo "##############################"
-for i in `cat 03`; do j=`grep 'ju_hack.*conjecture' $i|sed -e 's/^fof(\([^,]*\),conjecture.*/\1/'` ; echo $j; cp $i $j.new; done
+for i in `cat 03`; do j=`grep 'ju_hack.*conjecture' $i|sed -e 's/^fof(\([^,]*\),conjecture.*/\1/'` ; echo $j; cp $i $j.p.new; done
 echo "copying all to .new"
 for i in `ls *.p`; do cp $i $i.new; done
 for i in `cat 02`; do rm $i.new; done
