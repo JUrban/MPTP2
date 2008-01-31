@@ -43,12 +43,12 @@ while (<>)
 }
 #print "$giter\n";
 
-foreach $i (0 .. $giter) { $solved = $solved + $solved[$i]; }
-my $rest = $solved - $solved[0];
+foreach $i (1 .. $giter) { $solved = $solved + $solved[$i]; }
+my $rest = $solved - $solved[1];
 
-print "total: $total, solved: $solved, pass 0: $solved[0], pass 1- : $rest\n";
+print "total: $total, solved: $solved, pass 1: $solved[0], pass 2- : $rest\n";
 print "iternr\ttimelim\taxlimit\tsolved\n";
-foreach $i (0 .. $giter)
+foreach $i (1 .. $giter)
   {
     print "$i:\t$timelimit[$i]\t$threshold[$i]\t$solved[$i]\n";
   }
