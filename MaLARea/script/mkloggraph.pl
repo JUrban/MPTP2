@@ -46,7 +46,7 @@ while (<>)
 foreach $i (1 .. $giter) { $solved = $solved + $solved[$i]; }
 my $rest = $solved - $solved[1];
 
-print "total: $total, solved: $solved, pass 1: $solved[0], pass 2- : $rest\n";
+print "total: $total, solved: $solved, pass 1: $solved[1], pass 2- : $rest\n";
 print "iternr\ttimelim\taxlimit\tsolved\n";
 foreach $i (1 .. $giter)
   {
