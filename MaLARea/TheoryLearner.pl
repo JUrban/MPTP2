@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.30 $
+## $Revision: 1.31 $
 
 
 =head1 NAME
@@ -1022,12 +1022,12 @@ sub RunProblems
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 	    my $paradox_status_line =
-		`./paradox --tstp --model --time $gtimelimit $file | tee $file.pout | grep RESULT`;
+		`bin/paradox --tstp --model --time $gtimelimit $file | tee $file.pout | grep RESULT`;
 	    if ($paradox_status_line=~m/CounterSatisfiable/)
 	    {
 		$paradox_status = szs_COUNTERSAT;
 		$status      = szs_COUNTERSAT;
-		`grep -v '^\(+++\|[*][*][*]\|SZS\|Paradox\|Reading\)' $file.pout |./tptp4X -c -u machine -- > $file.pmodel`;
+		`grep -v '^\(+++\|[*][*][*]\|SZS\|Paradox\|Reading\)' $file.pout | bin/tptp4X -c -u machine -- > $file.pmodel`;
 	    }
 	    print " Paradox: $status";
 	}
