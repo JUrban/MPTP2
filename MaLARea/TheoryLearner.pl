@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.28 $
+## $Revision: 1.29 $
 
 
 =head1 NAME
@@ -25,6 +25,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --iterrecover=<arg>,     -I<arg>
    --runspass=<arg>,        -S<arg>
    --runvampire=<arg>,      -V<arg>
+   --runparadox=<arg>,      -p<arg>
    --similarity=<arg>,      -i<arg>
    --recadvice=<arg>,       -a<arg>
    --refsbgcheat=<arg>,     -r<arg>
@@ -102,6 +103,10 @@ If 1, run SPASS. Default is 1.
 =item B<<< --runvampire=<arg>, -B<V><arg> >>>
 
 If 1, run Vampire. Default is 0.
+
+=item B<<< --runparadox=<arg>, -B<p><arg> >>>
+
+If 1, run Paradox. Default is 0.
 
 =item B<<< --similarity=<arg>, -i<arg> >>>
 
@@ -185,7 +190,8 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $maxtimelimit, $gdofull,        $giterrecover,
     $gspass,       $gvampire,       $grecadvice,
     $grefsbgcheat, $galwaysmizrefs, $gsimilarity,
-    $maxthreshold, $mintimelimit,   $permutetimelimit);
+    $maxthreshold, $mintimelimit,   $permutetimelimit,
+    $gparadox,     $geprover);
 
 my ($help, $man);
 my $gtargetsnr = 1233;
@@ -204,6 +210,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'iterrecover|I=i' => \$giterrecover,
 	   'runspass|S=i'    => \$gspass,
 	   'runvampire|V=i'    => \$gvampire,
+	   'runparadox|p=i'    => \$gparadox,
 	   'similarity|i=i'  => \$gsimilarity,
 	   'recadvice|a=i'    => \$grecadvice,
 	   'refsbgcheat|r=i'    => \$grefsbgcheat,
@@ -223,6 +230,8 @@ $gdofull = 1 unless(defined($gdofull));
 $giterrecover = -1 unless(defined($giterrecover));
 $gspass = 1 unless(defined($gspass));
 $gvampire = 0 unless(defined($gvampire));
+$gparadox = 0 unless(defined($gparadox));
+$geprover = 1 unless(defined($geprover));
 $grecadvice = 0 unless(defined($grecadvice));
 $grefsbgcheat = 0 unless(defined($grefsbgcheat));
 $gsimilarity = 1 unless(defined($gsimilarity));
@@ -985,8 +994,9 @@ sub Learn
 sub RunProblems
 {
     my ($iter, $file_prefix, $file_postfix, $conjs, $threshold, $spass, $vampire, $keep_cpu_limit) = @_;
-    my ($conj,%proved_by,$status,$spass_status,$vamp_status,%nonconj_refs);
-    %proved_by = ();
+    my ($conj,$status,$spass_status,$vamp_status);
+    my $eprover = 1;
+    my %proved_by = ();
 
 #    if($gtimelimit<16) { $spass=1; $vampire=0}
 #    if($threshold<16) {$spass=1; $vampire=0}
@@ -995,42 +1005,47 @@ sub RunProblems
     foreach $conj (@$conjs)
     {
 	my $file = $file_prefix . $conj . $file_postfix . ".s_" . $iter;
-	print "$conj: ";
-	my $status_line = `bin/eprover -tAuto -xAuto --tstp-format -s --cpu-limit=$gtimelimit $file 2>$file.err | grep "SZS status" |tee $file.out`;
-
-	if ($status_line=~m/.*SZS status[ :]*(.*)/)
-	{
-	    $status = $1;
-	}
-	else
-	{
-	    print "Bad status line, assuming szs_UNKNOWN: $file: $status_line";
-	    $status = szs_UNKNOWN;
-	}
-	print "E: $status";
+	my $status = szs_UNKNOWN;
 	my @conj_entries = @{$gresults{$conj}};
-	($conj_entries[$#conj_entries]->[res_STATUS] eq szs_INIT) or die "Bad initial results entry for $conj";
+
+	($conj_entries[$#conj_entries]->[res_STATUS] eq szs_INIT) 
+	    or die "Bad initial results entry for $conj";
 	$conj_entries[$#conj_entries]->[res_CPULIM] = $gtimelimit;
-	if ($status eq szs_THEOREM)
+
+	print "$conj: ";
+
+	if (($eprover == 1) && 
+	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
-	    ($gtimelimit = $mintimelimit) if ($keep_cpu_limit == 0);
-	    my $eproof_pid = open(EP,"bin/eproof -tAuto -xAuto --tstp-format $file | tee $file.out1| grep file|")
-		or die("Cannot start eproof");
-	    $proved_by{$conj} = [];
-	    while ($_=<EP>)
+
+	    my $status_line = `bin/eprover -tAuto -xAuto --tstp-format -s --cpu-limit=$gtimelimit $file 2>$file.err | grep "SZS status" |tee $file.out`;
+
+	    if ($status_line=~m/.*SZS status[ :]*(.*)/)
 	    {
-		m/.*, *file\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $file: $_";
-		my $ref = $1;
-		exists $grefnr{$ref} or die "Unknown reference $ref in $file: $_";
-		push( @{$proved_by{$conj}}, $ref);
+		$status = $1;
 	    }
-	    my $conj_refs = join(",", @{$proved_by{$conj}});
-	    print PROVED_BY "proved_by($conj,[$conj_refs]).\n";
-	    %nonconj_refs = ();
-	    @nonconj_refs{ @{$proved_by{$conj}} } = ();
-	    delete $nonconj_refs{ $conj };
-	    $conj_entries[$#conj_entries]->[res_NEEDED] = [ keys %nonconj_refs ];
+	    else
+	    {
+		print "Bad status line, assuming szs_UNKNOWN: $file: $status_line";
+		$status = szs_UNKNOWN;
+	    }
+	    print "E: $status";
+	    if ($status eq szs_THEOREM)
+	    {
+		($gtimelimit = $mintimelimit) if ($keep_cpu_limit == 0);
+		my $eproof_pid = open(EP,"bin/eproof -tAuto -xAuto --tstp-format $file | tee $file.out1| grep file|")
+		    or die("Cannot start eproof");
+		$proved_by{$conj} = [];
+		while ($_=<EP>)
+		{
+		    m/.*, *file\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $file: $_";
+		    my $ref = $1;
+		    exists $grefnr{$ref} or die "Unknown reference $ref in $file: $_";
+		    push( @{$proved_by{$conj}}, $ref);
+		}
+	    }
 	}
+
 	if (($spass == 1) && 
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
@@ -1062,12 +1077,6 @@ sub RunProblems
 		    exists $grefnr{$ref} or die "Unknown reference $ref in $file.outdfg1: $ref";
 		}
 		$proved_by{$conj} = [@refs];
-		my $conj_refs = join(",", @{$proved_by{$conj}});
-		print PROVED_BY "proved_by($conj,[$conj_refs]).\n";
-		%nonconj_refs = ();
-		@nonconj_refs{ @{$proved_by{$conj}} } = ();
-		delete $nonconj_refs{ $conj };
-		$conj_entries[$#conj_entries]->[res_NEEDED] = [ keys %nonconj_refs ];
 	    }
 	    elsif ($spass_status=~m/Completion found/)
 	    {
@@ -1091,7 +1100,7 @@ sub RunProblems
 	    if ($vamp_status_line=~m/Refutation/)
 	    {
 		$vamp_status = szs_THEOREM;
-		$status= szs_THEOREM;
+		$status      = szs_THEOREM;
 		($gtimelimit = $mintimelimit) if ($keep_cpu_limit == 0);
 		my $vamp_pid = open(VP,"cat $file.vout |grep file|") or die("Cannot start grep");
 		while ($_=<VP>)
@@ -1101,12 +1110,6 @@ sub RunProblems
 		    exists $grefnr{$ref} or die "Unknown reference $ref in $file.vout: $_";
 		    push( @{$proved_by{$conj}}, $ref);
 		}
-		my $conj_refs = join(",", @{$proved_by{$conj}});
-		print PROVED_BY "proved_by($conj,[$conj_refs]).\n";
-		%nonconj_refs = ();
-		@nonconj_refs{ @{$proved_by{$conj}} } = ();
-		delete $nonconj_refs{ $conj };
-		$conj_entries[$#conj_entries]->[res_NEEDED] = [ keys %nonconj_refs ];
 	    }
 	    else
 	    {
@@ -1114,8 +1117,20 @@ sub RunProblems
 	    }
 	    print ", Vampire: $vamp_status";
 	}
+
 	print "\n";
 	$conj_entries[$#conj_entries]->[res_STATUS] = $status;
+
+	if($status eq szs_THEOREM)
+	{
+	    my $conj_refs = join(",", @{$proved_by{$conj}});
+	    print PROVED_BY "proved_by($conj,[$conj_refs]).\n";
+	    my %nonconj_refs = ();
+	    @nonconj_refs{ @{$proved_by{$conj}} } = ();
+	    delete $nonconj_refs{ $conj };
+	    $conj_entries[$#conj_entries]->[res_NEEDED] = [ keys %nonconj_refs ];
+	}
+
     }
     close(PROVED_BY);
     DumpResults($iter);
