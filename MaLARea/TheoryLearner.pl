@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.29 $
+## $Revision: 1.30 $
 
 
 =head1 NAME
@@ -994,9 +994,12 @@ sub Learn
 sub RunProblems
 {
     my ($iter, $file_prefix, $file_postfix, $conjs, $threshold, $spass, $vampire, $keep_cpu_limit) = @_;
-    my ($conj,$status,$spass_status,$vamp_status);
+    my ($conj,$status,$eprover_status,$spass_status,$vamp_status,$paradox_status);
     my $eprover = 1;
+    my $paradox = 0;
     my %proved_by = ();
+
+    if($gtimelimit < 4) { $paradox = 1; }
 
 #    if($gtimelimit<16) { $spass=1; $vampire=0}
 #    if($threshold<16) {$spass=1; $vampire=0}
@@ -1013,6 +1016,21 @@ sub RunProblems
 	$conj_entries[$#conj_entries]->[res_CPULIM] = $gtimelimit;
 
 	print "$conj: ";
+
+
+	if (($paradox == 1) && 
+	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
+	{
+	    my $paradox_status_line =
+		`./paradox --tstp --model --time $gtimelimit $file | tee $file.pout | grep RESULT`;
+	    if ($paradox_status_line=~m/CounterSatisfiable/)
+	    {
+		$paradox_status = szs_COUNTERSAT;
+		$status      = szs_COUNTERSAT;
+		`grep -v '^\(+++\|[*][*][*]\|SZS\|Paradox\|Reading\)' $file.pout |./tptp4X -c -u machine -- > $file.pmodel`;
+	    }
+	    print " Paradox: $status";
+	}
 
 	if (($eprover == 1) && 
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
