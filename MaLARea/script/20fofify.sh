@@ -19,6 +19,8 @@ echo "merging axioms and conjectures"
 echo "##############################"
 for i in `ls *.p`; do echo $i; cat axioms/$i conjectures/$i | $MAL_DIR/bin/NumberVars > fofified/$i; done
 cd fofified
+echo "uniquifying Isabelle v_ and t_ local constants"
+for i in `ls *.p| sed -e 's/[.]p$//g'`; do sed  -e "s/\\b\\([vt]\\)_/\\1_$i\_/g" $i.p; done
 echo "sorting formulas into 00"
 echo "##############################"
 cat *| sort -u >00
