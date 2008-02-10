@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.34 $
+## $Revision: 1.35 $
 
 
 =head1 NAME
@@ -612,7 +612,7 @@ sub DumpResults
     my ($iter) = @_;
     my ($conj,$result);
     $iter = "" unless defined $iter;
-    open(RESULTS,">$filestem.results_$iter");
+    open(RESULTS,"| gzip > $filestem.results_$iter.gz");
     foreach $conj (sort keys %gresults)
     {
 	print RESULTS "results($conj,[";
@@ -654,7 +654,8 @@ sub GetProvedFromResults
 sub LoadResults
 {
     my ($filename, $load_proved_by) = @_;
-    open(RESULTS,$filename) or die "$filename unreadable";
+    -r $filename or die "$filename unreadable";
+    open(RESULTS,"gzip -dc $filename |") or die "$filename unreadable";
     %gresults = ();
     while($_=<RESULTS>)
     {
@@ -1031,14 +1032,17 @@ sub RunProblems
 		## following has some shell quoting problems for which I do not have stomach
 		## `grep -v '^\(+++\|[*][*][*]\|SZS\|Paradox\|Reading\)' $file.pout | bin/tptp4X -c -u machine -- > $file.pmodel`;
 
-		open(PX,"$file.pout");
-		open(PX1,"| bin/tptp4X -c -u machine -- > $file.pmodel");
-		while ($_=<PX>)
-		{
-		    if(!(m/^([+][+][+]|[*][*][*]|SZS|Paradox|Reading)/)) { print PX1 $_; }
-		}
-		close(PX);
-		close(PX1);
+		## and following sometimes causes the whole TheoryLearner die,
+		## when tptp4X dies; the reason is probably SIGPIPE
+		## commenting for now, uncomment when models really used
+# 		open(PX,"$file.pout");
+# 		open(PX1,"| bin/tptp4X -c -u machine -- > $file.pmodel");
+# 		while ($_=<PX>)
+# 		{
+# 		    if(!(m/^([+][+][+]|[*][*][*]|SZS|Paradox|Reading)/)) { print PX1 $_; }
+# 		}
+# 		close(PX);
+# 		close(PX1);
 	    }
 	    print " Paradox: $status,";
 	}
@@ -1315,7 +1319,7 @@ sub Iterate
     {
 	LoadTables();
 	LoadSpecs();
-	LoadResults("$filestem.results_$giterrecover",0);
+	LoadResults("$filestem.results_$giterrecover.gz",0);
 	my $proved_before = GetProvedFromResults();
 	@conjs_todo{ keys %gspec }  = ();            # initialize with all conjectures
 	delete @conjs_todo{ keys %{$proved_before}}; # delete the proved ones
