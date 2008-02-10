@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.35 $
+## $Revision: 1.36 $
 
 
 =head1 NAME
@@ -996,8 +996,9 @@ sub RunProblems
 {
     my ($iter, $file_prefix, $file_postfix, $conjs,
 	$threshold, $spass, $vampire, $paradox, $keep_cpu_limit) = @_;
-    my ($conj,$status,$eprover_status,$spass_status,$vamp_status,$paradox_status);
+    my ($conj,$status,$eprover_status,$spass_status,$vamp_status,$paradox_status,$mace_status);
     my $eprover = 1;
+    my $mace = $paradox;
     my %proved_by = ();
 
 
@@ -1045,6 +1046,24 @@ sub RunProblems
 # 		close(PX1);
 	    }
 	    print " Paradox: $status,";
+	}
+
+	## mace is now used to find a model;
+	## don't run if paradox was run unsuccesfully
+	if (($mace == 1) && (($paradox == 0) || ($status eq szs_COUNTERSAT)) &&
+	    ($threshold < 128) && ($gtimelimit < 4) &&
+	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || 
+	     ($status eq szs_UNKNOWN) || ($status eq szs_COUNTERSAT)))
+	{
+	    my $mace_status_line = 
+		`bin/tptp_to_ladr < $file | bin/mace4 -t 1 | bin/interpformat standard | tee $file.mmodel | grep interpretation`;
+
+	    if ($mace_status_line =~ m/interpretation/)
+	    {
+		$mace_status = szs_COUNTERSAT;
+		$status      = szs_COUNTERSAT;
+	    }
+	    print " Mace: $status,";
 	}
 
 	if (($eprover == 1) && 
