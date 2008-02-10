@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.32 $
+## $Revision: 1.33 $
 
 
 =head1 NAME
@@ -1199,6 +1199,9 @@ sub GenerateProblemsFromCommonFile
 # Preprocess each file by tptp4X to have no comments, no useful info,
 # and one fof per line.
 # Create the initial specs file, copy each file to $file.s_0
+# Create file containing all formulas (.allflas), 
+#   (some of them can occure twice - as axiom and conjecture)
+# and also all conjecures (.allconjs) and all axioms (.allaxs)
 sub NormalizeAndCreateInitialSpecs
 {
     my ($file_prefix, $file_postfix, $common_file) = @_;
@@ -1237,6 +1240,9 @@ sub NormalizeAndCreateInitialSpecs
 #	system(cp,($i, "$i.s_0"));
     }
     close(INISPECS);
+    `cat $file_prefix*$file_postfix | sort -u > $filestem.allflas`;
+    `grep conjecture $filestem.allflas > $filestem.allconjs`;
+    `grep -v conjecture $filestem.allflas > $filestem.allaxs`;
 }
 
 sub Iterate
@@ -1253,14 +1259,14 @@ sub Iterate
 	NormalizeAndCreateInitialSpecs($file_prefix, $file_postfix, $gcommonfile);
 
 	# create the refsyms file
-	`cat $file_prefix*$file_postfix | sort -u | bin/GetSymbols |sort -u > $filestem.refsyms`;
+	`cat $filestem.allflas | bin/GetSymbols |sort -u > $filestem.refsyms`;
 
 	# create the trmstd and trmnrm files
 	if ($gdotrmstd > 0) {
-	    `cat $file_prefix*$file_postfix | sort -u | bin/fofshared -|sort -u > $filestem.trmstd`;
+	    `cat $filestem.allflas | bin/fofshared -|sort -u > $filestem.trmstd`;
 	}
 	if ($gdotrmnrm > 0) {
-	    my @lines1 = `cat $file_prefix*$file_postfix | sort -u`;
+	    my @lines1 = `cat $filestem.allflas`;
 	    my $line;
 	    my $fofsh_pid = open(FOFSH,"|bin/fofshared -|sort -u > $filestem.trmnrm");
 	    foreach $line (@lines1) {
