@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.31 $
+## $Revision: 1.32 $
 
 
 =head1 NAME
@@ -1021,15 +1021,27 @@ sub RunProblems
 	if (($paradox == 1) && 
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
+
 	    my $paradox_status_line =
-		`bin/paradox --tstp --model --time $gtimelimit $file | tee $file.pout | grep RESULT`;
+		`bin/runparadox --tstp --model --time $gtimelimit $file | tee $file.pout | grep RESULT`;
 	    if ($paradox_status_line=~m/CounterSatisfiable/)
 	    {
 		$paradox_status = szs_COUNTERSAT;
 		$status      = szs_COUNTERSAT;
-		`grep -v '^\(+++\|[*][*][*]\|SZS\|Paradox\|Reading\)' $file.pout | bin/tptp4X -c -u machine -- > $file.pmodel`;
+
+		## following has some shell quoting problems for which I do not have stomach
+		## `grep -v '^\(+++\|[*][*][*]\|SZS\|Paradox\|Reading\)' $file.pout | bin/tptp4X -c -u machine -- > $file.pmodel`;
+
+		open(PX,"$file.pout");
+		open(PX1,"| bin/tptp4X -c -u machine -- > $file.pmodel");
+		while ($_=<PX>)
+		{
+		    if(!(m/^([+][+][+]|[*][*][*]|SZS|Paradox|Reading)/)) { print PX1 $_; }
+		}
+		close(PX);
+		close(PX1);
 	    }
-	    print " Paradox: $status";
+	    print " Paradox: $status,";
 	}
 
 	if (($eprover == 1) && 
@@ -1047,7 +1059,7 @@ sub RunProblems
 		print "Bad status line, assuming szs_UNKNOWN: $file: $status_line";
 		$status = szs_UNKNOWN;
 	    }
-	    print "E: $status";
+	    print " E: $status";
 	    if ($status eq szs_THEOREM)
 	    {
 		($gtimelimit = $mintimelimit) if ($keep_cpu_limit == 0);
