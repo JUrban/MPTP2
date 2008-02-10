@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.33 $
+## $Revision: 1.34 $
 
 
 =head1 NAME
@@ -993,13 +993,12 @@ sub Learn
 # that we are running with high timelimit problems (e.g. when cheating)
 sub RunProblems
 {
-    my ($iter, $file_prefix, $file_postfix, $conjs, $threshold, $spass, $vampire, $keep_cpu_limit) = @_;
+    my ($iter, $file_prefix, $file_postfix, $conjs,
+	$threshold, $spass, $vampire, $paradox, $keep_cpu_limit) = @_;
     my ($conj,$status,$eprover_status,$spass_status,$vamp_status,$paradox_status);
     my $eprover = 1;
-    my $paradox = 0;
     my %proved_by = ();
 
-    if($gtimelimit < 4) { $paradox = 1; }
 
 #    if($gtimelimit<16) { $spass=1; $vampire=0}
 #    if($threshold<16) {$spass=1; $vampire=0}
@@ -1018,7 +1017,7 @@ sub RunProblems
 	print "$conj: ";
 
 
-	if (($paradox == 1) && 
+	if (($paradox == 1) && ($threshold < 128) && ($gtimelimit < 4) &&
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 
@@ -1306,7 +1305,7 @@ sub Iterate
 	if ($gdofull > 0) {
 	    $gtimelimit = ($gdofull == 1) ? $maxtimelimit : $mintimelimit;
 	    print "THRESHOLD: 0\nTIMELIMIT: $gtimelimit\n";
-	    my $proved_by_1 = RunProblems(0,$file_prefix, $file_postfix,\@tmp_conjs,$threshold,$gspass,$gvampire,1);
+	    my $proved_by_1 = RunProblems(0,$file_prefix, $file_postfix,\@tmp_conjs,$threshold,$gspass,$gvampire,$gparadox,1);
 	    delete @conjs_todo{ keys %{$proved_by_1}}; # delete the proved ones
 	    @tmp_conjs = sort keys %conjs_todo;
 	    PrintTrainingFromHash(1,$proved_by_1);
@@ -1334,7 +1333,7 @@ sub Iterate
 
 	print "SYMBOL ONLY PASS\n";
 	print "THRESHOLD: $threshold\nTIMELIMIT: $gtimelimit\n";
-	my $proved_by_2 = RunProblems(1,$file_prefix, $file_postfix,$to_solve,$threshold,$gspass,$gvampire,0);  # creates initial .s_1.out files - omits solved in .proved_by_1
+	my $proved_by_2 = RunProblems(1,$file_prefix, $file_postfix,$to_solve,$threshold,$gspass,$gvampire,$gparadox,0);  # creates initial .s_1.out files - omits solved in .proved_by_1
 	delete @conjs_todo{ keys %{$proved_by_2}}; # delete the proved ones
 
 	@tmp_conjs = sort keys %conjs_todo;
@@ -1375,7 +1374,7 @@ sub Iterate
 
     while ($iter < 10000)
     {
-	my $proved_by = RunProblems($iter,$file_prefix, $file_postfix,$to_solve,$threshold,$gspass,$gvampire,0);
+	my $proved_by = RunProblems($iter,$file_prefix, $file_postfix,$to_solve,$threshold,$gspass,$gvampire,$gparadox,0);
 	my @newly_proved = keys %$proved_by;
 	# we need a better variating policy here
 	if ($#newly_proved == -1)
@@ -1427,7 +1426,7 @@ sub Iterate
 		    $gtimelimit = $maxtimelimit;
 		    print "FOUND CHEATABLE: 1+$#cheated_conjs:\nTIMELIMIT: $gtimelimit\n";
 
-		    $proved_by = RunProblems($iter . "_cheat",$file_prefix, $file_postfix,\@cheated_conjs,$threshold,$gspass,$gvampire,1);
+		    $proved_by = RunProblems($iter . "_cheat",$file_prefix, $file_postfix,\@cheated_conjs,$threshold,$gspass,$gvampire,$gparadox,1);
 
 		    PrintTrainingFromHash($iter . "_cheat_ok",$proved_by);
 
