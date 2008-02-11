@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.115 $
+%% $Revision: 1.116 $
 %%
 %% File  : utils.pl
 %%
@@ -4699,12 +4699,15 @@ print_for_nd(Q,InfKind,Refs,Assums,Options):-
 	  Q1 = axiom
 	;
 	  Q_1 == axiom, MpInfoRest = [_,henkin_axiom|_],!,
-	  Q1 = plain
-	;
-	  Q_1 == definition,
-	  MpInfoRest = [EqKind, equality|_],
-	  member(EqKind,[reconsider,takeasvar]),!,
-	  Q1 = plain
+	  %% this is not totally correct, the def is only partial
+	  Q1 = defnition %% plain
+
+	%% these are defs I think, so just remove the commented code after a while 
+% 	;
+% 	  Q_1 == definition,
+% 	  MpInfoRest = [EqKind, equality|_],
+% 	  member(EqKind,[reconsider,takeasvar]),!,
+% 	  Q1 = plain
 	;
 	    Q1 = Q_1
 	),
