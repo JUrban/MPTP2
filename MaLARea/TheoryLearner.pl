@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.36 $
+## $Revision: 1.37 $
 
 
 =head1 NAME
@@ -169,15 +169,23 @@ use IO::Socket;
 my $gsymoffset    = 100000; # offset at which symbol numbering starts
 my $gstdtrmoffset = 200000; # offset at which standard term numbering starts
 my $gnrmtrmoffset = 300000; # offset at which normalized term numbering starts
+my $gposmodeloffset  = 400000; # offset at which positive model numbering starts
+my $gnegmodeloffset  = 500000; # offset at which negative model numbering starts
 my %grefnr;                 # Ref2Nr hash for references
 my @gnrref;                 # Nr2Ref array for references
 
 my %gsymnr;                 # Sym2Nr hash for symbols
 my @gnrsym;                 # Nr2Sym array for symbols - takes gsymoffset into account!
 
+my %gmodnr;                 # for each model (file without .mmodel) its number (without any offset)
+my @gnrmod;                 # for each model number: its file, symbols, positive refs, negative refs
+my %gsum2model;             # hash of sha sums of existing models
+
 my %grefsyms;     # Ref2Sym hash for each reference array of its symbols
 my %greftrmstd;   # Ref2Sym hash for each reference array of its stdterms (their shared-entry numbers)
 my %greftrmnrm;   # Ref2Sym hash for each reference array of its nrmterms (their shared-entry numbers)
+my %grefposmods;  # Ref2Sym hash for each ref array of its positive models (without offset)
+my %grefnegmods;  # Ref2Sym hash for each ref array of its negative models (without offset)
 my %gspec;        # Ref2Spec hash for each reference hash of its initial references
 my %gresults;     # hash of results
 my %gsubrefs;     # contains direct lemmas for those proved by mizar_proof,
@@ -196,6 +204,8 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
 my ($help, $man);
 my $gtargetsnr = 1233;
 
+my $guseposmodels = 1;
+my $gusenegmodels = 1;
 
 Getopt::Long::Configure ("bundling");
 
@@ -255,6 +265,7 @@ my $gdosyms = $gsimilarity & 1;
 sub LOGGING { 0 };
 
 # print %gresults before dying if possible
+# ###TODO: load model info
 local $SIG{__DIE__} = sub { DumpResults(); };
 
 sub LoadTables
@@ -267,6 +278,12 @@ sub LoadTables
     %grefsyms = ();
     @gnrsym = ();
     @gnrref = ();
+
+    %gmodnr = ();
+    @gnrmod = ();
+    %gsum2model = ();
+    %grefposmods = ();
+    %grefnegmods = ();
 
     open(REFNR, "$filestem.refnr") or die "Cannot read refnr file";
     open(SYMNR, "$filestem.symnr") or die "Cannot read symnr file";
@@ -398,7 +415,7 @@ sub TestTables
 sub res_STATUS  ()  { 0 }
 sub res_REFNR   ()  { 1 }
 sub res_CPULIM  ()  { 2 }
-sub res_REFS    ()  { 3 }
+sub res_REFS    ()  { 3 }  # without the conjecture
 sub res_NEEDED  ()  { 4 }  # only for res_STATUS == szs_THEOREM
 
 # possible SZS statuses
@@ -410,6 +427,15 @@ sub szs_RESOUT      ()  { 'ResourceOut' }
 sub szs_GAVEUP      ()  { 'GaveUp' }   # system exited before the time limit for unknown reason
 
 
+# fields in the @gnrmod entries
+# [$file, -1, -1, -1, [], [], []];
+sub mod_FILE     ()  { 0 }
+sub mod_SYMNR    ()  { 1 }
+sub mod_POSNR    ()  { 2 }
+sub mod_NEGNR    ()  { 3 }
+sub mod_SYMS     ()  { 4 }
+sub mod_POSREFS  ()  { 5 }
+sub mod_NEGREFS  ()  { 6 }
 
 # Following command will create all initial unpruned problem specifications,
 # in format spec(name,references), e.g.:
@@ -554,6 +580,16 @@ sub PrintTestingFromArray
 	{
 	    my @trmnrm_nrs   = @{$greftrmnrm{$ref}};
 	    push(@syms_nrs, @trmnrm_nrs);
+	}
+	if($guseposmodels > 0)
+	{
+	    my @posmod_nrs   = map { $gposmodeloffset + $_ } @{$grefposmods{$ref}};
+	    push(@syms_nrs, @posmod_nrs);
+	}
+	if($gusenegmodels > 0)
+	{
+	    my @negmod_nrs   = map { $gnegmodeloffset + $_ } @{$grefnegmods{$ref}};
+	    push(@syms_nrs, @negmod_nrs);
 	}
 	push(@syms_nrs, $grefnr{$ref});
 	my $testing_exmpl = join(",", @syms_nrs);
@@ -983,6 +1019,94 @@ sub Learn
     `bin/snow -train -I $filestem.alltrain_$iter -F $filestem.net_$next_iter  -B :0-$gtargetsnr`;
 }
 
+# print the models as training examples
+sub PrintModels
+{
+    my ($iter) = @_;
+    my $tmpref;
+
+    open(MODELS, ">$filestem.models_$iter") or die "Cannot write models file";
+    foreach $tmpref (sort ((keys %grefposmods), (keys %grefnegmods)))
+    {
+	if ((($guseposmodels > 0) && (exists $grefposmods{$tmpref}))
+	    || (($gusenegmodels > 0) && (exists $grefnegmods{$tmpref})) )
+	{
+	    my @syms_nrs = ( $grefnr{$tmpref} );
+
+	    if (($guseposmodels > 0) && (exists $grefposmods{$tmpref}))
+	    {
+		my @posmod_nrs   = map { $gposmodeloffset + $_ } @{$grefposmods{$tmpref}};
+		push(@syms_nrs, @posmod_nrs);
+	    }
+	    if (($gusenegmodels > 0) && (exists $grefnegmods{$tmpref}))
+	    {
+		my @negmod_nrs   = map { $gnegmodeloffset + $_ } @{$grefnegmods{$tmpref}};
+		push(@syms_nrs, @negmod_nrs);
+	    }
+
+	    my $testing_exmpl = join(",", @syms_nrs);
+	    print MODELS "$testing_exmpl:\n";
+	}
+    }
+    close(MODELS);
+}
+
+
+
+# assumes that $file is a model of last result entry for $conj
+sub SetupMaceModel
+{
+    my ($conj, $file) = @_;
+    my @conj_entries = @{$gresults{$conj}};
+    my @conj_refs = @{$conj_entries[$#conj_entries]->[res_REFS]};
+
+    my $new_model = [$file, -1, -1, -1, [], [], []];
+    push( @gnrmod, $new_model);
+    $gmodnr{$file} = $#gnrmod;
+
+    ## find the symbols of the model (up to skolem - is ok)
+    my %allowed_syms = ();
+    my $tmpref;
+    foreach $tmpref ($conj, @conj_refs) {
+	@allowed_syms{ @{$grefsyms{$tmpref}} } = ();
+    }
+    my @allowed_syms = (sort keys %allowed_syms); # input
+
+    $new_model->[mod_SYMNR] = $#allowed_syms;
+    $new_model->[mod_SYMS]  = [ @allowed_syms ];
+
+    # select references with allowed symbols only
+    # this could be done faster by dynamic programming if needed
+    my @allowed_refs = ();
+    foreach $tmpref (keys %grefnr) {
+	my %tmpsymsh = ();
+	@tmpsymsh{ @{$grefsyms{$tmpref}} } = ();
+	delete @tmpsymsh{ @allowed_syms };
+	my @tmp_remaining = keys %tmpsymsh;
+	if (-1 == $#tmp_remaining) {
+	    push(@allowed_refs, $tmpref);
+	}
+    }
+
+    my $regexp = '"label( *\(' . join('\|',@allowed_refs) . '\)"';
+    my @pos_refs = `grep $regexp $filestem.axp9 | bin/clausefilter $file.mmodel true_in_all | grep label | sed -e 's/[^#]*# *label([^)]*).*/\1/g'`;
+    my @neg_refs = `grep $regexp $filestem.axp9 | bin/clausefilter $file.mmodel false_in_all | grep label | sed -e 's/[^#]*# *label([^)]*).*/\1/g'`;
+    die "bad clausfilter output: $file,:,@allowed_refs,:, @pos_refs,: @neg_refs:"
+	unless ($#allowed_refs == $#pos_refs + $#neg_refs + 1);
+
+    $new_model->[mod_POSNR]   = $#pos_refs;
+    $new_model->[mod_NEGNR]   = $#neg_refs;
+    $new_model->[mod_POSREFS] = [ @pos_refs ];
+    $new_model->[mod_NEGREFS] = [ @neg_refs ];
+
+    foreach $tmpref (@pos_refs) { push(@{$grefposmods{$tmpref}}, $#gnrmod); }
+    foreach $tmpref (@neg_refs) { push(@{$grefnegmods{$tmpref}}, $#gnrmod); }
+
+}
+
+
+
+
 # Run prover(s) on problems "$file_prefix$conj$file_postfix.s_$iter".
 # Collect the result statuses into %gresults, and if proof was found,
 # Collect the axioms used for each proved conjecture to %proved_by and return it.
@@ -1062,6 +1186,18 @@ sub RunProblems
 	    {
 		$mace_status = szs_COUNTERSAT;
 		$status      = szs_COUNTERSAT;
+
+		## find if the model already exists - just by
+		## testing if the checksum already exists (really don't care
+		## if with probability 10^50 we'll miss a model)
+		my $shasum = `cat $file.mmodel | grep -v interpretation | sha1sum`;
+
+		if ( !(exists $gsum2model{$shasum}))
+		{
+		    $gsum2model{$shasum} = $file;
+
+		    SetupMaceModel($conj, $file);
+		}
 	    }
 	    print " Mace: $status,";
 	}
@@ -1222,7 +1358,8 @@ sub GenerateProblemsFromCommonFile
 # and one fof per line.
 # Create the initial specs file, copy each file to $file.s_0
 # Create file containing all formulas (.allflas), 
-#   (some of them can occure twice - as axiom and conjecture)
+#   (some of them can occure twice - as axiom and conjecture),
+# .allasax - each fla just once (as axiom), .axp9 - the same for prover9/mace4,
 # and also all conjecures (.allconjs) and all axioms (.allaxs)
 sub NormalizeAndCreateInitialSpecs
 {
@@ -1263,6 +1400,8 @@ sub NormalizeAndCreateInitialSpecs
     }
     close(INISPECS);
     `cat $file_prefix*$file_postfix | sort -u > $filestem.allflas`;
+    `sed -e 's/conjecture/axiom/g' $filestem.allflas | sort -u > $filestem.allasax`;
+    `bin/tptp_to_ladr $filestem.allasax | grep -v '\(end_of_list\|formulas\|prolog_style\)' > $filestem.axp9`;
     `grep conjecture $filestem.allflas > $filestem.allconjs`;
     `grep -v conjecture $filestem.allflas > $filestem.allaxs`;
 }
@@ -1492,7 +1631,15 @@ sub Iterate
 	    print "THRESHOLD: $threshold\nTIMELIMIT: $gtimelimit\n";
 	}
 
+
 	`cat $filestem.train_* > $filestem.alltrain_$iter`;
+
+	if(($guseposmodels > 0) || ($gusenegmodels > 0))
+	{
+	    PrintModels($iter);
+	    `cat $filestem.models_$iter >> $filestem.alltrain_$iter`;
+	}
+
 	Learn($iter);
 	$iter++;
 	PrintTestingFromArray($iter,\@tmp_conjs);
