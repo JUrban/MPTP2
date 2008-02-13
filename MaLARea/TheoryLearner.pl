@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.46 $
+## $Revision: 1.47 $
 
 
 =head1 NAME
@@ -642,6 +642,23 @@ sub PrintTestingFromArrArray
 }
 
 
+sub DumpModelInfo
+{
+    my ($iter) = @_;
+    my ($entry,$minfo);
+    $iter = "" unless defined $iter;
+    my $i = -1;
+    open(MODINFO,"| gzip > $filestem.modinfo_$iter.gz");
+    foreach $entry (@gnrmod)
+    {
+	$i++;
+	print MODINFO "model($i,[$entry->[mod_FILE],$entry->[mod_SYMNR],$entry->[mod_POSNR],$entry->[mod_NEGNR],";
+	print MODINFO ("[", join(",", @{$entry->[mod_SYMS]}), "],");
+	print MODINFO ("[", join(",", @{$entry->[mod_POSREFS]}), "],");
+	print MODINFO ("[", join(",", @{$entry->[mod_NEGREFS]}), "]]).\n");
+    }
+    close MODINFO;
+}
 
 sub DumpResults
 {
