@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.37 $
+## $Revision: 1.38 $
 
 
 =head1 NAME
@@ -348,7 +348,7 @@ sub LoadTermTable
 # Create the symbol and reference numbering files
 # from the refsyms file. Loads these tables and the refsym table too.
 # The initial refsyms file can be created from all (say bushy) problems by running:
-# cat */* | GetSymbols |sort -u > all.refsyms
+# cat */* | bin/GetSymbols -- |sort -u > all.refsyms
 sub CreateTables
 {
     my $i = 0;
@@ -968,7 +968,7 @@ sub SelectRelevantFromSpecs
 
 
 # 2. create the .refsyms table telling for each reference its symbols by calling:
-# cat $file_prefix*$file_postfix | GetSymbols |sort -u > $filestem.refsyms
+# cat $file_prefix*$file_postfix | bin/GetSymbols -- |sort -u > $filestem.refsyms
 
 # 3. create the numbering files for references and symbols by calling CreateTables
 
@@ -1420,7 +1420,7 @@ sub Iterate
 	NormalizeAndCreateInitialSpecs($file_prefix, $file_postfix, $gcommonfile);
 
 	# create the refsyms file
-	`cat $filestem.allflas | bin/GetSymbols |sort -u > $filestem.refsyms`;
+	`cat $filestem.allflas | bin/GetSymbols -- |sort -u > $filestem.refsyms`;
 
 	# create the trmstd and trmnrm files
 	if ($gdotrmstd > 0) {
