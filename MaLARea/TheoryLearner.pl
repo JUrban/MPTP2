@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.48 $
+## $Revision: 1.49 $
 
 
 =head1 NAME
@@ -1117,14 +1117,14 @@ sub SetupMaceModel
     my $regexp = '"label( *\(' . join('\|',@allowed_refs) . '\)"';
 
     my @pos_refs = ();
-    foreach $_ (`grep $regexp $filestem.axp9 | tee $file.mtestaxs | bin/clausefilter $file.mmodel true_in_all | grep label | tee $file.mtestaxs1`)
+    foreach $_ (`grep $regexp $filestem.axp9 | bin/clausefilter $file.mmodel true_in_all | grep label `)
     {
 	m/[^#]*# *label\(([^)]*)\).*/;
 	push(@pos_refs, $1);
     }
 
     my @neg_refs = ();
-    foreach $_ (`grep $regexp $filestem.axp9 | tee $file.mtestaxs | bin/clausefilter $file.mmodel false_in_all | grep label | tee $file.mtestax21`)
+    foreach $_ (`grep $regexp $filestem.axp9 | bin/clausefilter $file.mmodel false_in_all | grep label`)
     {
 	m/[^#]*# *label\(([^)]*)\).*/;
 	push(@neg_refs, $1);
