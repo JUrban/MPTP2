@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.47 $
+## $Revision: 1.48 $
 
 
 =head1 NAME
@@ -204,7 +204,7 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
 my ($help, $man);
 my $gtargetsnr = 1233;
 
-my $guseposmodels = 1;
+my $guseposmodels = 0;
 my $gusenegmodels = 1;
 
 Getopt::Long::Configure ("bundling");
@@ -266,7 +266,7 @@ sub LOGGING { 0 };
 
 # print %gresults before dying if possible
 # ###TODO: load model info
-local $SIG{__DIE__} = sub { DumpResults(); };
+local $SIG{__DIE__} = sub { DumpResults(); DumpModelInfo(); };
 
 sub LoadTables
 {
@@ -658,6 +658,15 @@ sub DumpModelInfo
 	print MODINFO ("[", join(",", @{$entry->[mod_NEGREFS]}), "]]).\n");
     }
     close MODINFO;
+
+    open(EQMODS,"| gzip > $filestem.eqmods_$iter.gz");
+    foreach $entry (keys %gsum2model)
+    {
+	my @eqmods = @{$gsum2model{$entry}};
+	print EQMODS ("eqmods($#eqmods,[", join(",", @eqmods), "]).\n");
+    }
+    close EQMODS;
+
 }
 
 sub DumpResults
@@ -1043,7 +1052,7 @@ sub PrintModels
     my $tmpref;
 
     open(MODELS, ">$filestem.models_$iter") or die "Cannot write models file";
-    foreach $tmpref (sort ((keys %grefposmods), (keys %grefnegmods)))
+    foreach $tmpref (sort (keys %grefnr))
     {
 	if ((($guseposmodels > 0) && (exists $grefposmods{$tmpref}))
 	    || (($gusenegmodels > 0) && (exists $grefnegmods{$tmpref})) )
@@ -1154,6 +1163,7 @@ sub RunProblems
     my $eprover = 1;
     my $mace = $paradox;
     my %proved_by = ();
+    my ($models_found, $models_old, $models_new) = (0,0,0);
 
 
 #    if($gtimelimit<16) { $spass=1; $vampire=0}
@@ -1216,20 +1226,26 @@ sub RunProblems
 	    {
 		$mace_status = szs_COUNTERSAT;
 		$status      = szs_COUNTERSAT;
+		$models_found++;
 
 		## find if the model already exists - just by
 		## testing if the checksum already exists (really don't care
 		## if with probability 10^50 we'll miss a model)
 		my $shasum = `cat $file.mmodel | grep -v interpretation | sha1sum`;
 
-		if ( !(exists $gsum2model{$shasum}))
+		if (exists $gsum2model{$shasum})
 		{
-		    $gsum2model{$shasum} = $file;
-
-		    SetupMaceModel($conj, $file);
+		    $models_old++;
 		}
+		else
+		{
+		    SetupMaceModel($conj, $file);
+		    $models_new++;
+		}
+		push( @{$gsum2model{$shasum}}, $file);
 	    }
-	    print " Mace: $status,";
+	    else { $mace_status = szs_RESOUT; }
+	    print " Mace: $mace_status,";
 	}
 
 	if (($eprover == 1) && 
@@ -1352,6 +1368,8 @@ sub RunProblems
     }
     close(PROVED_BY);
     DumpResults($iter);
+    DumpModelInfo($iter);
+    print "MODELS: found: $models_found, old: $models_old, new: $models_new\n";
     return \%proved_by;
 }
 
@@ -1585,7 +1603,7 @@ sub Iterate
 		}
 		else
 		{
-		    DumpResults();
+		    DumpResults(); DumpModelInfo();
 		    die "reached maximum threshold: $threshold, and timelmit: $gtimelimit";
 		}
 	    }
@@ -1675,7 +1693,7 @@ sub Iterate
 	PrintTestingFromArray($iter,\@tmp_conjs);
 	$to_solve = SelectRelevantFromSpecs($iter,$threshold, $file_prefix, $file_postfix);
     }
-    DumpResults();
+    DumpResults(); DumpModelInfo();
 }
 
 Iterate($gfileprefix,$gfilepostfix);
