@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.44 $
+## $Revision: 1.45 $
 
 
 =head1 NAME
@@ -1415,7 +1415,7 @@ sub NormalizeAndCreateInitialSpecs
     }
     close(INISPECS);
     `cat $file_prefix*$file_postfix | sort -u > $filestem.allflas`;
-    `sed -e 's/,\(conjecture\|lemma\),/axiom/g' $filestem.allflas | sort -u > $filestem.allasax`;
+    `sed -e 's/,conjecture,/,axiom,/' $filestem.allflas | sed -e 's/,lemma,/,axiom,/' | sort -u > $filestem.allasax`;
     `bin/tptp_to_ladr < $filestem.allasax | grep -v '\(end_of_list\|formulas\|prolog_style\)' > $filestem.axp9`;
     `grep conjecture $filestem.allflas > $filestem.allconjs`;
     `grep -v conjecture $filestem.allflas > $filestem.allaxs`;
