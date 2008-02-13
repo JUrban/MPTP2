@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.40 $
+## $Revision: 1.41 $
 
 
 =head1 NAME
@@ -1090,7 +1090,7 @@ sub SetupMaceModel
 
     my $regexp = '"label( *\(' . join('\|',@allowed_refs) . '\)"';
     my @pos_refs = `grep $regexp $filestem.axp9 | tee $file.mtestaxs | bin/clausefilter $file.mmodel true_in_all | grep label | tee $file.mtestaxs1| sed -e 's/[^#]*# *label([^)]*).*/\1/g'`;
-    my @neg_refs = `grep $regexp $filestem.axp9 | bin/clausefilter $file.mmodel false_in_all | grep label | sed -e 's/[^#]*# *label([^)]*).*/\1/g'`;
+    my @neg_refs = `grep $regexp $filestem.axp9 | bin/clausefilter $file.mmodel false_in_all | grep label | tee $file.mtestaxs2 | sed -e 's/[^#]*# *label(\([^)]*\)).*/\1/g'`;
     die "bad clausefilter output: $file,:,@allowed_refs,:, @pos_refs,: @neg_refs,:"
 	unless ($#allowed_refs == $#pos_refs + $#neg_refs + 1);
 
