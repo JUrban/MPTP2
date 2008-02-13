@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.43 $
+## $Revision: 1.44 $
 
 
 =head1 NAME
@@ -1090,7 +1090,7 @@ sub SetupMaceModel
 
     my $regexp = '"label( *\(' . join('\|',@allowed_refs) . '\)"';
     my @pos_refs = ();
-    foreach $tmpref (`grep $regexp $filestem.axp9 | tee $file.mtestaxs | bin/clausefilter $file.mmodel true_in_all | grep label | tee $file.mtestaxs1`)
+    foreach $_ (`grep $regexp $filestem.axp9 | tee $file.mtestaxs | bin/clausefilter $file.mmodel true_in_all | grep label | tee $file.mtestaxs1`)
     {
 	m/[^#]*# *label\(([^)]*)\).*/;
 	push(@pos_refs, $1);
@@ -1098,7 +1098,7 @@ sub SetupMaceModel
 #    my @pos_refs = `grep $regexp $filestem.axp9 | tee $file.mtestaxs | bin/clausefilter $file.mmodel true_in_all | grep label | tee $file.mtestaxs1| sed -e 's/[^#]*# *label(\([^)]*\)).*/\1/g'`;
 
     my @neg_refs = ();
-    foreach $tmpref (`grep $regexp $filestem.axp9 | tee $file.mtestaxs | bin/clausefilter $file.mmodel false_in_all | grep label | tee $file.mtestax21`)
+    foreach $_ (`grep $regexp $filestem.axp9 | tee $file.mtestaxs | bin/clausefilter $file.mmodel false_in_all | grep label | tee $file.mtestax21`)
     {
 	m/[^#]*# *label\(([^)]*)\).*/;
 	push(@neg_refs, $1);
