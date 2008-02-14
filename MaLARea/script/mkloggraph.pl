@@ -5,7 +5,7 @@
 # creates summary of results of all passes in unsolved.log
 
 
-$solved = 0;
+my @cumul = (0);
 $total = 0;
 $state = 0;
 $giter = 0;
@@ -43,14 +43,14 @@ while (<>)
 }
 #print "$giter\n";
 
-foreach $i (1 .. $giter) { $solved = $solved + $solved[$i]; }
-my $rest = $solved - $solved[1];
+foreach $i (1 .. $giter) { $cumul[$i] = $cumul[$i-1] + $solved[$i]; }
+my $rest = $cumul[$giter] - $solved[1];
 
-print "total: $total, solved: $solved, pass 1: $solved[1], pass 2- : $rest\n";
-print "iternr\ttimelim\taxlimit\tsolved\n";
+print "total: $total, solved: $cumul[$giter], pass 1: $solved[1], pass 2- : $rest\n";
+print "iternr\ttimelim\taxlimit\tsolved\tcumul\n";
 foreach $i (1 .. $giter)
   {
-    print "$i:\t$timelimit[$i]\t$threshold[$i]\t$solved[$i]\n";
+    print "$i:\t$timelimit[$i]\t$threshold[$i]\t$solved[$i]\t$cumul[$i]\n";
   }
 
 
