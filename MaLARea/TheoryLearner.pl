@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.49 $
+## $Revision: 1.50 $
 
 
 =head1 NAME
@@ -26,6 +26,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --runspass=<arg>,        -S<arg>
    --runvampire=<arg>,      -V<arg>
    --runparadox=<arg>,      -p<arg>
+   --runmace=<arg>,         -M<arg>
    --similarity=<arg>,      -i<arg>
    --recadvice=<arg>,       -a<arg>
    --refsbgcheat=<arg>,     -r<arg>
@@ -107,6 +108,12 @@ If 1, run Vampire. Default is 0.
 =item B<<< --runparadox=<arg>, -B<p><arg> >>>
 
 If 1, run Paradox. Default is 0.
+
+=item B<<< --runmace=<arg>, -B<M><arg> >>>
+
+If 1, and running Paradox, run also Mace to construct a model.
+The model is then used for evaluation of formulas. Default is 1,
+because this is constraint by --runparadox anyway.
 
 =item B<<< --similarity=<arg>, -i<arg> >>>
 
@@ -199,7 +206,7 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $gspass,       $gvampire,       $grecadvice,
     $grefsbgcheat, $galwaysmizrefs, $gsimilarity,
     $maxthreshold, $mintimelimit,   $permutetimelimit,
-    $gparadox,     $geprover);
+    $gparadox,     $geprover,       $gmace);
 
 my ($help, $man);
 my $gtargetsnr = 1233;
@@ -221,6 +228,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'runspass|S=i'    => \$gspass,
 	   'runvampire|V=i'    => \$gvampire,
 	   'runparadox|p=i'    => \$gparadox,
+	   'runmace|M=i'    => \$gmace,
 	   'similarity|i=i'  => \$gsimilarity,
 	   'recadvice|a=i'    => \$grecadvice,
 	   'refsbgcheat|r=i'    => \$grefsbgcheat,
@@ -241,6 +249,7 @@ $giterrecover = -1 unless(defined($giterrecover));
 $gspass = 1 unless(defined($gspass));
 $gvampire = 0 unless(defined($gvampire));
 $gparadox = 0 unless(defined($gparadox));
+$gmace = 1 unless(defined($gmace));
 $geprover = 1 unless(defined($geprover));
 $grecadvice = 0 unless(defined($grecadvice));
 $grefsbgcheat = 0 unless(defined($grefsbgcheat));
@@ -1161,7 +1170,7 @@ sub RunProblems
 	$threshold, $spass, $vampire, $paradox, $keep_cpu_limit) = @_;
     my ($conj,$status,$eprover_status,$spass_status,$vamp_status,$paradox_status,$mace_status);
     my $eprover = 1;
-    my $mace = $paradox;
+    my $mace = $paradox * $gmace;
     my %proved_by = ();
     my ($models_found, $models_old, $models_new) = (0,0,0);
 
@@ -1183,7 +1192,7 @@ sub RunProblems
 	print "$conj: ";
 
 
-	if (($paradox == 1) && ($threshold < 128) && ($gtimelimit < 4) &&
+	if (($paradox == 1) && ($threshold < 256) && ($gtimelimit < 4) &&
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 
