@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.50 $
+## $Revision: 1.51 $
 
 
 =head1 NAME
@@ -1458,6 +1458,10 @@ sub NormalizeAndCreateInitialSpecs
     close(INISPECS);
     `cat $file_prefix*$file_postfix | sort -u > $filestem.allflas`;
     `sed -e 's/,conjecture,/,axiom,/' $filestem.allflas | sed -e 's/,lemma,/,axiom,/' | sort -u > $filestem.allasax`;
+
+## proper things for .axp9 is tptp2X -fprover9  $filestem.allasax; followed by:
+## perl -e '$/="."; while(<>) { s/% ([^ ]+), axiom[.]/# label(\1) # label(axiom)/; s/[\n]+/ /g; s/[ ]+/ /g; print "$_\n"}' $1 | perl -e '$/="."; while(<>) { s/(#[^\n]*)\n(.*)[.]/\2 \1./; print $_;}'
+
     `bin/tptp_to_ladr < $filestem.allasax | grep -v '\(end_of_list\|formulas\|prolog_style\)' > $filestem.axp9`;
     `grep conjecture $filestem.allflas > $filestem.allconjs`;
     `grep -v conjecture $filestem.allflas > $filestem.allaxs`;
