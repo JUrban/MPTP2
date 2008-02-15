@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.51 $
+## $Revision: 1.52 $
 
 
 =head1 NAME
@@ -1228,6 +1228,9 @@ sub RunProblems
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || 
 	     ($status eq szs_UNKNOWN) || ($status eq szs_COUNTERSAT)))
 	{
+	    ## this is buggy due to the bug in tptp_to_ladr/Dec07
+	    ## it will make a free var B from ~ ! [B] - this is quite frequent in
+	    ## chainy distro
 	    my $mace_status_line = 
 		`bin/tptp_to_ladr < $file | bin/mace4 -t 1 | bin/interpformat standard | tee $file.mmodel | grep interpretation`;
 
