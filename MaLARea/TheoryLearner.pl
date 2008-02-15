@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.52 $
+## $Revision: 1.53 $
 
 
 =head1 NAME
@@ -213,6 +213,7 @@ my $gtargetsnr = 1233;
 
 my $guseposmodels = 0;
 my $gusenegmodels = 1;
+my $gsrassemul    = 1;
 
 Getopt::Long::Configure ("bundling");
 
@@ -840,6 +841,10 @@ sub HandleSpec
 
     if (0 == $subsumed)
     {
+	if (($gsrassemul > 0) && ($#reserve >= 0) && (exists $grefnegmods{$conjecture}))
+	{
+	    Srassify($conjecture, \@spec, \@reserve)
+	}
 	my $new_spec = [szs_INIT, $#spec, -1, [@spec], [] ];
 	push(@{$gresults{$conjecture}}, $new_spec);
 	my $new_refs = join(",", @spec);
@@ -849,6 +854,41 @@ sub HandleSpec
     }
     else { return 0; }
 }
+
+## can modify $spec; $reserve (incorrectly) stays the same
+sub Srassify
+{
+    my ($conj, $spec, $reserve) = @_;
+
+    my @spec = @$spec;
+    my %neg_conj_mods = ();
+    @neg_conj_mods{ @{$grefnegmods{$conj}} } = ();
+
+    my ($ax, $mod);
+    foreach $ax (@spec[1 .. $#spec])  ## delete ax's negative models
+    {
+	delete @neg_conj_mods{ @{$grefnegmods{$ax}} } if (exists $grefnegmods{$ax});
+    }
+
+    my $remains = scalar(keys %neg_conj_mods);
+    my @reserve = @$reserve;
+    while (($remains > 0) && ($#reserve >= 0))
+    {
+	my $cand = shift @reserve;
+	if (exists $grefnegmods{$cand})
+	{
+	    delete @neg_conj_mods{ @{$grefnegmods{$cand}} };
+	    my $tmp = scalar(keys %neg_conj_mods);  ## scalar of () is 0 (not -1)
+
+	    if ($remains > $tmp)
+	    {
+		push(@$spec, $cand);
+		$remains = $tmp;
+	    }
+	}
+    }
+}
+
 
 sub PrintPruned
 {
