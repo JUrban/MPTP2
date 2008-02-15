@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.53 $
+## $Revision: 1.54 $
 
 
 =head1 NAME
@@ -1336,7 +1336,7 @@ sub RunProblems
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 	    my $spass_status_line =
-		`bin/tptp4X -x -f dfg $file | bin/SPASS -Stdin -PGiven=0 -PProblem=0 -TimeLimit=$gtimelimit | grep "SPASS beiseite"| tee $file.outdfg`;
+		`bin/tptp4X -x -f dfg $file | bin/SPASS -Stdin -Memory=900000000 -PGiven=0 -PProblem=0 -TimeLimit=$gtimelimit | grep "SPASS beiseite"| tee $file.outdfg`;
 
 	    if ($spass_status_line=~m/.*SPASS beiseite *: *([^.]+)[.]/)
 	    {
@@ -1353,7 +1353,7 @@ sub RunProblems
 		$spass_status = szs_THEOREM;
 		$status= szs_THEOREM;
 		($gtimelimit = $mintimelimit) if ($keep_cpu_limit == 0);
-		my $spass_formulae_line = `bin/tptp4X -x -f dfg $file |bin/SPASS -Stdin -PGiven=0 -PProblem=0 -DocProof | tee $file.outdfg1| grep "Formulae used in the proof"`;
+		my $spass_formulae_line = `bin/tptp4X -x -f dfg $file |bin/SPASS -Stdin -Memory=900000000 -PGiven=0 -PProblem=0 -DocProof | tee $file.outdfg1| grep "Formulae used in the proof"`;
 		($spass_formulae_line=~m/Formulae used in the proof *: *(.*) */) 
 		    or die "Bad SPASS Formulae line: $file: $spass_formulae_line";
 		my @refs = split(/ +/, $1);
