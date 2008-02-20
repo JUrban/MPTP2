@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.56 $
+## $Revision: 1.57 $
 
 
 =head1 NAME
@@ -1493,7 +1493,11 @@ sub NormalizeAndCreateInitialSpecs
 {
     my ($file_prefix, $file_postfix, $common_file) = @_;
     my ($i);
-    if($gtmpdir ne "") { `mkdir $gtmpdir$file_prefix`; }
+    if($gtmpdir ne "")
+    {
+	die "Remove $gtmpdir$file_prefix manually first!" if(-e $gtmpdir . $file_prefix);
+	`mkdir $gtmpdir$file_prefix`;
+    }
     if($common_file ne "")
     {
 	my $last_char = chop($file_prefix);
