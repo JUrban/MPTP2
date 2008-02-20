@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.57 $
+## $Revision: 1.58 $
 
 
 =head1 NAME
@@ -1495,7 +1495,7 @@ sub NormalizeAndCreateInitialSpecs
     my ($i);
     if($gtmpdir ne "")
     {
-	die "Remove $gtmpdir$file_prefix manually first!" if(-e $gtmpdir . $file_prefix);
+	die "Remove $gtmpdir$file_prefix manually first!" if(-e "$gtmpdir$file_prefix");
 	`mkdir $gtmpdir$file_prefix`;
     }
     if($common_file ne "")
