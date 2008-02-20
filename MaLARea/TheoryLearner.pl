@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.55 $
+## $Revision: 1.56 $
 
 
 =head1 NAME
@@ -1446,9 +1446,11 @@ sub RunProblems
 sub TmpProbIOCleanup
 {
     my ($iter, $file_prefix, $file_postfix) = @_;
-    my $files = $gtmpdir . $file_prefix . "*" . $file_postfix . ".s_" . $iter . ".*" ;
-    `tar czf $filestem.probio_$iter.tar.gz $files`;
+    my $files = $gtmpdir . $file_prefix . "*" . $file_postfix . ".s_" . $iter;
+    my $files1 = $files . ".*" ;
+    `tar czf $filestem.probio_$iter.tar.gz $files $files1`;
     unlink glob($files);
+    unlink glob($files1);
 }
 
 # GenerateProblemsFromCommonFile($file_prefix, $file_postfix, $common_file);
@@ -1522,7 +1524,7 @@ sub NormalizeAndCreateInitialSpecs
 	}
 	close(PROBLEM);
 	print INISPECS "spec($conj,[" . join(",", keys %h) . "]).\n";
-	`cp  $i  $i.s_0`;
+	`cp  $i  $gtmpdir$i.s_0`;
 #	system(cp,($i, "$i.s_0"));
     }
     close(INISPECS);
