@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.58 $
+## $Revision: 1.59 $
 
 
 =head1 NAME
@@ -28,6 +28,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --runvampire=<arg>,      -V<arg>
    --runparadox=<arg>,      -p<arg>
    --runmace=<arg>,         -M<arg>
+   --srassemul=<arg>,       -R<arg>
    --similarity=<arg>,      -i<arg>
    --recadvice=<arg>,       -a<arg>
    --refsbgcheat=<arg>,     -r<arg>
@@ -126,6 +127,15 @@ If 1, and running Paradox, run also Mace to construct a model.
 The model is then used for evaluation of formulas. Default is 1,
 because this is constraint by --runparadox anyway.
 
+=item B<<< --srassemul=<arg>, -B<R><arg> >>>
+
+If 1, and running Mace (i.e. models are used), try to extend problem
+specifications using the SRASS algorithm. That is: axioms that were
+evaluated as false in some model of the negated conjecture are
+greedily added (in order of their relevance) until all such models
+are covered (or we run out of falsifying axioms).
+Default is 1, because this is constraint by --runmace anyway.
+
 =item B<<< --similarity=<arg>, -i<arg> >>>
 
 The similarity measure for formulas. If 1, only vector of symbols
@@ -218,14 +228,14 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $grefsbgcheat, $galwaysmizrefs, $gsimilarity,
     $maxthreshold, $mintimelimit,   $permutetimelimit,
     $gparadox,     $geprover,       $gmace,
-    $gtmpdir);
+    $gtmpdir,      $gsrassemul);
 
 my ($help, $man);
 my $gtargetsnr = 1233;
 
 my $guseposmodels = 0;
 my $gusenegmodels = 1;
-my $gsrassemul    = 1;
+
 
 Getopt::Long::Configure ("bundling");
 
@@ -243,6 +253,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'runvampire|V=i'    => \$gvampire,
 	   'runparadox|p=i'    => \$gparadox,
 	   'runmace|M=i'    => \$gmace,
+	   'srassemul|R=i'    => \$gsrassemul,
 	   'similarity|i=i'  => \$gsimilarity,
 	   'recadvice|a=i'    => \$grecadvice,
 	   'refsbgcheat|r=i'    => \$grefsbgcheat,
@@ -264,6 +275,8 @@ $gspass = 1 unless(defined($gspass));
 $gvampire = 0 unless(defined($gvampire));
 $gparadox = 0 unless(defined($gparadox));
 $gmace = 1 unless(defined($gmace));
+$gsrassemul = 1 unless(defined($gsrassemul));
+$gsrassemul = $gparadox * $gmace * $gsrassemul;
 $geprover = 1 unless(defined($geprover));
 $grecadvice = 0 unless(defined($grecadvice));
 $grefsbgcheat = 0 unless(defined($grefsbgcheat));
@@ -1612,6 +1625,12 @@ sub Iterate
     }
     else
     {
+	if($gtmpdir ne "")
+	{
+	    die "Remove $gtmpdir$file_prefix manually first!" if(-e "$gtmpdir$file_prefix");
+	    `mkdir $gtmpdir$file_prefix`;
+	}
+
 	LoadTables();
 	LoadSpecs();
 	LoadResults("$filestem.results_$giterrecover.gz",0);
