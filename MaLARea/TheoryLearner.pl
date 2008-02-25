@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.59 $
+## $Revision: 1.60 $
 
 
 =head1 NAME
@@ -298,8 +298,17 @@ my $gdotrmstd = $gsimilarity & 2;
 my $gdotrmnrm = $gsimilarity & 4;
 my $gdosyms = $gsimilarity & 1;
 
-# change for verbose logging
-sub LOGGING { 0 };
+# change for debug printing
+sub WNONE	()  { 0 }
+sub WSRASS	()  { 1 }
+sub GWATCHED 	()  { WNONE }
+
+# print @msgs if $flag is in GWATCHED
+sub watch
+{
+    my ($flag, @msgs) = @_;
+    print @msgs if(GWATCHED & $flag);
+}
 
 # print %gresults before dying if possible
 # ###TODO: load model info
@@ -870,7 +879,10 @@ sub HandleSpec
     {
 	if (($gsrassemul > 0) && ($#reserve >= 0) && (exists $grefnegmods{$conjecture}))
 	{
-	    Srassify($conjecture, \@spec, \@reserve)
+	    watch(WSRASS, ("bef_SRASS($conjecture, $iter, [", join(",",@spec), "]).\n"));
+	    Srassify($conjecture, \@spec, \@reserve);
+	    watch(WSRASS, ("aft_SRASS($conjecture, $iter, [", join(",",@spec), "]).\n"));
+
 	}
 	my $new_spec = [szs_INIT, $#spec, -1, [@spec], [] ];
 	push(@{$gresults{$conjecture}}, $new_spec);
