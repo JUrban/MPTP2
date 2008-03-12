@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.61 $
+## $Revision: 1.62 $
 
 
 =head1 NAME
@@ -28,6 +28,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --runvampire=<arg>,      -V<arg>
    --runparadox=<arg>,      -p<arg>
    --runmace=<arg>,         -M<arg>
+   --usemodels=<arg>,       -D<arg>
    --srassemul=<arg>,       -R<arg>
    --similarity=<arg>,      -i<arg>
    --recadvice=<arg>,       -a<arg>
@@ -126,6 +127,13 @@ If 1, run Paradox. Default is 0.
 If 1, and running Paradox, run also Mace to construct a model.
 The model is then used for evaluation of formulas. Default is 1,
 because this is constraint by --runparadox anyway.
+
+=item B<<< --usemodels=<arg>, -B<D><arg> >>>
+
+Use models for learning relevance of formulas. If 1, only negative
+models are used, if 2, only positive models are used, if 3,
+both positive and negative models are used, if 0, none are used.
+Default is 1. This asssumes --runmace=1.
 
 =item B<<< --srassemul=<arg>, -B<R><arg> >>>
 
@@ -228,13 +236,10 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $grefsbgcheat, $galwaysmizrefs, $gsimilarity,
     $maxthreshold, $mintimelimit,   $permutetimelimit,
     $gparadox,     $geprover,       $gmace,
-    $gtmpdir,      $gsrassemul);
+    $gtmpdir,      $gsrassemul,     $gusemodels);
 
 my ($help, $man);
 my $gtargetsnr = 1233;
-
-my $guseposmodels = 0;
-my $gusenegmodels = 1;
 
 
 Getopt::Long::Configure ("bundling");
@@ -253,6 +258,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'runvampire|V=i'    => \$gvampire,
 	   'runparadox|p=i'    => \$gparadox,
 	   'runmace|M=i'    => \$gmace,
+	   'usemodels|D=i'    => \$gusemodels,
 	   'srassemul|R=i'    => \$gsrassemul,
 	   'similarity|i=i'  => \$gsimilarity,
 	   'recadvice|a=i'    => \$grecadvice,
@@ -275,6 +281,7 @@ $gspass = 1 unless(defined($gspass));
 $gvampire = 0 unless(defined($gvampire));
 $gparadox = 0 unless(defined($gparadox));
 $gmace = 1 unless(defined($gmace));
+$gusemodels = 1 unless(defined($gusemodels));
 $gsrassemul = 1 unless(defined($gsrassemul));
 $gsrassemul = $gparadox * $gmace * $gsrassemul;
 $geprover = 1 unless(defined($geprover));
@@ -292,11 +299,14 @@ $permutetimelimit = $mintimelimit unless(defined($permutetimelimit));
 $maxthreshold = 128 unless(defined($maxthreshold)); # should be power of 2
 
 
-
 my $gtimelimit = $maxtimelimit;
 my $gdotrmstd = $gsimilarity & 2;
 my $gdotrmnrm = $gsimilarity & 4;
 my $gdosyms = $gsimilarity & 1;
+
+my $gusenegmodels = $gusemodels & 1;
+my $guseposmodels = $gusemodels & 2;
+
 
 # change for debug printing
 sub WNONE	()  { 0 }
@@ -1134,6 +1144,8 @@ sub Learn
 }
 
 # print the models as training examples
+# if positive models are used, print only those that
+# are not true in all models (those are very likely just $true)
 sub PrintModels
 {
     my ($iter) = @_;
@@ -1142,12 +1154,14 @@ sub PrintModels
     open(MODELS, ">$filestem.models_$iter") or die "Cannot write models file";
     foreach $tmpref (sort (keys %grefnr))
     {
-	if ((($guseposmodels > 0) && (exists $grefposmods{$tmpref}))
+	if ((($guseposmodels > 0) && (exists $grefposmods{$tmpref})
+	      && ($#gnrmod >= scalar( @{$grefposmods{$tmpref}} )))
 	    || (($gusenegmodels > 0) && (exists $grefnegmods{$tmpref})) )
 	{
 	    my @syms_nrs = ( $grefnr{$tmpref} );
 
-	    if (($guseposmodels > 0) && (exists $grefposmods{$tmpref}))
+	    if (($guseposmodels > 0) && (exists $grefposmods{$tmpref})
+		&& ($#gnrmod >= scalar( @{$grefposmods{$tmpref}} )))
 	    {
 		my @posmod_nrs   = map { $gposmodeloffset + $_ } @{$grefposmods{$tmpref}};
 		push(@syms_nrs, @posmod_nrs);
