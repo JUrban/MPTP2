@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.60 $
+## $Revision: 1.61 $
 
 
 =head1 NAME
@@ -698,7 +698,7 @@ sub DumpModelInfo
     foreach $entry (@gnrmod)
     {
 	$i++;
-	print MODINFO "model($i,[$entry->[mod_FILE],$entry->[mod_SYMNR],$entry->[mod_POSNR],$entry->[mod_NEGNR],";
+	print MODINFO "model($i,['$entry->[mod_FILE]',$entry->[mod_SYMNR],$entry->[mod_POSNR],$entry->[mod_NEGNR],";
 	print MODINFO ("[", join(",", @{$entry->[mod_SYMS]}), "],");
 	print MODINFO ("[", join(",", @{$entry->[mod_POSREFS]}), "],");
 	print MODINFO ("[", join(",", @{$entry->[mod_NEGREFS]}), "]]).\n");
