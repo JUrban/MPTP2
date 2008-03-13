@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.63 $
+## $Revision: 1.64 $
 
 
 =head1 NAME
@@ -637,12 +637,12 @@ sub PrintTestingFromArray
 	    my @trmnrm_nrs   = @{$greftrmnrm{$ref}};
 	    push(@syms_nrs, @trmnrm_nrs);
 	}
-	if($guseposmodels > 0)
+	if(($guseposmodels > 0) && (exists $grefposmods{$ref}))
 	{
 	    my @posmod_nrs   = map { $gposmodeloffset + $_ } @{$grefposmods{$ref}};
 	    push(@syms_nrs, @posmod_nrs);
 	}
-	if($gusenegmodels > 0)
+	if(($gusenegmodels > 0) && (exists $grefnegmods{$ref}))
 	{
 	    my @negmod_nrs   = map { $gnegmodeloffset + $_ } @{$grefnegmods{$ref}};
 	    push(@syms_nrs, @negmod_nrs);
@@ -1144,7 +1144,7 @@ sub Learn
 }
 
 # print the models as training examples
-# if positive models are used, print only those that
+# if positive models are also used, print only those that
 # are not true in all models (those are very likely just $true)
 sub PrintModels
 {
@@ -2092,6 +2092,16 @@ sub PrintTrainingFromHash
 	{
 	    my @trmnrm_nrs   = @{$greftrmnrm{$ref}};
 	    push(@all_nrs, @trmnrm_nrs);
+	}
+	if(($guseposmodels > 0) && (exists $grefposmods{$ref}))
+	{
+	    my @posmod_nrs   = map { $gposmodeloffset + $_ } @{$grefposmods{$ref}};
+	    push(@all_nrs, @posmod_nrs);
+	}
+	if(($gusenegmodels > 0) && (exists $grefnegmods{$ref}))
+	{
+	    my @negmod_nrs   = map { $gnegmodeloffset + $_ } @{$grefnegmods{$ref}};
+	    push(@all_nrs, @negmod_nrs);
 	}
 	# just a sanity check
 	foreach $ref (@refs)
