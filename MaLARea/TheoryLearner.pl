@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.62 $
+## $Revision: 1.63 $
 
 
 =head1 NAME
@@ -1619,14 +1619,16 @@ sub Iterate
 	# it gets overwritten by the first RunProblems(), so cat-ing all proved_by_* files
 	# together while running still gives all solved problems
 	open(PROVED_BY_0,">$filestem.proved_by_0");
+	my %proved_by_0 = ();
 	foreach $i (keys %grefnr) {
 	    print PROVED_BY_0 "proved_by($i,[$i]).\n";
+	    push( @{$proved_by_0{$i}}, $i);
 	}
-	#    `sed -e 's/\(.*\)/proved_by(\1,[\1])./' <$filestem.refnr > $filestem.proved_by_0`;
 	close(PROVED_BY_0);
 
 	# print the $filestem.train_0 file from .proved_by_0, train on it
-	PrintTraining(0);
+	# PrintTraining(0);
+	PrintTrainingFromHash(0,\%proved_by_0);
 	print "trained 0\n";
 	# die "";
 	`bin/snow -train -I $filestem.train_0 -F $filestem.net_1  -B :0-$gtargetsnr`;
@@ -2022,46 +2024,47 @@ sub GetCheatableSpecs
 # to numbers by %gsymnr, and add the numbers of references obtained using %grefnr
 # (t5_connsp_2 usually appears) there too, as it was the conjecture, and
 # we don't remove it.
-sub PrintTraining
-{
-    my ($iter) = @_;
-#    LoadTables();
-    open(PROVED_BY, "$filestem.proved_by_$iter") or die "Cannot read proved_by_$iter file";
-    open(TRAIN, ">$filestem.train_$iter") or die "Cannot write train_$iter file";
-    while (<PROVED_BY>) {
-	my ($ref,$refs);
+# DEAD CODE now - replaced by PrintTrainingFromHash, remove when ok
+# sub PrintTraining
+# {
+#     my ($iter) = @_;
+# #    LoadTables();
+#     open(PROVED_BY, "$filestem.proved_by_$iter") or die "Cannot read proved_by_$iter file";
+#     open(TRAIN, ">$filestem.train_$iter") or die "Cannot write train_$iter file";
+#     while (<PROVED_BY>) {
+# 	my ($ref,$refs);
 
-	m/^proved_by\( *([a-z0-9A-Z_]+) *, *\[(.*)\] *\)\./ 
-	    or die "Bad proved_by info: $_";
+# 	m/^proved_by\( *([a-z0-9A-Z_]+) *, *\[(.*)\] *\)\./ 
+# 	    or die "Bad proved_by info: $_";
 
-	($ref, $refs) = ($1, $2);
-	my @refs = split(/\,/, $refs);
-	my @refs_nrs   = map { $grefnr{$_} if(exists($grefnr{$_})) } @refs;
-	my @syms = @{$grefsyms{$ref}};
-	my @syms_nrs   = map { $gsymnr{$_} if(exists($gsymnr{$_})) } @syms;
-	my @all_nrs = (@refs_nrs, @syms_nrs);
-	if($gdotrmstd > 0)
-	{
-	    my @trmstd_nrs   = @{$greftrmstd{$ref}};
-	    push(@all_nrs, @trmstd_nrs);
-	}
-	if($gdotrmnrm > 0)
-	{
-	    my @trmnrm_nrs   = @{$greftrmnrm{$ref}};
-	    push(@all_nrs, @trmnrm_nrs);
-	}
-	# just a sanity check
-	foreach $ref (@refs)
-	{
-	    exists $grefsyms{$ref} or die "Unknown reference $ref in $_";
-	    exists $grefnr{$ref} or die "Unknown reference $ref in $_";
-	}
-	my $training_exmpl = join(",", @all_nrs);
-	print TRAIN "$training_exmpl:\n";
-    }
-    close PROVED_BY;
-    close TRAIN;
-}
+# 	($ref, $refs) = ($1, $2);
+# 	my @refs = split(/\,/, $refs);
+# 	my @refs_nrs   = map { $grefnr{$_} if(exists($grefnr{$_})) } @refs;
+# 	my @syms = @{$grefsyms{$ref}};
+# 	my @syms_nrs   = map { $gsymnr{$_} if(exists($gsymnr{$_})) } @syms;
+# 	my @all_nrs = (@refs_nrs, @syms_nrs);
+# 	if($gdotrmstd > 0)
+# 	{
+# 	    my @trmstd_nrs   = @{$greftrmstd{$ref}};
+# 	    push(@all_nrs, @trmstd_nrs);
+# 	}
+# 	if($gdotrmnrm > 0)
+# 	{
+# 	    my @trmnrm_nrs   = @{$greftrmnrm{$ref}};
+# 	    push(@all_nrs, @trmnrm_nrs);
+# 	}
+# 	# just a sanity check
+# 	foreach $ref (@refs)
+# 	{
+# 	    exists $grefsyms{$ref} or die "Unknown reference $ref in $_";
+# 	    exists $grefnr{$ref} or die "Unknown reference $ref in $_";
+# 	}
+# 	my $training_exmpl = join(",", @all_nrs);
+# 	print TRAIN "$training_exmpl:\n";
+#     }
+#     close PROVED_BY;
+#     close TRAIN;
+# }
 
 
 # Create a .train_$iter file from the %proved_by hash, where keys are proved
@@ -2073,7 +2076,8 @@ sub PrintTrainingFromHash
     my ($iter,$proved_by) = @_;
     my $ref;
     open(TRAIN, ">$filestem.train_$iter") or die "Cannot write train_$iter file";
-    foreach $ref (sort keys %$proved_by) {
+    foreach $ref (sort keys %$proved_by)
+    {
 	my @refs = @{$proved_by->{$ref}};
 	my @refs_nrs   = map { $grefnr{$_} if(exists($grefnr{$_})) } @refs;
 	my @syms = @{$grefsyms{$ref}};
