@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.64 $
+## $Revision: 1.65 $
 
 
 =head1 NAME
@@ -2017,54 +2017,6 @@ sub GetCheatableSpecs
 # Further iterations can be obtained e.g. from succesfull proofs, for SPASS e.g. this way:
 # grep "Formulae used in the proof" */*.out| sed -e 's/.*__\(.*\).ren.dfg.*: *\(.*\) */proved_by(\1,[\2])./' |tr " " "," > 00zoo
 
-# Translate ATP results into numerical training data.
-# The results (i.e. inputs) have the following form:
-# proved_by(t5_connsp_2,[t5_connsp_2,d1_connsp_2,t4_subset,t55_tops_1]).
-# We fetch the symbols for t5_connsp_2 from %grefsyms, translate them
-# to numbers by %gsymnr, and add the numbers of references obtained using %grefnr
-# (t5_connsp_2 usually appears) there too, as it was the conjecture, and
-# we don't remove it.
-# DEAD CODE now - replaced by PrintTrainingFromHash, remove when ok
-# sub PrintTraining
-# {
-#     my ($iter) = @_;
-# #    LoadTables();
-#     open(PROVED_BY, "$filestem.proved_by_$iter") or die "Cannot read proved_by_$iter file";
-#     open(TRAIN, ">$filestem.train_$iter") or die "Cannot write train_$iter file";
-#     while (<PROVED_BY>) {
-# 	my ($ref,$refs);
-
-# 	m/^proved_by\( *([a-z0-9A-Z_]+) *, *\[(.*)\] *\)\./ 
-# 	    or die "Bad proved_by info: $_";
-
-# 	($ref, $refs) = ($1, $2);
-# 	my @refs = split(/\,/, $refs);
-# 	my @refs_nrs   = map { $grefnr{$_} if(exists($grefnr{$_})) } @refs;
-# 	my @syms = @{$grefsyms{$ref}};
-# 	my @syms_nrs   = map { $gsymnr{$_} if(exists($gsymnr{$_})) } @syms;
-# 	my @all_nrs = (@refs_nrs, @syms_nrs);
-# 	if($gdotrmstd > 0)
-# 	{
-# 	    my @trmstd_nrs   = @{$greftrmstd{$ref}};
-# 	    push(@all_nrs, @trmstd_nrs);
-# 	}
-# 	if($gdotrmnrm > 0)
-# 	{
-# 	    my @trmnrm_nrs   = @{$greftrmnrm{$ref}};
-# 	    push(@all_nrs, @trmnrm_nrs);
-# 	}
-# 	# just a sanity check
-# 	foreach $ref (@refs)
-# 	{
-# 	    exists $grefsyms{$ref} or die "Unknown reference $ref in $_";
-# 	    exists $grefnr{$ref} or die "Unknown reference $ref in $_";
-# 	}
-# 	my $training_exmpl = join(",", @all_nrs);
-# 	print TRAIN "$training_exmpl:\n";
-#     }
-#     close PROVED_BY;
-#     close TRAIN;
-# }
 
 
 # Create a .train_$iter file from the %proved_by hash, where keys are proved
