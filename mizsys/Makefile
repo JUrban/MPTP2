@@ -12,6 +12,10 @@ MIZPL = /home/urban/xsltxt/xsl4mizar/mizpl.xsl
 ACCOM = $(MFILES)/bin/accom 
 VERIFIER = $(MFILES)/bin/verifier.7.8.05_hacktopcnst_bex
 
+# use this to get rid of the REAL and ARITHM requirements:
+# for i in *.miz; do echo $i; perl -e 'while(<>){if(/::/){} elsif(/\brequirements\b/) { s/, *(REAL|ARITHM)//g; s/(REAL|ARITHM), *//g;} print $_}' $i > $i.new; done
+
+
 %.acc: %.miz
 	$(ACCOM) $* > $*.acc 
 
