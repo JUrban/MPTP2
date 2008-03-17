@@ -5,10 +5,10 @@ MIZ100     = $(shell cat $(MMLLAR100))
 STANDARDMIZ     = $(shell cat $(MMLLAR))
 SHMIZ = $(shell shuffle < $(MMLLAR))
 
-XSLTPROC = xsltproc 
-XML2HTML = /home/urban/xsltxt/miz.xsl
-ADDABS = /home/urban/xsltxt/addabsrefs.xsl
-MIZPL = /home/urban/xsltxt/mizpl.xsl
+XSLTPROC = /home/urban/bin/xsltproc.1.1.15 
+XML2HTML = /home/urban/xsltxt/xsl4mizar/miz.xsl
+ADDABS = /home/urban/xsltxt/xsl4mizar/addabsrefs.xsl
+MIZPL = /home/urban/xsltxt/xsl4mizar/mizpl.xsl
 ACCOM = $(MFILES)/bin/accom 
 VERIFIER = $(MFILES)/bin/verifier.7.8.05_hacktopcnst_bex
 
@@ -26,6 +26,13 @@ VERIFIER = $(MFILES)/bin/verifier.7.8.05_hacktopcnst_bex
 
 %.xml1: %.xml
 	$(XSLTPROC) $(ADDABS)  $*.xml > $*.xml1 
+
+%.zrt1: %.zrt
+	$(XSLTPROC) $(ADDABS)  $*.zrt > $*.zrt1 
+
+%.zrt2: %.zrt1
+	$(XSLTPROC) $(MIZPL)  $*.zrt1 > $*.zrt2 
+
 
 %.xml2: %.xml1
 	$(XSLTPROC) $(MIZPL)  $*.xml1 > $*.xml2 
@@ -49,3 +56,5 @@ allxml: $(addsuffix .xml, $(STANDARDMIZ))
 allxml1: $(addsuffix .xml1, $(SHMIZ))
 allxml2: $(addsuffix .xml2, $(SHMIZ))
 allbex: $(addsuffix .bex, $(STANDARDMIZ))
+allzrt1: $(addsuffix .zrt1, $(STANDARDMIZ))
+allzrt2: $(addsuffix .zrt2, $(STANDARDMIZ))
