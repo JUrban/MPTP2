@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.116 $
+%% $Revision: 1.117 $
 %%
 %% File  : utils.pl
 %%
@@ -188,6 +188,8 @@ declare_mptp_predicates:-
  abolish(fof_parentlevel/2),
  dynamic(fof_parentlevel/2),
  abolish(fof_cluster/3),
+ abolish(fof_identifyexp/3),
+ dynamic(fof_identifyexp/3),
  abolish(rc_syms_for_consider/7),
  abolish(fof_req/3),
  abolish(sym_ref_graph/2),
@@ -812,11 +814,12 @@ one_pass(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,ZeroedRefs,AddedRefs):-
 	get_equalities(RefsIn,NewSyms,Refs4),
 %% Refs5=[],
 	get_clusters([F|Regs],Pos,RefsIn,OldSyms,NewSyms,Refs5),
+	get_identifyexp([F|Regs],Pos,RefsIn,OldSyms,NewSyms,Refs5i),
 	get_requirements(Reqs,RefsIn,OldSyms,NewSyms,ZeroedRefs,Refs6),
 	get_fraenkel_defs(RefsIn,NewSyms,Refs7),
 	get_eq_defs([F|Defs],RefsIn,NewSyms,Refs8),
 	get_nr_types(Reqs,RefsIn,NewSyms,Refs9),
-	flatten([Refs0,Refs1,Refs2,Refs3,Refs4,Refs5,Refs6,Refs7,Refs8,Refs9],
+	flatten([Refs0,Refs1,Refs2,Refs3,Refs4,Refs5,Refs5i,Refs6,Refs7,Refs8,Refs9],
 		AddedRefs).
 
 %% version for mizar_by and mizar_proof pruning
@@ -833,10 +836,11 @@ one_pass(F,Pos,mizar_no_existence,RefsIn,OldSyms,NewSyms,_ZeroedRefs,AddedRefs):
 	get_equalities(RefsIn,NewSyms,Refs4),
 %% Refs5=[],
 	get_fc_clusters([F|Regs],Pos,RefsIn,OldSyms,NewSyms,Refs5),
+	get_identifyexp([F|Regs],Pos,RefsIn,OldSyms,NewSyms,Refs5i),
 	get_fraenkel_defs(RefsIn,NewSyms,Refs7),
 	get_eq_defs([F|Defs],RefsIn,NewSyms,Refs8),
 	get_nr_types(Reqs,RefsIn,NewSyms,Refs9),
-	flatten([Refs0,Refs2,Refs3,Refs4,Refs5,Refs7,Refs8,Refs9],
+	flatten([Refs0,Refs2,Refs3,Refs4,Refs5,Refs5i,Refs7,Refs8,Refs9],
 		AddedRefs).
 
 
@@ -854,15 +858,18 @@ one_pass(F,Pos,mizar_from,RefsIn,OldSyms,NewSyms,_ZeroedRefs,AddedRefs):-
 	get_redefinitions(RefsIn,NewSyms,Refs2),
 	get_types(RefsIn,NewSyms,Refs3),
 	get_clusters([F|Regs],Pos,RefsIn,OldSyms,NewSyms,Refs5),
+	get_identifyexp([F|Regs],Pos,RefsIn,OldSyms,NewSyms,Refs5i),
 	get_nr_types(Reqs,RefsIn,NewSyms,Refs6),
 	get_fraenkel_defs(RefsIn,NewSyms,Refs7),
-	flatten([Refs0,Refs2,Refs3,Refs5,Refs6,Refs7], AddedRefs).
+	flatten([Refs0,Refs2,Refs3,Refs5,Refs5i,Refs6,Refs7], AddedRefs).
 
 
 %% fixpoint(+F,+Pos,+InfKind,+RefsIn,+OldSyms,+NewSyms,-RefsOut)
 %%
 %% Add symbol references until nothing added, OldSyms=[] when called first,
 %% it only serves during the recursion.
+%% fxp_refsin_/1 is an updated list of needed refs computed by the algo
+%% fxp_allsyms_/1 is an updated list of included symbols computed by the algo
 %% ###TODO: keep the refs of different kinds in separate lists,
 %%          so that the lookup using member/2 is not so expensive
 %%          (or just use the recorded db
@@ -1121,6 +1128,7 @@ cl_needed_syms( sort(Trm,_), AnteSyms):- !, collect_symbols_top(Trm, AnteSyms).
 cl_needed_syms(_,_):- throw(cluster).
 
 %% return the level on which cluster must not be used
+%% used also for identifyexp
 get_cluster_proof_level(Ref,Lev):-
 	fof_name(Ref, Id),!,
 	clause(fof(Ref,_,_,_,[Info|_]), _, Id),
@@ -1131,6 +1139,7 @@ get_cluster_proof_level(Ref,_):-
 
 %% check that cluster is applicable to [Pos1,Lev1]
 %% only relevant if from the same file
+%% used also for identifyexp
 check_cluster_position(F,[Pos1,Lev1],F,Ref2):- !,
 	ensure(article_position(Ref2,Pos2), throw(article_position2(F,Ref2))),
 	dbg(dbg_CLUSTERS,
@@ -1189,6 +1198,17 @@ get_fc_clusters_old([F|Regs],Pos,RefsIn,OldSyms,NewSyms,AddedRefs):-
 			  not(member(Ref1, RefsIn)),
 			  subset(AnteSyms, AllSyms)),
 		AddedRefs).
+
+%% fof_identifyexp contains precomputed info
+%% assumes that F is the current article
+get_identifyexp([F|Regs],Pos,_RefsIn,_OldSyms,_NewSyms,AddedRefs):-
+	findall(Ref1, (member(F1,[F|Regs]),
+			  fof_identifyexp(F1,Ref1,AnteSyms),
+			  check_cluster_position(F,Pos,F1,Ref1),
+			  not(fxp_refsin_(Ref1)),
+			  checklist(fxp_allsyms_,AnteSyms)),
+		AddedRefs1),
+	sort(AddedRefs1,AddedRefs).
 
 %% there are now 7469 requirements arithm (MML 930)
 get_requirements(Files,_RefsIn,_OldSyms,_NewSyms,ZeroedRefs,AddedRefs):-
@@ -4888,8 +4908,9 @@ level_atom([H|T],Atom):- ground([H|T]),
 	maplist(atom_number,V1,[H|T]),
 	concat_atom(V1,'_',Atom).
 
-strip_univ_quant((! _ : X ),Y):- !,strip_univ_quant(X,Y).
-strip_univ_quant(X,X).
+%% strip_univ_quant(+FlaIn,-StrippedFla,-UnivVars)
+strip_univ_quant((! Vars : X ),Y,[Vars | VarsX]):- !,strip_univ_quant(X,Y,VarsX).
+strip_univ_quant(X,X,[]).
 
 %% installs the indeces for fast lookup of fof's;
 %% should be called only after addition of custom fof's like
@@ -4912,6 +4933,8 @@ install_index:-
 	abolish(fof_parentlevel/2),
 	dynamic(fof_parentlevel/2),
 	abolish(fof_cluster/3),
+	abolish(fof_identifyexp/3),
+	dynamic(fof_identifyexp/3),
 	abolish(rc_syms_for_consider/7),
 	abolish(fof_req/3),
 	abolish(sym_ref_graph/2),
@@ -4956,7 +4979,7 @@ assert_level([H|T],Id):- !,level_atom([H|T],Lev1), assert(fof_level(Lev1, Id)).
 assert_level(_,_).
 
 assert_rc_syms(RCl, Fla, File):-
-	strip_univ_quant(Fla, (? [Var : Radix] : sort(Var, Attrs) )),
+	strip_univ_quant(Fla, (? [Var : Radix] : sort(Var, Attrs) ), _),
 	constr2list('&', _Last, AndList, Attrs),!,
 	process_attrsmode_list_for_cons(AndList, ConsAttrs0, _),
 	create_cons_info(ConsAttrs0, Radix, [ConsMode, FuncsNr, AttrsNr, FuncSyms, AttrSyms]),
@@ -4981,14 +5004,14 @@ assert_syms(rcluster,Ref1,_,_,Fla1,File1,_,LogicSyms,_,_):- !,
 	    assert_rc_syms(Ref1, Fla1, File1).
 
 assert_syms(definition,_,definition,[],Fla1,_,Id,_,_,_):-
-	strip_univ_quant(Fla1, ( KTerm = _)),
+	strip_univ_quant(Fla1, ( KTerm = _), _),
 	nonvar(KTerm),
 	KTerm =..[KFun|_],
 	atom_chars(KFun,[k|_]),
 	assert(fof_eq_def(KFun, Id)),!.
 
 assert_syms(definition,_,definition,[],Fla1,_,Id,_,_,_):-
-	strip_univ_quant(Fla1, ( sort(Var,STerm) <=> _)),
+	strip_univ_quant(Fla1, ( sort(Var,STerm) <=> _), _),
 	var(Var),
 	nonvar(STerm),
 	STerm =..[SFun|_],
@@ -4997,6 +5020,14 @@ assert_syms(definition,_,definition,[],Fla1,_,Id,_,_,_):-
 
 assert_syms(_,Ref1,definition,[],_,_,Id,_,Sec1,[redefinition(_,_,_,Sec2)|_]):-
 	assert(fof_redefines(Sec1, Sec2, Ref1, Id)).
+
+%% ###TODO: take the symbols from the UnivVars also for clusters (definitions?)
+assert_syms(identifyexp,Ref1,_,_,Fla1,File1,_,LogicSyms,_,_):- !,
+	strip_univ_quant(Fla1, ( KTerm = _), UnivVars),
+	collect_symbols_top([KTerm | UnivVars], AllSyms),
+	subtract(AllSyms,LogicSyms,Syms),
+	assert(fof_identifyexp(File1,Ref1,Syms)),
+	assert_fxp_data(Ref1,File1,identifyexp,Syms).
 
 assert_syms(fcluster,Ref1,_,_,Fla1,File1,_,_,_,_):- !,
 	cl_needed_syms_top(Fla1,AnteSyms),
