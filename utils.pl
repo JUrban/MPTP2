@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.118 $
+%% $Revision: 1.119 $
 %%
 %% File  : utils.pl
 %%
@@ -1550,7 +1550,7 @@ mk_problems_from_file(File, AddOptions):-
 	close(S),!,
 	mk_problems_from_list(List, AddOptions).
 
-%% ##TEST: :- declare_mptp_predicates,load_mml,all_articles(AA),checklist(abstract_fraenkels_if, AA),mml_dir(Dir), sformat(MmlLar, '~s../mml.lar', [Dir]), mk_problems_from_list(MmlLar,[[mizar_by,mizar_from,mizar_proof], [theorem, top_level_lemma]], [opt_TPTP_SHORT]).
+%% ##TEST: :- declare_mptp_predicates,load_mml,install_index,all_articles(AA),checklist(abstract_fraenkels_if, AA),mml_dir(Dir), sformat(MmlLar, '~s../mml.lar', [Dir]), mk_problems_from_articlelist(MmlLar,[[mizar_by,mizar_from,mizar_proof], [theorem, top_level_lemma]], [opt_TPTP_SHORT]).
 mk_problems_from_articlelist(File, Kinds, AddOptions):-
         open(File,read,S),
         read_lines(S,AList),
