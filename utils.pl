@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.119 $
+%% $Revision: 1.120 $
 %%
 %% File  : utils.pl
 %%
@@ -24,6 +24,9 @@ mml_dir("/home/urban/mptp/pl/").
 %mml_dir("/big/urban/miztmp/mml3/tmp/").
 mml_dir_atom(A):- mml_dir(S), string_to_atom(S,A).
 
+%% version of MML needed for requirements (encoding of numbers)
+mml_version([4,48,930]).
+%mml_version([4,100,1011]).
 %% switch to fail for debug
 optimize_fraenkel. % :- fail.
 
@@ -1302,6 +1305,8 @@ get_nr_fof(boole,N,Res):-
 %% that may be needed for adding the 'complex' attribute, using
 %% cluster   -> complex Element of REAL ;
 %%
+%% ##NOTE: the .zrt files will not be used; if the (non)zerotyp/2 predicates are
+%%         needed, they will be created by looking at requirements directives of the article
 %% The reason for not using custom (non)zerotyp (with upper cluster) is that the naming of
 %% such formulas becomes either inconsistent (different flas with the same name), or
 %% unstable (different name for the same fla).
@@ -2469,15 +2474,17 @@ parse_snow_specs(File):-
 %% X <= X  reflexivity
 
 
-%% this could become  MML-version specific
-req_ImaginaryUnit(k1_xcmplx_0).
-req_RealAdd(k2_xcmplx_0).
-req_RealMult(k3_xcmplx_0).
-req_RealNeg(k4_xcmplx_0).
-req_RealInv(k5_xcmplx_0).
-req_RealDiff(k6_xcmplx_0).
-req_RealDiv(k7_xcmplx_0).
-req_LessOrEqual(r1_xreal_0).
+%% this could become  MML-version specific (it is now)
+req_LessOrEqual([4,48,_],r1_xreal_0).
+req_LessOrEqual([4,100,_],r1_xxreal_0).
+req_ImaginaryUnit(_,k1_xcmplx_0).
+req_RealAdd(_,k2_xcmplx_0).
+req_RealDiff(_,k6_xcmplx_0).
+req_RealDiv(_,k7_xcmplx_0).
+req_RealInv(_,k5_xcmplx_0).
+req_RealMult(_,k3_xcmplx_0).
+req_RealNeg(_,k4_xcmplx_0).
+
 
 
 %% decode_pn_number(+Atom, [-MizExpr, -CmplxNr])
@@ -2488,47 +2495,47 @@ req_LessOrEqual(r1_xreal_0).
 %% and a canonical prolog term c(Im,Re) for proper complex numbers, and
 %% r(NumInt,DenInt) (e.g. r(-1,3)) for those whose imaginary part is 0,
 %% usable for prolog evaluation and comparison.
-decode_pn_number(Atom, [MizExpr, CmplxNr]):-
+decode_pn_number(MmlVersion, Atom, [MizExpr, CmplxNr]):-
 	ensure(atom_chars(Atom, Chars), decode_pn_number(Atom)),
-	ensure(decd_cmplx_nr(Chars, MizExpr, CmplxNr, []), decd_cmplx_nr(Chars)).
+	ensure(decd_cmplx_nr(Chars, MmlVersion, MizExpr, CmplxNr, []), decd_cmplx_nr(Chars)).
 
-decd_cmplx_nr([c|L1],MizRes,c(Im,Re),Hole):- !,
-	decd_rat_nr(L1, MizIm1, Im, [r|Rest]),
-	decd_rat_nr([r|Rest], MizRe1, Re, Hole),
-	req_ImaginaryUnit(ImU),
+decd_cmplx_nr([c|L1],MmlVersion,MizRes,c(Im,Re),Hole):- !,
+	decd_rat_nr(L1, MmlVersion, MizIm1, Im, [r|Rest]),
+	decd_rat_nr([r|Rest], MmlVersion, MizRe1, Re, Hole),
+	req_ImaginaryUnit(MmlVersion,ImU),
 	(
 	  MizIm1 = 1 ->
 	  MizIm = ImU
 	;
-	  req_RealMult(Mult),
+	  req_RealMult(MmlVersion,Mult),
 	  MizIm =.. [Mult, MizIm1, ImU]
 	),
 	(
 	  MizRe1 = 0 ->
 	  MizRes = MizIm
 	;
-	  req_RealAdd(Add),
+	  req_RealAdd(MmlVersion,Add),
 	  MizRes =.. [Add, MizIm, MizRe1]
 	).
 
-decd_cmplx_nr([r|L1],MizRes,RatNr,Hole):- decd_rat_nr([r|L1], MizRes, RatNr, Hole).
+decd_cmplx_nr([r|L1],MmlVersion,MizRes,RatNr,Hole):- decd_rat_nr([r|L1], MmlVersion, MizRes, RatNr, Hole).
 
-decd_rat_nr([r,n|L1],MizRes,r(SNum,SDen),Hole):- !,
-	decd_signed_nr(L1, MizNum, SNum1, [d|Rest]),
-	decd_signed_nr(Rest, MizDen, SDen1, Hole),
+decd_rat_nr([r,n|L1],MmlVersion,MizRes,r(SNum,SDen),Hole):- !,
+	decd_signed_nr(L1, MmlVersion, MizNum, SNum1, [d|Rest]),
+	decd_signed_nr(Rest, MmlVersion, MizDen, SDen1, Hole),
 	ratnr_normalize_sgn(r(SNum1,SDen1), r(SNum,SDen)),	
-	req_RealDiv(Div),
+	req_RealDiv(MmlVersion, Div),
 	MizRes =.. [Div, MizNum, MizDen].
 
-decd_rat_nr([r|L1],MizRes,r(SNum,1),Hole):- decd_signed_nr(L1,MizRes,SNum,Hole).
+decd_rat_nr([r|L1],MmlVersion,MizRes,r(SNum,1),Hole):- decd_signed_nr(L1,MmlVersion,MizRes,SNum,Hole).
 
-decd_signed_nr([m|L1],MizRes,SNum,Hole):- !,
+decd_signed_nr([m|L1],MmlVersion,MizRes,SNum,Hole):- !,
 	decd_nat_nr(L1, Res1, Hole),
 	SNum is 0 - Res1,
-	req_RealNeg(Neg),
+	req_RealNeg(MmlVersion, Neg),
 	MizRes =.. [Neg, Res1].
 
-decd_signed_nr(L1,Res,Res,Hole):- decd_nat_nr(L1,Res,Hole).
+decd_signed_nr(L1,_,Res,Res,Hole):- decd_nat_nr(L1,Res,Hole).
 
 decd_nat_nr([H|T],Res,Hole):-
 	digit(H),
@@ -2556,7 +2563,7 @@ ratnr_cmp(Order,r(A,B),r(C,D)):-
 	BC is B*C,
 	compare(Order, AD, BC).
 
-%% decode_eval_name(+Name,-Req,-Constructor,-Numbers)
+%% decode_eval_name(+Name,-Req,-Constructor,-MizNumbers,-Numbers)
 %%
 %% Name is a reference like: rqRealMult__k3_xcmplx_0__rnm1d2_rm2.
 %% Returns the requirement (rqRealMult), constructor (k3_xcmplx_0),
@@ -2567,7 +2574,8 @@ ratnr_cmp(Order,r(A,B),r(C,D)):-
 decode_eval_name(Name,Req,Constructor,MizNumbers,RatNrs):-
 	concat_atom([Req,Constructor,ArgsAtom], '__', Name),
 	concat_atom(ArgsAtoms,'_',ArgsAtom),
-	maplist(decode_pn_number, ArgsAtoms, Numbers),
+	mml_version(MmlVersion),
+	maplist(decode_pn_number, MmlVersion, ArgsAtoms, Numbers),
 	zip(MizNumbers, RatNrs, Numbers).
 
 
@@ -2669,21 +2677,35 @@ assert_arith_reqs([spc1_arithm,spc2_arithm,spc3_arithm,spc4_arithm,spc5_arithm,s
 %% req_RealDiv(k7_xcmplx_0).
 %% req_LessOrEqual(r1_xreal_0).
 
-retract_tptp_int_names:-
-	retractall(constr_name(k2_xcmplx_0,_,_)),
-	retractall(constr_name(k3_xcmplx_0,_,_)),
-	retractall(constr_name(k4_xcmplx_0,_,_)),
-	retractall(constr_name(k6_xcmplx_0,_,_)),
-	retractall(constr_name(k7_xcmplx_0,_,_)),
-	retractall(constr_name(r1_xreal_0,_,_)).
+retract_tptp_int_names(MmlVersion):-
+	req_RealAdd(MmlVersion, RealAdd),
+	req_RealMult(MmlVersion, RealMult),
+	req_RealNeg(MmlVersion, RealNeg),
+	req_RealDiff(MmlVersion, RealDiff),
+	req_RealDiv(MmlVersion, RealDiv),
+	req_LessOrEqual(MmlVersion, LessOrEqual),
 
-assert_tptp_int_names:-
-	assert(constr_name(k2_xcmplx_0,$plus_int,0)),
-	assert(constr_name(k3_xcmplx_0,$times_int,0)),
-	assert(constr_name(k4_xcmplx_0,$uminus_int,0)),
-	assert(constr_name(k6_xcmplx_0,$minus_int,0)),
-	assert(constr_name(k7_xcmplx_0,$divide_int,0)),
-	assert(constr_name(r1_xreal_0,$lesseq_int,0)).
+	retractall(constr_name(RealAdd,_,_)),
+	retractall(constr_name(RealMult,_,_)),
+	retractall(constr_name(RealNeg,_,_)),
+	retractall(constr_name(RealDiff,_,_)),
+	retractall(constr_name(RealDiv,_,_)),
+	retractall(constr_name(LessOrEqual,_,_)).
+
+assert_tptp_int_names(MmlVersion):-
+	req_RealAdd(MmlVersion, RealAdd),
+	req_RealMult(MmlVersion, RealMult),
+	req_RealNeg(MmlVersion, RealNeg),
+	req_RealDiff(MmlVersion, RealDiff),
+	req_RealDiv(MmlVersion, RealDiv),
+	req_LessOrEqual(MmlVersion, LessOrEqual),
+
+	assert(constr_name(RealAdd,$plus_int,0)),
+	assert(constr_name(RealMult,$times_int,0)),
+	assert(constr_name(RealNeg,$uminus_int,0)),
+	assert(constr_name(RealDiff,$minus_int,0)),
+	assert(constr_name(RealDiv,$divide_int,0)),
+	assert(constr_name(LessOrEqual,$lesseq_int,0)).
 
 %% argument is a rational number incoding an integer
 is_int_rat(r(_,1)).
@@ -2695,8 +2717,9 @@ is_int_rat(r(_,1)).
 %%
 %% ##TEST: :- declare_mptp_predicates,load_mml,print_int_evals(_).
 print_int_evals(Names):-
-	retract_tptp_int_names,
-	assert_tptp_int_names,
+	mml_version(MmlVersion),
+	retract_tptp_int_names(MmlVersion),
+	assert_tptp_int_names(MmlVersion),
 	findall(L,(
 		   current_atom(L),
 		   atom_concat(rq,L1,L),
