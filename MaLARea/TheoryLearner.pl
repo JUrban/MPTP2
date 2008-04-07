@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.76 $
+## $Revision: 1.77 $
 
 
 =head1 NAME
@@ -1612,7 +1612,9 @@ sub TmpProbIOCleanup
     my $files1 = $files . ".*" ;
     my $files3 = join(" ", glob($files));
     my $files4 = join(" ", glob($files1));
-    `tar czf $filestem.probio_$iter.tar.gz $files3 $files4`;
+    my $dir1 = $gtmpdir . $file_prefix;
+#    `tar czf $filestem.probio_$iter.tar.gz $files3 $files4`;
+    `tar czf $filestem.probio_$iter.tar.gz $dir1`;
     unlink glob($files);
     unlink glob($files1);
 }
