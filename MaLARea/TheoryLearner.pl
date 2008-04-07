@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.81 $
+## $Revision: 1.82 $
 
 
 =head1 NAME
@@ -33,6 +33,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --srassemul=<arg>,       -R<arg>
    --similarity=<arg>,      -i<arg>
    --parallelize=<arg>,     -j<arg>
+   --iterpolicy=<arg>,      -y<arg>
    --recadvice=<arg>,       -a<arg>
    --refsbgcheat=<arg>,     -r<arg>
    --alwaysmizrefs=<arg>,   -m<arg>
@@ -170,6 +171,13 @@ If greater than 1, runs problems in parallel, using Makefile with
 the -j<arg> option. Currently works only with E.
 Default is 1 - no parallelization.
 
+=item B<<< --iterpolicy=<arg>, -y<arg> >>>
+
+Policy for iterations. Default is 0 - the standard learning greedy,
+minimal axioms loop. Another implemented option is 1: prefers
+to grow the axiomlimit to the maximum regardless of previous
+success, and only when it is maximal, it drops to the lowest value.
+
 =item B<<< --recadvice=<arg>, -a<arg> >>>
 
 If nonzero, the axiom advising phase is repeated this many times,
@@ -253,7 +261,8 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $maxthreshold, $mintimelimit,   $permutetimelimit,
     $gparadox,     $geprover,       $gmace,
     $gtmpdir,      $gsrassemul,     $gusemodels,
-    $gparallelize, $gmakefile,      $gloadprovedby);
+    $gparallelize, $gmakefile,      $gloadprovedby,
+    $giterpolicy);
 
 my ($help, $man);
 my $gtargetsnr = 1233;
@@ -280,6 +289,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'srassemul|R=i'    => \$gsrassemul,
 	   'similarity|i=i'  => \$gsimilarity,
 	   'parallelize|j=i'  => \$gparallelize,
+	   'iterpolicy|y=i'  => \$giterpolicy,
 	   'recadvice|a=i'    => \$grecadvice,
 	   'refsbgcheat|r=i'    => \$grefsbgcheat,
 	   'alwaysmizrefs|m=i'    => \$galwaysmizrefs,
@@ -294,6 +304,10 @@ pod2usage(2) if ($#ARGV != 0);
 
 my $filestem   = shift(@ARGV);
 
+# $giterpolicy possible values
+sub pol_STD      ()  { 0 }
+sub pol_GROWTH   ()  { 1 }
+
 $gdofull = 1 unless(defined($gdofull));
 $giterrecover = -1 unless(defined($giterrecover));
 $gloadprovedby = "" unless(defined($gloadprovedby));
@@ -306,6 +320,7 @@ $gsrassemul = 1 unless(defined($gsrassemul));
 $gsrassemul = $gparadox * $gmace * $gsrassemul;
 $geprover = 1 unless(defined($geprover));
 $gparallelize = 1 unless(defined($gparallelize));
+$giterpolicy = pol_STD unless(defined($giterpolicy));
 $grecadvice = 0 unless(defined($grecadvice));
 $grefsbgcheat = 0 unless(defined($grefsbgcheat));
 $gsimilarity = 1 unless(defined($gsimilarity));
@@ -2012,7 +2027,11 @@ sub Iterate
 		}
 	    }
 
-	    $threshold = $minthreshold;
+	    if (($threshold < $maxthreshold) && ($giterpolicy == pol_GROWTH))
+	    {
+		$threshold = $threshold * 2;
+	    }
+	    else { $threshold = $minthreshold; }
 	    $gtimelimit = $mintimelimit;
 	    print "THRESHOLD: $threshold\nTIMELIMIT: $gtimelimit\n";
 	}
