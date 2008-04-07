@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.77 $
+## $Revision: 1.78 $
 
 
 =head1 NAME
@@ -964,7 +964,8 @@ sub PrintPruned
 }
 
 # writes a new spec_$iter file, created by testing the to_prove_$iter file
-# on net_$iter net
+# on net_$iter net; the .eval file is no longer written - it goes up to Gigabytes for 
+# all of MML
 # Note that @spec always contains its conjecture.
 # I/O: prints .s_$iter file with spec for each active conjecture;
 #      RunProblems() uses that
