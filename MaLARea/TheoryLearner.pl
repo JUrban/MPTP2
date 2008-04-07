@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.65 $
+## $Revision: 1.66 $
 
 
 =head1 NAME
@@ -31,6 +31,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --usemodels=<arg>,       -D<arg>
    --srassemul=<arg>,       -R<arg>
    --similarity=<arg>,      -i<arg>
+   --parallelize=<arg>,     -j<arg>
    --recadvice=<arg>,       -a<arg>
    --refsbgcheat=<arg>,     -r<arg>
    --alwaysmizrefs=<arg>,   -m<arg>
@@ -154,6 +155,12 @@ Combinations of these basic methods can be done by summing their codes
 Default is 1 (symbols only).
 
 
+=item B<<< --parallelize=<arg>, -j<arg> >>>
+
+If greater than 1, runs problems in parallel, using Makefile with
+the -j<arg> option. Currently works only with E.
+Default is 1 - no parallelization.
+
 =item B<<< --recadvice=<arg>, -a<arg> >>>
 
 If nonzero, the axiom advising phase is repeated this many times,
@@ -236,7 +243,8 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $grefsbgcheat, $galwaysmizrefs, $gsimilarity,
     $maxthreshold, $mintimelimit,   $permutetimelimit,
     $gparadox,     $geprover,       $gmace,
-    $gtmpdir,      $gsrassemul,     $gusemodels);
+    $gtmpdir,      $gsrassemul,     $gusemodels,
+    $gparallelize, $gmakefile);
 
 my ($help, $man);
 my $gtargetsnr = 1233;
@@ -261,6 +269,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'usemodels|D=i'    => \$gusemodels,
 	   'srassemul|R=i'    => \$gsrassemul,
 	   'similarity|i=i'  => \$gsimilarity,
+	   'parallelize|j=i'  => \$gparallelize,
 	   'recadvice|a=i'    => \$grecadvice,
 	   'refsbgcheat|r=i'    => \$grefsbgcheat,
 	   'alwaysmizrefs|m=i'    => \$galwaysmizrefs,
@@ -285,6 +294,7 @@ $gusemodels = 1 unless(defined($gusemodels));
 $gsrassemul = 1 unless(defined($gsrassemul));
 $gsrassemul = $gparadox * $gmace * $gsrassemul;
 $geprover = 1 unless(defined($geprover));
+$gparallelize = 1 unless(defined($gparallelize));
 $grecadvice = 0 unless(defined($grecadvice));
 $grefsbgcheat = 0 unless(defined($grefsbgcheat));
 $gsimilarity = 1 unless(defined($gsimilarity));
@@ -306,6 +316,8 @@ my $gdosyms = $gsimilarity & 1;
 
 my $gusenegmodels = $gusemodels & 1;
 my $guseposmodels = $gusemodels & 2;
+
+if($gparallelize > 1) { $gmakefile = 1; } else { $gmakefile = 0; }
 
 
 # change for debug printing
@@ -1245,6 +1257,111 @@ sub SetupMaceModel
 
 }
 
+# Create a makefile for this run, and run the problems via make.
+# Used for simple parallelization when $gparallelize > 1 .
+# Currently only limited to E.
+sub RunProblemsFromMakefile
+{
+    my ($iter, $file_prefix, $file_postfix, $conjs,
+	$threshold, $spass, $vampire, $paradox, $keep_cpu_limit) = @_;
+    my ($conj,$status,$eprover_status,$spass_status,$vamp_status,$paradox_status,$mace_status);
+    my $eprover = 1;
+    my $mace = $paradox * $gmace;
+    my %proved_by = ();
+    my ($models_found, $models_old, $models_new) = (0,0,0);
+
+    open(PROVED_BY,">$filestem.proved_by_$iter");
+    open(MAKEFILE,">$filestem.Makefile_$iter");
+    print MAKEFILE
+	("EPROVER = bin/eprover -tAuto -xAuto --tstp-format -s \n",
+	 "EPROOF = bin/eproof -tAuto -xAuto --tstp-format -s --cpu-limit=300 \n");
+    print MAKEFILE
+	('%.out: %\n\t\t \$(EPROVER) --cpu-limit=$gtimelimit \$* 2>\$*.err | grep "SZS status" > \$*.out\n',
+	 '\t\t if grep -q Theorem \$*.out; then \$(EPROOF) \$* > \$*.out1; fi \n');
+    print MAKEFILE "allout: ";
+    my $newline = 0;
+
+    foreach $conj (@$conjs)
+    {
+	my $file = $gtmpdir . $file_prefix . $conj . $file_postfix . ".s_" . $iter;
+	my $status = szs_UNKNOWN;
+	my @conj_entries = @{$gresults{$conj}};
+
+	($conj_entries[$#conj_entries]->[res_STATUS] eq szs_INIT) 
+	    or die "Bad initial results entry for $conj";
+	$conj_entries[$#conj_entries]->[res_CPULIM] = $gtimelimit;
+
+
+	if (($eprover == 1) && 
+	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
+	{
+	    print MAKEFILE "$file.out ";
+	    if(++$newline > 5) { $newline = 0; print MAKEFILE '\\ \n'; }
+	}
+    }
+    print MAKEFILE "\n";
+    close(MAKEFILE);
+
+    `make -j $gparallelize -f $filestem.Makefile_$iter`;
+
+    # collect results
+    foreach $conj (@$conjs)
+    {
+	my $file = $gtmpdir . $file_prefix . $conj . $file_postfix . ".s_" . $iter;
+	my $status = szs_UNKNOWN;
+	my @conj_entries = @{$gresults{$conj}};
+
+	if (($eprover == 1) && 
+	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
+	{
+	    my $status_line = `grep "SZS status" $file.out`;
+
+	    if ($status_line=~m/.*SZS status[ :]*(.*)/)
+	    {
+		$status = $1;
+	    }
+	    else
+	    {
+		print "Bad status line, assuming szs_UNKNOWN: $file: $status_line";
+		$status = szs_UNKNOWN;
+	    }
+	    print " E: $status";
+	    if ($status eq szs_THEOREM)
+	    {
+		($gtimelimit = $mintimelimit) if ($keep_cpu_limit == 0);
+		my $eproof_pid = open(EP,"cat $file.out1| grep file|")
+		    or die("bad eproof file $file.out1");
+		$proved_by{$conj} = [];
+		while ($_=<EP>)
+		{
+		    m/.*, *file\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $file: $_";
+		    my $ref = $1;
+		    exists $grefnr{$ref} or die "Unknown reference $ref in $file: $_";
+		    push( @{$proved_by{$conj}}, $ref);
+		}
+	    }
+	}
+
+	print "\n";
+	$conj_entries[$#conj_entries]->[res_STATUS] = $status;
+
+	if($status eq szs_THEOREM)
+	{
+	    my $conj_refs = join(",", @{$proved_by{$conj}});
+	    print PROVED_BY "proved_by($conj,[$conj_refs]).\n";
+	    my %nonconj_refs = ();
+	    @nonconj_refs{ @{$proved_by{$conj}} } = ();
+	    delete $nonconj_refs{ $conj };
+	    $conj_entries[$#conj_entries]->[res_NEEDED] = [ keys %nonconj_refs ];
+	}
+    }
+    close(PROVED_BY);
+    DumpResults($iter);
+    DumpModelInfo($iter);
+    TmpProbIOCleanup($iter, $file_prefix, $file_postfix);
+    print "MODELS: found: $models_found, old: $models_old, new: $models_new\n";
+    return \%proved_by;
+}
 
 
 
@@ -1270,6 +1387,9 @@ sub RunProblems
 
 #    if($gtimelimit<16) { $spass=1; $vampire=0}
 #    if($threshold<16) {$spass=1; $vampire=0}
+
+    if($gmakefile > 0) { return RunProblemsFromMakefile(@_); }
+
 
     open(PROVED_BY,">$filestem.proved_by_$iter");
     foreach $conj (@$conjs)
