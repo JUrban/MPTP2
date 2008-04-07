@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.71 $
+## $Revision: 1.72 $
 
 
 =head1 NAME
@@ -1669,7 +1669,7 @@ sub NormalizeAndCreateInitialSpecs
 	GenerateProblemsFromCommonFile($file_prefix, $file_postfix, $common_file);
     }
     open(INISPECS,">$filestem.specs");
-    foreach $i (<$file_prefix*$file_postfix>)
+    foreach $i (glob("$file_prefix*$file_postfix"))
     {
 	chop $i;
 	`bin/tptp4X -f tptp:short  -u machine -c $i > $i.tmp1`;
