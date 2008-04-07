@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.69 $
+## $Revision: 1.70 $
 
 
 =head1 NAME
@@ -1310,6 +1310,9 @@ sub RunProblemsFromMakefile
 	my $file = $gtmpdir . $file_prefix . $conj . $file_postfix . ".s_" . $iter;
 	my $status = szs_UNKNOWN;
 	my @conj_entries = @{$gresults{$conj}};
+
+	print "$conj: ";
+
 
 	if (($eprover == 1) && 
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
