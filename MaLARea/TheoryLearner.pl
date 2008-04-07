@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.79 $
+## $Revision: 1.80 $
 
 
 =head1 NAME
@@ -24,6 +24,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --permutetimelimit=<arg>, -P<arg>
    --dofull=<arg>,          -f<arg>
    --iterrecover=<arg>,     -I<arg>
+   --loadprovedby=<arg>,    -B<arg>
    --runspass=<arg>,        -S<arg>
    --runvampire=<arg>,      -V<arg>
    --runparadox=<arg>,      -p<arg>
@@ -110,6 +111,12 @@ Default is 1.
 Instead of starting fresh, assume that iteration passed as arg
 was already done. Load the result table and all other needed
 tables, and continue with the next iteration.
+
+=item B<<< --loadprovedby=<arg>, -B<B><arg> >>>
+
+Load the initial proved_by table from the given file.
+Otherwise, the initial proved_by table contains for each formulas
+the info that it can be proved by itself (this initializes the learning).
 
 =item B<<< --runspass=<arg>, -B<S><arg> >>>
 
@@ -244,7 +251,7 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $maxthreshold, $mintimelimit,   $permutetimelimit,
     $gparadox,     $geprover,       $gmace,
     $gtmpdir,      $gsrassemul,     $gusemodels,
-    $gparallelize, $gmakefile);
+    $gparallelize, $gmakefile,      $gloadprovedby);
 
 my ($help, $man);
 my $gtargetsnr = 1233;
@@ -262,6 +269,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'maxaxiomlimit|A=i'  => \$maxthreshold,
 	   'dofull|f=i'    => \$gdofull,
 	   'iterrecover|I=i' => \$giterrecover,
+	   'loadprovedby|B=s' => \$gloadprovedby,
 	   'runspass|S=i'    => \$gspass,
 	   'runvampire|V=i'    => \$gvampire,
 	   'runparadox|p=i'    => \$gparadox,
@@ -286,6 +294,7 @@ my $filestem   = shift(@ARGV);
 
 $gdofull = 1 unless(defined($gdofull));
 $giterrecover = -1 unless(defined($giterrecover));
+$gloadprovedby = "" unless(defined($gloadprovedby));
 $gspass = 1 unless(defined($gspass));
 $gvampire = 0 unless(defined($gvampire));
 $gparadox = 0 unless(defined($gparadox));
@@ -1781,11 +1790,30 @@ sub Iterate
 	# create the initial .proved_by_0 table (telling that each reference can be proved by itself)
 	# it gets overwritten by the first RunProblems(), so cat-ing all proved_by_* files
 	# together while running still gives all solved problems
-	open(PROVED_BY_0,">$filestem.proved_by_0");
 	my %proved_by_0 = ();
-	foreach $i (keys %grefnr) {
-	    print PROVED_BY_0 "proved_by($i,[$i]).\n";
-	    push( @{$proved_by_0{$i}}, $i);
+	open(PROVED_BY_0,">$filestem.proved_by_0");
+	if($gloadprovedby eq "")
+	{
+	    foreach $i (keys %grefnr)
+	    {
+		print PROVED_BY_0 "proved_by($i,[$i]).\n";
+		push( @{$proved_by_0{$i}}, $i);
+	    }
+	}
+	else
+	{
+	    open(LOADPROVEDBY, $gloadprovedby);
+	    while($_=<LOADPROVEDBY>)
+	    {
+		chop;
+		m/^proved_by\(([^,]+),\[([^\]]*)\]\)\./ or die "Bad proved_by entry: $_";
+		my ($conj,$needed_str) = ($1, $2);
+		(exists $gresults{$conj}) or die "Conjecture not in $gloadprovedby: $conj in $_";
+		print PROVED_BY_0 "$_\n";
+		my @needed_refs = split(/\,/, $needed_str);
+		push( @{$proved_by_0{$conj}}, @needed_refs);
+	    }
+	    close(LOADPROVEDBY);
 	}
 	close(PROVED_BY_0);
 
