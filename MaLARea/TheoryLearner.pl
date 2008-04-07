@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.78 $
+## $Revision: 1.79 $
 
 
 =head1 NAME
@@ -861,6 +861,35 @@ sub HandleSpec
     my $result;
     my $subsumed = 0;
     my $i = 0;
+
+    # include all Mizar refs into @spec if we are told so,
+    # and delete them from @reserve
+    if ($galwaysmizrefs == 1)
+    {
+	my $ref1;
+	my %mizrefs = ();
+	my %specrefs = ();
+	@specrefs{ @spec } = ();
+	foreach $ref1 (@all_refs)
+	{
+	    if(!(exists $specrefs{$ref1}) && ($ref1 =~ m/^[tldes][0-9]+/))
+	    {
+		push(@spec, $ref1);
+		$mizrefs{$ref1} = ();
+	    }
+	}
+
+	my @newreserve = ();
+	foreach $ref1 (@reserve)
+	{
+	    if(!(exists $mizrefs{$ref1}))
+	    {
+		push(@newreserve, $ref1);
+	    }
+	}
+	@reserve = @newreserve;
+    }
+
 
     # for each previous result, check that it does not subsume the
     # new specification; this is now achieved either by being subset of
