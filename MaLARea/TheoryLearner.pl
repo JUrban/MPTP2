@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.74 $
+## $Revision: 1.75 $
 
 
 =head1 NAME
@@ -1000,7 +1000,7 @@ sub SelectRelevantFromSpecs
     }
 
     my $iter1 = ($grecadvice > 0) ? $iter . "_" . $recurse : $iter;
-    my $snow_pid = open(SOUT,"bin/snow -test -I $filestem.test_$iter1 -F $filestem.net_$iter -L $wantednr -o allboth -B :0-$gtargetsnr|tee $filestem.eval_$iter1|") 
+    my $snow_pid = open(SOUT,"bin/snow -test -I $filestem.test_$iter1 -F $filestem.net_$iter -L $wantednr -o allboth -B :0-$gtargetsnr|") 
 	or die("Cannot start snow: $iter1");
 
     while ($_=<SOUT>)
@@ -1082,7 +1082,7 @@ sub SelectRelevantFromSpecs
     else
     {
 	close(SPEC);
-	`gzip $filestem.eval_$iter*`;
+#	`gzip $filestem.eval_$iter*`;
 	return \@active;
     }
 }
@@ -1610,7 +1610,9 @@ sub TmpProbIOCleanup
     my ($iter, $file_prefix, $file_postfix) = @_;
     my $files = $gtmpdir . $file_prefix . "*" . $file_postfix . ".s_" . $iter;
     my $files1 = $files . ".*" ;
-    `tar czf $filestem.probio_$iter.tar.gz $files $files1`;
+    my $files3 = join(" ", glob($files));
+    my $files4 = join(" ", glob($files1));
+    `tar czf $filestem.probio_$iter.tar.gz $files3 $files4`;
     unlink glob($files);
     unlink glob($files1);
 }
