@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.73 $
+## $Revision: 1.74 $
 
 
 =head1 NAME
@@ -1672,7 +1672,7 @@ sub NormalizeAndCreateInitialSpecs
     my %alllines2 = ();
     foreach $i (glob("$file_prefix*$file_postfix"))
     {
-	chop $i;
+#	chop $i;
 	my @lines2 = `bin/tptp4X -f tptp:short  -u machine -c $i`;
 	my $conj = "";
 	my %h = ();
