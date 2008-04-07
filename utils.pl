@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.120 $
+%% $Revision: 1.121 $
 %%
 %% File  : utils.pl
 %%
@@ -2258,6 +2258,7 @@ get_snow_symnr(Ref,Nr):- flag(snow_symnr,N,N+1), Nr is N+1,
 %% now prints in the article order, and also respects
 %% the order of defs and theorems in the article -
 %% needed for incremental learning
+%% ##TEST: :- mk_snow_input_for_learning(Snow1).
 mk_snow_input_for_learning(File):-
 	declare_mptp_predicates,
 	load_theorems,
