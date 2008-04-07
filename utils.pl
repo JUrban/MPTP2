@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.121 $
+%% $Revision: 1.122 $
 %%
 %% File  : utils.pl
 %%
@@ -2239,6 +2239,31 @@ find_article_roots(A,Roots):-
 %% ##TEST: :- assert(good(aff_3)),declare_mptp_predicates,load_mml,install_index,
 %%            findall(N,(good(X),find_article_roots(X,Roots),length(Roots,N),print(roots(X,N)),nl,print(Roots),nl),L),
 %%            sumlist(L,M),length(L,L1),print(L).
+
+%%%%%%%%%%%%%%%%%%%% Create initial proved_by table for malarea  %%%%%%%%%%%%%%%%%%%%
+
+%% print thms and top lemmas with top-level references, and including itself;
+%% all other top-level guys (defs, clusters, types) will be taken care of by malarea
+mk_proved_by_for_malarea(File):-
+	declare_mptp_predicates,
+	all_articles(Articles),
+	load_theorems,
+	load_lemmas,
+	tell(File),
+	%% ###TODO: this might be a bit fragile
+	(
+	  member(A,[tarski|Articles]),
+	  fof(Name,Kind,_Fla,file(A,Name),Info),
+	  member(Kind,[theorem,lemma_conjecture]),
+	  Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs) |_],
+	  findall(Ref,(member(Ref,Refs),atom_chars(Ref,[C|_]),
+		       member(C,[t,d,s,l])), Refs1),
+	  write(proved_by(Name,[Name | Refs1])),
+	  write('.'), nl,
+	  fail
+	;
+	  told
+	).
 
 
 %%%%%%%%%%%%%%%%%%%% Create training data for SNoW %%%%%%%%%%%%%%%%%%%%
