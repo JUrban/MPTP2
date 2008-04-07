@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.72 $
+## $Revision: 1.73 $
 
 
 =head1 NAME
@@ -1669,16 +1669,20 @@ sub NormalizeAndCreateInitialSpecs
 	GenerateProblemsFromCommonFile($file_prefix, $file_postfix, $common_file);
     }
     open(INISPECS,">$filestem.specs");
+    my %alllines2 = ();
     foreach $i (glob("$file_prefix*$file_postfix"))
     {
 	chop $i;
-	`bin/tptp4X -f tptp:short  -u machine -c $i > $i.tmp1`;
-	`mv $i.tmp1 $i`;
+	my @lines2 = `bin/tptp4X -f tptp:short  -u machine -c $i`;
 	my $conj = "";
 	my %h = ();
-	open(PROBLEM,$i);
-	while($_=<PROBLEM>)
+	open(PROBLEM,">$i");
+	open(PROBLEM1,">$gtmpdir$i.s_0");
+	foreach $_ (@lines2)
 	{
+	    print PROBLEM $_;
+	    print PROBLEM1 $_;
+	    $alllines2{$_} = ();
 	    if(m/^ *fof\( *([^, ]+) *,(.*)/)
 	    {
 		my ($nm,$rest)=($1,$2);
@@ -1688,13 +1692,15 @@ sub NormalizeAndCreateInitialSpecs
 		} else {$h{$nm}=();}
 	    }
 	}
-	close(PROBLEM);
 	print INISPECS "spec($conj,[" . join(",", keys %h) . "]).\n";
-	`cp  $i  $gtmpdir$i.s_0`;
-#	system(cp,($i, "$i.s_0"));
+	close(PROBLEM);
+	close(PROBLEM1);
     }
     close(INISPECS);
-    `cat $file_prefix*$file_postfix | sort -u > $filestem.allflas`;
+    open(ALLFLAS, ">$filestem.allflas");
+    foreach $_ (sort keys %alllines2) { print ALLFLAS $_; }
+    close(ALLFLAS);
+    %alllines2 = ();
     `sed -e 's/,conjecture,/,axiom,/' $filestem.allflas | sed -e 's/,lemma,/,axiom,/' | sort -u > $filestem.allasax`;
 
 ## proper things for .axp9 is tptp2X -fprover9  $filestem.allasax; followed by:
