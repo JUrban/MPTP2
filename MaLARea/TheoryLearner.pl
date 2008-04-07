@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.80 $
+## $Revision: 1.81 $
 
 
 =head1 NAME
@@ -115,8 +115,10 @@ tables, and continue with the next iteration.
 =item B<<< --loadprovedby=<arg>, -B<B><arg> >>>
 
 Load the initial proved_by table from the given file.
-Otherwise, the initial proved_by table contains for each formulas
+Otherwise, the default initial proved_by table contains for each formulas
 the info that it can be proved by itself (this initializes the learning).
+If an entry for some formula is missing in the given file,
+the default info will be added for it.
 
 =item B<<< --runspass=<arg>, -B<S><arg> >>>
 
@@ -1814,6 +1816,15 @@ sub Iterate
 		push( @{$proved_by_0{$conj}}, @needed_refs);
 	    }
 	    close(LOADPROVEDBY);
+	    # add those unhandled by $gloadprovedby
+	    foreach $i (keys %grefnr)
+	    {
+		if(!(exists $proved_by_0{$i}))
+		{
+		    print PROVED_BY_0 "proved_by($i,[$i]).\n";
+		    push( @{$proved_by_0{$i}}, $i);
+		}
+	    }
 	}
 	close(PROVED_BY_0);
 
