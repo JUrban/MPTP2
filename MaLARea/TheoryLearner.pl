@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.68 $
+## $Revision: 1.69 $
 
 
 =head1 NAME
@@ -1276,8 +1276,8 @@ sub RunProblemsFromMakefile
 	("EPROVER = bin/eprover -tAuto -xAuto --tstp-format -s \n",
 	 "EPROOF = bin/eproof -tAuto -xAuto --tstp-format -s --cpu-limit=300 \n");
     print MAKEFILE
-	("%.out: %\n\t \$(EPROVER) --cpu-limit=$gtimelimit \$* 2>\$*.err | grep \"SZS status\" > \$*.out\n",
-	 "\t if grep -q Theorem \$*.out; then \$(EPROOF) \$* > \$*.out1; fi \n");
+	("%.out: %\n\t\$(EPROVER) --cpu-limit=$gtimelimit \$* 2>\$*.err | grep \"SZS status\" > \$*.out\n",
+	 "\tif grep -q Theorem \$*.out; then \$(EPROOF) \$* > \$*.out1; fi \n");
     print MAKEFILE "allout: ";
     my $newline = 0;
 
@@ -1296,7 +1296,7 @@ sub RunProblemsFromMakefile
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 	    print MAKEFILE "$file.out ";
-	    if(++$newline > 5) { $newline = 0; print MAKEFILE "\\ \n"; }
+	    if(++$newline > 500000) { $newline = 0; print MAKEFILE "\\ \n"; }
 	}
     }
     print MAKEFILE "\n";
