@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.122 $
+%% $Revision: 1.123 $
 %%
 %% File  : utils.pl
 %%
@@ -2256,6 +2256,7 @@ mk_proved_by_for_malarea(File):-
 	  fof(Name,Kind,_Fla,file(A,Name),Info),
 	  member(Kind,[theorem,lemma_conjecture]),
 	  Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs) |_],
+	  Refs = [_ | _],
 	  findall(Ref,(member(Ref,Refs),atom_chars(Ref,[C|_]),
 		       member(C,[t,d,s,l])), Refs1),
 	  write(proved_by(Name,[Name | Refs1])),
