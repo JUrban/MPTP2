@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.83 $
+## $Revision: 1.84 $
 
 
 =head1 NAME
@@ -1803,10 +1803,17 @@ sub Iterate
 	}
 	# create the refnr and symnr files, load these tables and the refsyms table
 	CreateTables();
+	`cat $file_prefix*.refspec > $filestem.subrefs` if ($grefsbgcheat == 1);
+	LoadSpecs();		# initialises %gspec and %gresults
+	@conjs_todo{ keys %gspec }  = (); # initialize with all conjectures
+
+	@tmp_conjs = sort keys %conjs_todo;
+
 
 	# create the initial .proved_by_0 table (telling that each reference can be proved by itself)
 	# it gets overwritten by the first RunProblems(), so cat-ing all proved_by_* files
-	# together while running still gives all solved problems
+	# together while running still gives all solved problems, but the corresponding
+	# .train file remains for further learnings (which is good)
 	my %proved_by_0 = ();
 	open(PROVED_BY_0,">$filestem.proved_by_0");
 	if($gloadprovedby eq "")
@@ -1826,10 +1833,15 @@ sub Iterate
 		chop;
 		m/^proved_by\(([^,]+),\[([^\]]*)\]\)\./ or die "Bad proved_by entry: $_";
 		my ($conj,$needed_str) = ($1, $2);
-		(exists $gresults{$conj}) or die "Conjecture not in $gloadprovedby: $conj in $_";
-		print PROVED_BY_0 "$_\n";
-		my @needed_refs = split(/\,/, $needed_str);
-		push( @{$proved_by_0{$conj}}, @needed_refs);
+		if (exists $gresults{$conj})
+		{
+		    print PROVED_BY_0 "$_\n";
+		    my @needed_refs = split(/\,/, $needed_str);
+		    push( @{$proved_by_0{$conj}}, @needed_refs);
+		}
+		# only warning here, some MPTP files could be removed for various
+		# buggyness reasons, and it's a pain to die here
+		else { print "Warning: Ignoring unknown conjecture in $gloadprovedby: $conj in $_"; }
 	    }
 	    close(LOADPROVEDBY);
 	    # add those unhandled by $gloadprovedby
@@ -1850,12 +1862,6 @@ sub Iterate
 	print "trained 0\n";
 	# die "";
 	`bin/snow -train -I $filestem.train_0 -F $filestem.net_1  -B :0-$gtargetsnr`;
-
-	`cat $file_prefix*.refspec > $filestem.subrefs` if ($grefsbgcheat == 1);
-	LoadSpecs();		# initialises %gspec and %gresults
-	@conjs_todo{ keys %gspec }  = (); # initialize with all conjectures
-
-	@tmp_conjs = sort keys %conjs_todo;
 
 
 	# creates the $proved_by_1 hash table, and creates initial .out,out1 files;
