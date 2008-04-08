@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.84 $
+## $Revision: 1.85 $
 
 
 =head1 NAME
@@ -1044,7 +1044,7 @@ sub SelectRelevantFromSpecs
     @reserve = ();
     my @active = ();
     my $do_example = 0;
-    my $wantednr = $threshold * 4; # $gtargetsnr;
+    my $wantednr = $threshold * 10; # $gtargetsnr;
     my @specs = ();
 
     ## becomes 0 if no recadvice
