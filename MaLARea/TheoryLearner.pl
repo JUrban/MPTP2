@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.86 $
+## $Revision: 1.87 $
 
 
 =head1 NAME
@@ -1844,7 +1844,7 @@ sub Iterate
 		}
 		# only warning here, some MPTP files could be removed for various
 		# buggyness reasons, and it's a pain to die here
-		else { print "Warning: Ignoring unknown conjecture in $gloadprovedby: $conj in $_"; }
+		else { print "Warning: Ignoring unknown conjecture in $gloadprovedby: $conj in $_\n"; }
 	    }
 	    close(LOADPROVEDBY);
 	    # add those unhandled by $gloadprovedby
@@ -2289,8 +2289,8 @@ sub PrintTrainingFromHash
 	# just a sanity check
 	foreach $ref (@refs)
 	{
-	    exists $grefsyms{$ref} or die "Unknown reference $ref in $_";
-	    exists $grefnr{$ref} or die "Unknown reference $ref in $_";
+	    exists $grefsyms{$ref} or die "Unknown reference $ref in refs: @refs";
+	    exists $grefnr{$ref} or die "Unknown reference $ref in refs: @refs";
 	}
 	my $training_exmpl = join(",", @all_nrs);
 	print TRAIN "$training_exmpl:\n";
