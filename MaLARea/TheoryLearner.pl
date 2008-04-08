@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.88 $
+## $Revision: 1.89 $
 
 
 =head1 NAME
@@ -898,7 +898,8 @@ sub HandleSpec
 	@specrefs{ @spec } = ();
 	foreach $ref1 (@all_refs)
 	{
-	    if(!(exists $specrefs{$ref1}) && ($ref1 =~ m/^[tldes][0-9]+/))
+	    if(!(exists $specrefs{$ref1}) && ($ref1 =~ m/^[tldes][0-9]+_/)
+	       && (!($ref1 =~ m/^t[0-9]+_(numerals|boole|subset|arithm|real)$/)))
 	    {
 		push(@spec, $ref1);
 		$mizrefs{$ref1} = ();
@@ -1104,7 +1105,8 @@ sub SelectRelevantFromSpecs
 	    if ((exists ${$gspec{$check}}{$ref1}) && !($refnr == $grefnr{$check}))
 	    {
 		if (($#spec < $threshold) ||
-		    (($galwaysmizrefs == 1) && ($ref1 =~ m/^[tldes][0-9]+/)))
+		    (($galwaysmizrefs == 1) && ($ref1 =~ m/^[tldes][0-9]+_/)
+		     && (!($ref1 =~ m/^t[0-9]+_(numerals|boole|subset|arithm|real)$/))))
 		{
 		    push(@spec, $ref1);
 		}
