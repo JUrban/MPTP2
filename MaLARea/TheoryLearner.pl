@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.82 $
+## $Revision: 1.83 $
 
 
 =head1 NAME
@@ -1819,7 +1819,8 @@ sub Iterate
 	}
 	else
 	{
-	    open(LOADPROVEDBY, $gloadprovedby);
+	    # delete spaces in the $gloadprovedby file first
+	    my $lpb_pid = open(LOADPROVEDBY, "cat $gloadprovedby | tr -d ' '|");
 	    while($_=<LOADPROVEDBY>)
 	    {
 		chop;
