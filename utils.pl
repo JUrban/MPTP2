@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.123 $
+%% $Revision: 1.124 $
 %%
 %% File  : utils.pl
 %%
@@ -2602,7 +2602,7 @@ decode_eval_name(Name,Req,Constructor,MizNumbers,RatNrs):-
 	concat_atom([Req,Constructor,ArgsAtom], '__', Name),
 	concat_atom(ArgsAtoms,'_',ArgsAtom),
 	mml_version(MmlVersion),
-	maplist(decode_pn_number, MmlVersion, ArgsAtoms, Numbers),
+	maplist(decode_pn_number(MmlVersion), ArgsAtoms, Numbers),
 	zip(MizNumbers, RatNrs, Numbers).
 
 
