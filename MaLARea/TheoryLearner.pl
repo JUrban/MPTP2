@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.87 $
+## $Revision: 1.88 $
 
 
 =head1 NAME
@@ -1388,7 +1388,7 @@ sub RunProblemsFromMakefile
 	    if ($status eq szs_THEOREM)
 	    {
 		($gtimelimit = $mintimelimit) if ($keep_cpu_limit == 0);
-		my $eproof_pid = open(EP,"cat $file.out1| grep file|")
+		my $eproof_pid = open(EP,"cat $file.out1| grep ',file('|")
 		    or die("bad eproof file $file.out1");
 		$proved_by{$conj} = [];
 		while ($_=<EP>)
