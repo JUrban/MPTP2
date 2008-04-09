@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.124 $
+%% $Revision: 1.125 $
 %%
 %% File  : utils.pl
 %%
@@ -2623,6 +2623,7 @@ create_eval_fla(_Req, Constructor, MizNumbers, _RatNrs, FuncTerm = MizRes):-
 	
 %% gen_eval_fof(+Name,-Fof,+Options)
 %%
+%% ##TODO: add a third debugging clause (ensure) if it's ok for callers
 gen_eval_fof(Name,_Fof,_Options):- fof(Name,_,_,_,_),!,fail.
 gen_eval_fof(Name,Fof,_Options):-
 	decode_eval_name(Name, Req, Constructor, MizNumbers, RatNrs),
