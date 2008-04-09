@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.90 $
+## $Revision: 1.91 $
 
 
 =head1 NAME
@@ -1334,8 +1334,8 @@ sub RunProblemsFromMakefile
 	("EPROVER = bin/eprover -tAuto -xAuto --tstp-format -s \n",
 	 "EPROOF = bin/eproof -tAuto -xAuto --tstp-format -s --cpu-limit=300 \n");
     print MAKEFILE
-	("%.out: %\n\t\$(EPROVER) --cpu-limit=$gtimelimit \$* 2>\$*.err | grep \"SZS status\" > \$*.out\n",
-	 "\tif grep -q Theorem \$*.out; then \$(EPROOF) \$* > \$*.out1; fi \n");
+	("%.out: %\n\t\$(EPROVER) --cpu-limit=$gtimelimit \$* 2>\$*.err | grep \"SZS status\" > \$*.out; true\n",
+	 "\tif grep -q Theorem \$*.out; then \$(EPROOF) \$* > \$*.out1; fi; true \n");
     print MAKEFILE "allout: ";
     my $newline = 0;
 
