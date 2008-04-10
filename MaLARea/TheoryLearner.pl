@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.92 $
+## $Revision: 1.93 $
 
 
 =head1 NAME
@@ -228,9 +228,9 @@ use IO::Socket;
 
 my $gsymoffset    = 500000; # offset at which symbol numbering starts
 my $gstdtrmoffset = 1000000; # offset at which standard term numbering starts
-my $gnrmtrmoffset = 1500000; # offset at which normalized term numbering starts
-my $gposmodeloffset  = 2000000; # offset at which positive model numbering starts
-my $gnegmodeloffset  = 2500000; # offset at which negative model numbering starts
+my $gnrmtrmoffset = 3000000; # offset at which normalized term numbering starts
+my $gposmodeloffset  = 5000000; # offset at which positive model numbering starts
+my $gnegmodeloffset  = 6000000; # offset at which negative model numbering starts
 my %grefnr;                 # Ref2Nr hash for references
 my @gnrref;                 # Nr2Ref array for references
 
