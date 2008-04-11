@@ -28,12 +28,12 @@ MIZPL = /home/urban/xsltxt/xsl4mizar/mizpl.xsl
 
 %.xml: %.acc
 	$(VERIFIER.BFEX) -q   $*  
-	perl -i -e 'local $$/;$$_=<>; m/((.|[\n])*?)<PolyEval/; print $$1; while(m/(<PolyEval((.|[\n])*?)<\/PolyEval>)/g) { if(!(exists $$h{$$1})) { print $$1; $$h{$$1} = (); }} print "</ByExplanations>";' $*.bex
+	perl -i -e 'local $$/;$$_=<>; if(m/((.|[\n])*?)<PolyEval/) { print $$1; while(m/(<PolyEval((.|[\n])*?)<\/PolyEval>)/g) { if(!(exists $$h{$$1})) { print $$1; $$h{$$1} = (); }} print "</ByExplanations>";} else {print $$_}' $*.bex
 
 # ##TODO: the .err1 files are produced by removing the numerical requirement declarations,
 #         and running accom and verifier - this should tell where the requirements are needed
 %.bex1: %.bex %.err1
-	cat $*.bex| perl -e '$$k=shift; open(E,"$$k.err1"); while($$_=<E>) {($$l,$$c)=$$_=~m/([0-9]+) ([0-9]+) [0-9]+.*/; $$h{"$$l:$$c"} = (); } local $$/;$$_=<>; m/((.|[\n])*?)<PolyEval/; print $$1; while(m/(<PolyEval line=.([0-9]+). col=.([0-9]+).((.|[\n])*?)<\/PolyEval>)/g) { if((exists $$h{"$$2:$$3"})) { print $$1; }} print "</ByExplanations>";' $* > $*.bex1
+	cat $*.bex| perl -e '$$k=shift; open(E,"$$k.err1"); while($$_=<E>) {($$l,$$c)=$$_=~m/([0-9]+) ([0-9]+) [0-9]+.*/; $$h{"$$l:$$c"} = (); } local $$/;$$_=<>; if(m/((.|[\n])*?)<PolyEval/) { print $$1; while(m/(<PolyEval line=.([0-9]+). col=.([0-9]+).((.|[\n])*?)<\/PolyEval>)/g) { if((exists $$h{"$$2:$$3"})) { print $$1; }} print "</ByExplanations>";} else { print $$_; }' $* > $*.bex1
 
 %.xml1: %.xml
 	$(XSLTPROC) $(ADDABS)  $*.xml > $*.xml1 
