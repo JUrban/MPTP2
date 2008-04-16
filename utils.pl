@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.126 $
+%% $Revision: 1.127 $
 %%
 %% File  : utils.pl
 %%
@@ -1142,9 +1142,10 @@ get_cluster_proof_level(Ref,Lev):-
 get_cluster_proof_level(Ref,_):-
 	throw(get_cluster_proof_level(Ref)).
 
-%% check that cluster is applicable to [Pos1,Lev1]
-%% only relevant if from the same file
-%% used also for identifyexp
+%% Check that cluster is applicable to [Pos1,Lev1] .
+%% Only relevant if from the same file,
+%% The calling code has to ensure correctness for different files.
+%% Used also for identifyexp.
 check_cluster_position(F,[Pos1,Lev1],F,Ref2):- !,
 	ensure(article_position(Ref2,Pos2), throw(article_position2(F,Ref2))),
 	dbg(dbg_CLUSTERS,
