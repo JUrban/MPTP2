@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.125 $
+%% $Revision: 1.126 $
 %%
 %% File  : utils.pl
 %%
@@ -191,10 +191,12 @@ declare_mptp_predicates:-
  abolish(fof_parentlevel/2),
  dynamic(fof_parentlevel/2),
  abolish(fof_cluster/3),
+ dynamic(fof_cluster/3),
  abolish(fof_identifyexp/3),
  dynamic(fof_identifyexp/3),
  abolish(rc_syms_for_consider/7),
  abolish(fof_req/3),
+ dynamic(fof_req/3),
  abolish(sym_ref_graph/2),
  dynamic(sym_ref_graph/2),
  abolish(fof_ante_sym_cnt/4),
@@ -4994,10 +4996,12 @@ install_index:-
 	abolish(fof_parentlevel/2),
 	dynamic(fof_parentlevel/2),
 	abolish(fof_cluster/3),
+	dynamic(fof_cluster/3),
 	abolish(fof_identifyexp/3),
 	dynamic(fof_identifyexp/3),
 	abolish(rc_syms_for_consider/7),
 	abolish(fof_req/3),
+	dynamic(fof_req/3),
 	abolish(sym_ref_graph/2),
 	dynamic(sym_ref_graph/2),
 	abolish(fof_ante_sym_cnt/4),
