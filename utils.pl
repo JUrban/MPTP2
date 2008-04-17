@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.129 $
+%% $Revision: 1.130 $
 %%
 %% File  : utils.pl
 %%
@@ -5002,7 +5002,7 @@ load_mml_for_article(Article, ArticleDir, AddedNonMML):-
 	concat_atom([ArticleDir, '/', Article, '.evl2'], EvlFile),
 	consult(EvlFile),
 	ensure(needed_environ(Article, AddedNonMML, Articles), needed_environ(Article)),
-	theory_exts(Extensions),
+	Extensions = [dcl,dco,evl,sch,the,zrt], % lemmas not needed from others
 	checklist(load_theory_files_for(ArticleDir, Articles), Extensions).
 
 % should fail - load with theorems and propositions first
