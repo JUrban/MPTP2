@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.127 $
+%% $Revision: 1.128 $
 %%
 %% File  : utils.pl
 %%
@@ -50,6 +50,8 @@ opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme insta
 	       opt_TPTP_SHORT,	        %% short tptp format (parsable by vampire too)
 	       opt_NO_EX_BG_FLAS,       %% do not include existential background in fixpoint
 	       opt_FXP_CHECK_CNSDR,     %% add rclusters for suspisous consider_justifications
+	       opt_ADDED_NON_MML,       %% unary functor passing a list of nonMML article names
+	       opt_NON_MML_DIR,         %% unary functor passing a nonstandard directory for the article
 	       opt_PROB_PRINT_FUNC,	%% unary functor passing a special printing func
 	       opt_PP_SMALLER_INCLUDES, %% unary functor passing a list of possible includes,
 	                                %% used with print_refs_as_tptp_includes
@@ -211,8 +213,8 @@ declare_mptp_predicates:-
  dynamic(fraenkels_loaded/1),
  abolish(sch_orig_copy/2),
  dynamic(sch_orig_copy/2),
- abolish(articles_numbered/0),
- dynamic(articles_numbered/0),
+ abolish(articles_numbered/1),
+ dynamic(articles_numbered/1),
  abolish(article_position/2),
  dynamic(article_position/2),
  abolish(fxp_refsin_/1),
@@ -2159,25 +2161,31 @@ cmp_articles_in_mml_order(_,Name1,Name2):- throw(cmp_articles_in_mml_order(Name1
 
 
 %% number MML articles if needed
-number_articles:-  articles_numbered,!.
-number_articles:-
+%% takes a list of added articles (not in mml), that will be appended in their order
+%% to mml articles
+number_articles(Added):-  articles_numbered(Added),!.
+number_articles(Added):-
 	all_articles(L1),
-	L = [hidden,tarski|L1],
+	append([hidden,tarski|L1], Added, L),
 	abolish(article_nr/2),
 	dynamic(article_nr/2),!,
 	findall(foo, ( nth1(N,L,A), assert(article_nr(A,N))), _),
-	assert(articles_numbered).
+	assert(articles_numbered(Added)).
 
 
 
 %% sort fof names, using the article ordering, item numbers, and  positions
 sort_in_mml_order(U,U1):-
-	number_articles,
+	number_articles([]),
 	predsort(cmp_in_mml_order,U,U1).
 
-%% sort articles using the article ordering
-sort_articles_in_mml_order(ArticlesIn,ArticlesOut):-
-	number_articles,
+%% sort_articles_in_mml_order(+ArticlesIn, +AddedNonMML, -ArticlesOut)
+%%
+%% Sort ArticlesIn using the article ordering in mml.lar .
+%% AddedNonMML (usually empty list) can be used to pass extra nonMML
+%% articles that will be appended to MML in that order for numbering.
+sort_articles_in_mml_order(ArticlesIn, AddedNonMML, ArticlesOut):-
+	number_articles(AddedNonMML),
 	predsort(cmp_articles_in_mml_order,ArticlesIn,ArticlesOut).
 
 
@@ -3967,10 +3975,13 @@ inference DAG:
 %% smaller than Article, sort them by MML order.
 get_smaller_includes(Article, AllIncludes, SmallerIncludes):-
 	sublist(cmp_articles_in_mml_order(>, Article), AllIncludes, SmallerIncludes0),
-	sort_articles_in_mml_order(SmallerIncludes0, SmallerIncludes).
+	sort_articles_in_mml_order(SmallerIncludes0, [], SmallerIncludes).
 
-%% needed_environ(+Article, -Articles)
-needed_environ(Article, Articles):-
+%% needed_environ(+Article, +AddedNonMML, -Articles)
+%%
+%% AddedNonMML (usually empty list) can be used to pass extra nonMML
+%% articles that will be appended to MML in that order for numbering.
+needed_environ(Article, AddedNonMML, Articles):-
 	theory(Article, Theory),
 	member(constructors(Constrs),Theory),
 	member(registrations(Regs),Theory),
@@ -3979,13 +3990,18 @@ needed_environ(Article, Articles):-
 	member(theorems(Thms),Theory),
 	member(schemes(Schms),Theory),
 	union1([Constrs,Regs,Reqs,Defs,Thms,Schms],[],Articles0),
-	sort_articles_in_mml_order(Articles0, Articles).
+	sort_articles_in_mml_order(Articles0, AddedNonMML, Articles).
 
 %% ensure that fraenkels are abstracted in all prerequisities
 %% of Article (changes the fraenkels_loaded/1 predicate).
 %% calling install_index after this is a good idea
-abstract_prereq_fraenkels(Article):-
-	needed_environ(Article, Prereqs),
+abstract_prereq_fraenkels(Article, Options):-
+	(member(opt_ADDED_NON_MML(AddedNonMML),Options) ->
+	    Added = AddedNonMML
+	;
+	    Added = []
+	),
+	needed_environ(Article, Added, Prereqs),
 	checklist(abstract_fraenkels_if, Prereqs).
 
 %% should be used only right after loading a full article File
@@ -4012,12 +4028,17 @@ install_article_positions(File):-
 %% after retractall(fof(_,_,_,file(Article,_),_)), is run after
 %% the main processing.
 load_proper_article(Article,Options,PostLoadFiles):-
-	mml_dir_atom(MMLDir),
-	concat_atom([MMLDir, Article, '.xml2'],File),
-	concat_atom([MMLDir, Article, '.dcl2'],DCL),
-	concat_atom([MMLDir, Article, '.dco2'],DCO),
-	concat_atom([MMLDir, Article, '.the2'],THE),
-	concat_atom([MMLDir, Article, '.sch2'],SCH),
+	(
+	  member(opt_NON_MML_DIR(NonMMLDir),Options) ->
+	  Dir = NonMMLDir
+	;
+	  mml_dir_atom(Dir)
+	),
+	concat_atom([Dir, Article, '.xml2'],File),
+	concat_atom([Dir, Article, '.dcl2'],DCL),
+	concat_atom([Dir, Article, '.dco2'],DCO),
+	concat_atom([Dir, Article, '.the2'],THE),
+	concat_atom([Dir, Article, '.sch2'],SCH),
 	%% remove the ovelapping mml parts first
 	retractall(fof(_,_,_,file(Article,_),_)),
 	retractall(fraenkels_loaded(Article)),
@@ -4031,7 +4052,7 @@ load_proper_article(Article,Options,PostLoadFiles):-
 	once(assert_sch_instances(Article,Options)),
 	install_index,
 	abstract_fraenkels(Article, [], _, _),
-	abstract_prereq_fraenkels(Article),
+	abstract_prereq_fraenkels(Article, Options),
 	install_index,
 	sublist(exists_file,[DCL,DCO,THE,SCH],PostLoadFiles).
 
@@ -4044,7 +4065,12 @@ load_proper_article(Article,Options,PostLoadFiles):-
 %% the main processing.
 prepare_for_article(Article,Options,Dir,PostLoadFiles):-
 	load_proper_article(Article,Options,PostLoadFiles),
-	concat_atom(['problems/',Article,'/'],Dir),
+	(
+	  member(opt_NON_MML_DIR(NonMMLDir),Options) ->
+	  concat_atom([NonMMLDir,'/problems/',Article,'/'],Dir)
+	;
+	  concat_atom(['problems/',Article,'/'],Dir)
+	),
 	(exists_directory(Dir) -> (string_concat('rm -r -f ', Dir, Command),
 				      shell(Command)); true),
 	make_directory(Dir).
@@ -4484,7 +4510,7 @@ print_refs_as_tptp_includes(Conjecture, AllRefs, Options):-
 	  member(opt_PP_SMALLER_INCLUDES(AllIncludes), Options) ->
 	  get_smaller_includes(Article, AllIncludes, IncludeArticles)
 	;
-	  needed_environ(Article, IncludeArticles)
+	  needed_environ(Article, [], IncludeArticles)
 	),
 	checklist(print_include_directive, IncludeArticles),
 	checklist(print_ref_as_axiom(Options), NonIncludeRefs),
@@ -4918,7 +4944,7 @@ print_for_nd(Q,InfKind,Refs,Assums,Options):- throw(print_for_nd(Q,InfKind,Refs,
 
 %%%%%%%%%%%%%%%%%%%% MML loading and indexing %%%%%%%%%%%%%%%%%%%%
 
-%% allowed file estensions for theory files
+%% allowed file extensions for theory files
 theory_exts([dcl,dco,evl,sch,the,lem,zrt]).
 
 %% Kind must be in theory_exts
