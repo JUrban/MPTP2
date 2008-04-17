@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.128 $
+%% $Revision: 1.129 $
 %%
 %% File  : utils.pl
 %%
@@ -4958,6 +4958,27 @@ load_theory_files(Kind):-
 	expand_file_name(WildCard, Names),
 	load_files(Names,[silent(true)]).
 
+%% get_absolute_path_for(+Kind, +MMLDir, +NonMMLDir, +Article, -Path)
+%%
+%% tries with MMLDir, if not found, succeeds with NonMMLDir
+get_absolute_path_for(Kind, MMLDir, NonMMLDir, Article, Path):-
+	concat_atom([MMLDir, Article, '.', Kind, '2' ], MMLPath),
+	(
+	  exists_file(MMLPath) ->
+	  Path = MMLPath
+	;
+	  concat_atom([NonMMLDir, Article, '.', Kind, '2' ], Path)
+	).
+%% load_theory_files_for(+NonMMLDir, +Articles, +Kind)
+load_theory_files_for(NonMMLDir, Articles, Kind):-
+	atom(Kind),
+	theory_exts(Exts),
+	member(Kind, Exts),
+	mml_dir_atom(MMLDir),
+	maplist(get_absolute_path_for(Kind, MMLDir, NonMMLDir), Articles, Paths1),
+	sublist(exists_file,Paths1,ToLoad1),
+	load_files(ToLoad1,[silent(true)]).
+
 
 load_clusters:- load_theory_files(dcl).
 load_constructors:- load_theory_files(dco).
@@ -4973,6 +4994,16 @@ load_mml:-
 	load_clusters,load_theorems,load_schemes,
 	load_constructors,load_environs,load_numtypes.
 
+%% load_mml_for_article(+Article, +ArticleDir, +AddedNonMML)
+%%
+%% The ArticleDir is assumed to be the location of the .evl2 file,
+%% and also the location of all nonMML articles (those in the AddedNonMML list).
+load_mml_for_article(Article, ArticleDir, AddedNonMML):-
+	concat_atom([ArticleDir, '/', Article, '.evl2'], EvlFile),
+	consult(EvlFile),
+	ensure(needed_environ(Article, AddedNonMML, Articles), needed_environ(Article)),
+	theory_exts(Extensions),
+	checklist(load_theory_files_for(ArticleDir, Articles), Extensions).
 
 % should fail - load with theorems and propositions first
 %% ##NOTE: this can fail depending on wjther preprocessing stages
