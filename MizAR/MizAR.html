@@ -1,0 +1,55 @@
+<html>
+  <head>
+    <title>Automated Reasoning for Mizar</title>
+<script language="JavaScript">
+</script>
+  </head>
+
+  <body>
+    <center>
+    <H3 ALIGN=CENTER><FONT COLOR="#0099ff"><FONT SIZE=5 STYLE="font-size: 22pt">
+    <B>Automated Reasoning for Mizar</B>
+    </FONT></FONT></H3>
+    </center>
+
+    <dl>
+      <dt>
+        <font size="+1">
+          <strong>Insert a <a href=ftp://mizar.uwb.edu.pl/pub/version/mml/card_1.miz>Mizar article<a/> into the text field<br><br></strong>
+        </font>
+      </dt>      
+      <dd>
+        <FORM METHOD="POST"  ACTION="cgi-bin/MizAR.cgi">
+         <br>
+          <center>
+          <table>
+            <tr>
+              <td colspan=2>
+                <textarea valign=top NAME="Formula" rows=30 cols=80 wrap=virtual></textarea><br><br>
+              </td>
+            </tr>
+	    <tr>
+              <td align=right>
+	      Article name (must not be in the current MML):
+                <INPUT TYPE="text" NAME="Name" VALUE="mtest1" SIZE="20">
+              </td>
+            </tr>
+<!-- 	    <tr> -->
+<!--               <td align=right> -->
+<!-- 	      Lines to prove (comma separated list of lines or line ranges, e.g.: 3-8,34,89-123): -->
+<!--                 <INPUT TYPE="text" NAME="Lines" VALUE="1-10000" SIZE="20"> -->
+<!--               </td> -->
+<!--             </tr> -->
+            <tr>
+              <td align=right>
+                <INPUT TYPE="submit" VALUE="Send">
+                <INPUT TYPE="reset" VALUE="Clear">
+              </td>
+            </tr>
+          </table>
+          </center>
+        </FORM>
+      </dd>
+    </dl>
+  </body>
+</html>
