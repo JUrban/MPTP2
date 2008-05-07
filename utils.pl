@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.130 $
+%% $Revision: 1.131 $
 %%
 %% File  : utils.pl
 %%
@@ -750,7 +750,7 @@ get_consider_empty_justif_types(RefsIn, ConsEmptyJustifTypes):-
 				      [mptp_info(_,_,_,_,
 						 [_,mizar_item(consider_justification),
 						  considered_constants(Consts)|_]),
-				       inference(mizar_by,[],[])|_])),
+				       inference(mizar_by,_,[])|_])),
 		  member(Const,Consts),
 		  fof_section(Const,Id),
 		  clause(fof(_,_,sort(Const,Type),file(_,Const),
@@ -2862,8 +2862,8 @@ add_univ_context([H|T], Fla, ( ! [H|T] : ( Fla) )).
 %%       This assumes that fraenkels will be abstracted after this (which is true).
 gen_sch_instance(SI_Name,F,Res,Options):-
 	fof(Ref,_,_,file(F,_),
-	    [MPTPInfo,inference(mizar_from,[InstInfo|_],_Refs)|_]),
-	InstInfo = scheme_instance(SI_Name,S_Name,Ref,_,Substs),
+	    [MPTPInfo,inference(mizar_from,InferInfo,_Refs)|_]),
+	member(scheme_instance(SI_Name,S_Name,Ref,_,Substs), InferInfo),
 	MPTPInfo= mptp_info(_Nr,Lev,_Kind,Pos,_Args),
 	once((sch_orig_copy(S_Name,Fla); fof(S_Name,theorem,Fla,_,_))),
 	copy_term(Fla,Tmp),
@@ -2877,7 +2877,7 @@ gen_sch_instance(SI_Name,F,Res,Options):-
 	),
 	Res = fof(SI_Name,theorem, Fla1, file(F,SI_Name),
 		  [mptp_info(0,Lev1,scheme_instance,Pos,[]),
-		   inference(mizar_sch_instance,[InstInfo],[S_Name])]).
+		   inference(mizar_sch_instance,InferInfo,[S_Name])]).
 
 %% How to generate a proof of the scheme instance from the original scheme
 %% proof:
@@ -3062,9 +3062,9 @@ mk_sch_instance_problem_from_th(Ancestors,SI_Name,Options, SubstStackIn, NewSubs
 	%% also create the substitutions and the UnivContext
 	load_proper_article(InstArticle, Options, PostLoadFiles),
 	fof(Problem1,_,_,file(InstArticle,_),
-	    [MPTPInfo,inference(mizar_from,[InstInfo|_],_Refs)|_]),
+	    [MPTPInfo,inference(mizar_from,InferInfo,_Refs)|_]),
 	MPTPInfo = mptp_info(_,_,_,position(InstLine, InstCol),_),
-	InstInfo = scheme_instance(SI_Name,S_Name,_Ref,_,Substs),
+	member(scheme_instance(SI_Name,S_Name,_Ref,_,Substs), InferInfo),
 	zip_s('/',SchFuncsAndPreds,_SchInsts,Substs),
 	copy_term(Fla,Tmp),
 	apply_sch_substs_top(Substs,Tmp,Fla0),
@@ -4130,7 +4130,8 @@ mk_article_problems(Article,Kinds,Options):-
 	  findall(Ref,
 		  (
 		    member(R1,PList),
-		    get_ref_fof(R1,fof(R1,_,_,_,[_,inference(mizar_proof,[proof_level(Lev)|_],_) |_])),
+		    get_ref_fof(R1,fof(R1,_,_,_,[_,inference(mizar_proof,InferInfo,_) |_])),
+		    member(proof_level(Lev), InferInfo),
 		    get_sublevel_proved_names(Lev,LRefs),
 		    member(Ref, LRefs)
 		  ),
@@ -4329,35 +4330,7 @@ print_problem(P,F,[_InferenceKinds,_PropositionKinds|Rest],Options,
 	    call(Print_Func, P, AllRefs, Options)
 	;
 	    print_refs(P, AllRefs, Options)
-	),
-	    
-	%% following is now replaced by print_refs (but that is not tested yet)
-/*
-	delete(AllRefs, P, ProperRefs1),
-
-	%% print sort-transformed axioms and conjecture
-	findall(dummy,
-		(
-		  member(Q,AllRefs),
-		  get_ref_fof(Q, fof(Q,_Q1,Q2,Q3,Q4)),
-		  sort_transform_top(Q2,SR2),
-		  numbervars([SR2,Q3,Q4],0,_),
-		  (Q=P ->
-		      Status = conjecture,
-		      QQ3 = inference(mizar_bg_added,[status(thm)],ProperRefs1),
-		      QQ4 = [Q3]
-		  ;
-		      Status = axiom, QQ3 = Q3, QQ4= []
-		  ),
-		  (member(opt_MK_TPTP_INF,Options) ->
-		      print(fof(Q,Status,SR2,QQ3,QQ4))
-		  ;
-		      print(fof(Q,Status,SR2,Q3,Q4))
-		  ),
-		  write('.'),nl
-		),
-		_),
-*/
+	),	    
 	told.
 
 
@@ -4545,7 +4518,7 @@ print_refs_as_tptp_includes(Conjecture, AllRefs, Options):-
 mk_nd_problem(P,F,Prefix,Options):-
 	(var(P) -> fof_file(F,Id); true),
 	clause(fof(P,Role1,Fla,file(F,P),[mptp_info(_,[],MPropKind,position(Line,Col),_),
-					  inference(InfKind,InfOpts,_)|_]),_,Id),
+					  inference(InfKind,InferInfo,_)|_]),_,Id),
 	(
 	  Role1 = theorem,
 	  %% to avoid canceled theorems
@@ -4555,7 +4528,7 @@ mk_nd_problem(P,F,Prefix,Options):-
 	;
 	  Role1 = lemma_conjecture),
 	(InfKind = mizar_proof ->
-	    member(proof_level(Lev), InfOpts)
+	    member(proof_level(Lev), InferInfo)
 	;
 	    Lev = [0]
 	),
@@ -4686,7 +4659,7 @@ mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Assums,Options):-
 mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Assums,Options):-
 	get_ref_fof(P,fof(P,_,_,file(F,_),[mptp_info(_,_,_,_,_)
 					  |Rest_of_info])), !,
-	member( inference(InfKind,_InfOpts,InfRefs), Rest_of_info),
+	member( inference(InfKind,_InferInfo,InfRefs), Rest_of_info),
 	ensure( member(InfKind, [mizar_by, mizar_from]), mk_nd_tree(P,InfKind)),
 	get_mizar_inf_refs(F, P, InfRefs, InfKind, AllRefs1),
 	delete(AllRefs1, P, AllRefs),
