@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.132 $
+%% $Revision: 1.133 $
 %%
 %% File  : utils.pl
 %%
@@ -3066,8 +3066,8 @@ mk_sch_instance_problem_from_th(Ancestors,SI_Name,Options, SubstStackIn, NewSubs
 	MPTPInfo = mptp_info(_,_,_,position(InstLine0, InstCol0),_),
 	member(scheme_instance(SI_Name,S_Name,_Ref,_,Substs), InferInfo),
 	(
-	    member(position(InstLine,InstCol), InferInfo),!
-	  ;
+	    member(position(InstLine,InstCol), InferInfo) -> true
+	;
 	    InstLine = InstLine0,
 	    InstCol = InstCol0
 	),
@@ -4251,7 +4251,7 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	  InfKind = InfKind0,
 	  %% inference's position can differ from proposition's
 	  (
-	    member(position(Line,Col), InfInfo),!
+	    member(position(Line,Col), InfInfo) -> true
 	  ;
 	    Line = Line0,
 	    Col = Col0
@@ -4548,7 +4548,7 @@ mk_nd_problem(P,F,Prefix,Options):-
 	    Lev = [0]
 	),
 	(
-	  member(position(Line,Col), InferInfo),!
+	  member(position(Line,Col), InferInfo) -> true
 	;
 	  Line = Line0,
 	  Col = Col0
