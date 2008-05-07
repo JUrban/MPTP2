@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.131 $
+%% $Revision: 1.132 $
 %%
 %% File  : utils.pl
 %%
@@ -3063,8 +3063,14 @@ mk_sch_instance_problem_from_th(Ancestors,SI_Name,Options, SubstStackIn, NewSubs
 	load_proper_article(InstArticle, Options, PostLoadFiles),
 	fof(Problem1,_,_,file(InstArticle,_),
 	    [MPTPInfo,inference(mizar_from,InferInfo,_Refs)|_]),
-	MPTPInfo = mptp_info(_,_,_,position(InstLine, InstCol),_),
+	MPTPInfo = mptp_info(_,_,_,position(InstLine0, InstCol0),_),
 	member(scheme_instance(SI_Name,S_Name,_Ref,_,Substs), InferInfo),
+	(
+	    member(position(InstLine,InstCol), InferInfo),!
+	  ;
+	    InstLine = InstLine0,
+	    InstCol = InstCol0
+	),
 	zip_s('/',SchFuncsAndPreds,_SchInsts,Substs),
 	copy_term(Fla,Tmp),
 	apply_sch_substs_top(Substs,Tmp,Fla0),
@@ -4209,7 +4215,7 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	    PropKind \= top_level_lemma
 	  )
 	),
-	fof(P,_,_Fla,file(F,_),[mptp_info(_Nr,Lev,MPropKind,position(Line,Col),Item_Info)
+	fof(P,_,_Fla,file(F,_),[mptp_info(_Nr,Lev,MPropKind,position(Line0,Col0),Item_Info)
 			       |Rest_of_info]),
 
 	(member(MPropKind,[fcluster,ccluster,rcluster]) ->
@@ -4235,6 +4241,23 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	  true
 	),
 	(
+	  member(snow_spec, Rest) ->
+	  snow_spec(P, Refs0),
+	  InfKind = mizar_by,
+	  Line = Line0,
+	  Col = Col0
+	;
+	  Inference_info = inference(InfKind0,InfInfo,Refs0),
+	  InfKind = InfKind0,
+	  %% inference's position can differ from proposition's
+	  (
+	    member(position(Line,Col), InfInfo),!
+	  ;
+	    Line = Line0,
+	    Col = Col0
+	  )
+	),
+	(
 	  member(opt_LINE_COL_NMS, Options) ->
 	  concat_atom([Prefix,F,'__',Line,'_',Col],Outfile)
 	;
@@ -4245,14 +4268,6 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	  ;	   
 	    concat_atom([Prefix,F,'__',P],Outfile)
 	  )
-	),
-	(
-	  member(snow_spec, Rest) ->
-	  snow_spec(P, Refs0),
-	  InfKind = mizar_by
-	;
-	  Inference_info = inference(InfKind0,InfInfo,Refs0),
-	  InfKind = InfKind0
 	),
 	% fof_name(P, Id1),
 	%% this is used to limit clusters to preceding clauses from the nitial file;
@@ -4517,7 +4532,7 @@ print_refs_as_tptp_includes(Conjecture, AllRefs, Options):-
 %% top-level propositions
 mk_nd_problem(P,F,Prefix,Options):-
 	(var(P) -> fof_file(F,Id); true),
-	clause(fof(P,Role1,Fla,file(F,P),[mptp_info(_,[],MPropKind,position(Line,Col),_),
+	clause(fof(P,Role1,Fla,file(F,P),[mptp_info(_,[],MPropKind,position(Line0,Col0),_),
 					  inference(InfKind,InferInfo,_)|_]),_,Id),
 	(
 	  Role1 = theorem,
@@ -4531,6 +4546,12 @@ mk_nd_problem(P,F,Prefix,Options):-
 	    member(proof_level(Lev), InferInfo)
 	;
 	    Lev = [0]
+	),
+	(
+	  member(position(Line,Col), InferInfo),!
+	;
+	  Line = Line0,
+	  Col = Col0
 	),
 	(member(opt_LINE_COL_NMS, Options) ->
 	    concat_atom([Prefix,F,'__',Line,'_',Col],Outfile)
