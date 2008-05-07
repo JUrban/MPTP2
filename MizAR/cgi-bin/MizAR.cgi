@@ -1,5 +1,8 @@
 #!/usr/bin/perl -w 
 
+# cgi preparing mizar article for atp methods
+# crude initial hack
+
 use strict;
 use CGI;
 use IO::Socket;
@@ -9,17 +12,17 @@ use HTTP::Request::Common;
 use LWP::Simple;
 
 my $MyUrl = 'http://octopi.mizar.org/~mptp';
+my $Xsl4MizarDir = "/home/mptp/public_html/xsl4mizar";
+my $Mizfiles = "/home/mptp/public_html/mml";
+my $utilspl =  "/home/mptp/public_html/cgi-bin/bin/utils.pl";
 my $TemporaryDirectory = "/tmp";
 my $TemporaryProblemDirectory = "$TemporaryDirectory/matp_$$";
 my $PidNr = $$;
-my $Xsl4MizarDir = "/home/mptp/public_html/xsl4mizar";
-my $Mizfiles = "/home/mptp/public_html/mml";
 my $MizHtml = $MyUrl . "/mml/html/";
 my $mizf =     "bin/mizf";
 my $exporter =     "bin/mizar/exporter";
 my $xsltproc =     "bin/xsltproc";
 my $dbenv = "bin/dbenv.pl";
-my $utilspl =  "/home/mptp/public_html/cgi-bin/bin/utils.pl";
 my $addabsrefs = "$Xsl4MizarDir/addabsrefs.xsl";
 my $miz2html = "$Xsl4MizarDir/miz.xsl";
 my $mizpl = "$Xsl4MizarDir/mizpl.xsl";
@@ -236,15 +239,15 @@ unless($text_mode)
 # #!/usr/bin/tcsh
     my $Tmp1 = $TemporaryProblemDirectory . '/';
 # swipl -G50M -s utils.pl -g "mptp2tptp('$1',[opt_NO_FRAENKEL_CONST_GEN],user),halt." |& grep "^fof"
-    system("cd $TemporaryProblemDirectory; swipl -G50M -s $utilspl -g \"(A=$BaseName,D=\'$Tmp1\',declare_mptp_predicates,time(load_mml_for_article(A, D, [A])),time(install_index),time(mk_article_problems(A,[[mizar_by],[theorem, top_level_lemma, sublemma]],[opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_ADDED_NON_MML([A]),opt_NON_MML_DIR(D),opt_LINE_COL_NMS])),halt).\" > $BaseName.ploutput 2>&1");
+    system("cd $TemporaryProblemDirectory; swipl -G50M -s $utilspl -g \"(A=$BaseName,D=\'$Tmp1\',declare_mptp_predicates,time(load_mml_for_article(A, D, [A])),time(install_index),time(mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma, sublemma]],[opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_ADDED_NON_MML([A]),opt_NON_MML_DIR(D),opt_LINE_COL_NMS])),halt).\" > $BaseName.ploutput 2>&1");
 
     print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$BaseName.ploutput&tmp=$PidNr\" target=\"MPTPOutput$PidNr\">Show MPTP Output</a><br>\n";
 
 
     my $lbytmpdir = $PidNr . '\&ATP=refs\&HTML=1';
     my $lbytptpcgi= $MyUrl . '/cgi-bin/showby.cgi';
-# note that const_links=2 does not work correctly yet    
-    system("time $xsltproc --param const_links 1 --param ajax_by 1 --param linkbytoself 1 --param linkby 3 --param lbytptpcgi \\\'$lbytptpcgi\\\' --param lbytmpdir \\\'$lbytmpdir\\\' --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
+# ###TODO: note that const_links=2 does not work correctly yet    
+    system("time $xsltproc --param by_titles 1 --param const_links 1 --param ajax_by 1 --param linkbytoself 1 --param linkby 3 --param lbytptpcgi \\\'$lbytptpcgi\\\' --param lbytmpdir \\\'$lbytmpdir\\\' --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
 
 
 
