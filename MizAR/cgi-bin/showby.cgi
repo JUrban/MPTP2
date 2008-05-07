@@ -55,7 +55,7 @@ sub HTMLize
     my ($ref) = @_;
     my $res = '';
 #    print '<a href="foo">goo</a>'; $MizHtml="hj";
-    if(($ref=~m/^([dtsl][0-9]+)_(.*)$/) || ($ref=~m/^([fcr]c[0-9]+)_(.*)$/) || ($ref=~m/^dt_([klmugrv][0-9]+)_(.*)$/))
+    if(($ref=~m/^([dtl][0-9]+)_(.*)$/) || ($ref=~m/^(s[0-9]+)_(.*?)__.*$/) || ($ref=~m/^([fcr]c[0-9]+)_(.*)$/) || ($ref=~m/^dt_([klmugrv][0-9]+)_(.*)$/))
     { 
 	my ($kind,$ar) = ($1,$2);
 	if($kind =~ m/^l(.*)/) { $kind = 'e' . $1; }
