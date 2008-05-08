@@ -38,12 +38,17 @@ my $mizpl = "$Xsl4MizarDir/mizpl.xsl";
 my $doatproof = 0;
 my $atproof = '@' . 'proof';
 
+
+
 my $query	  = new CGI;
 my $input_article	  = $query->param('article');
 my $input_lc	  = $query->param('lc');
 my $input_tmp     = $query->param('tmp');
 my $atp	  = $query->param('ATP');
 my $htmlize	  = $query->param('HTML');
+my $spass	  = $query->param('spass');
+
+(defined $spass) or $spass = 0;
 
 my ($line, $col) = $input_lc=~m/(.*)_(.*)/;
 my $col1 = $col - 4;
@@ -88,17 +93,37 @@ if(    open(F,$File))
 {
     if($htmlize != 1)    { print "<pre>"; }
     my $status = szs_UNKNOWN;
+    my $spass_status = szs_UNKNOWN;
     if(defined $atp)
     {
 	if($atp =~ m/^refs$/)
 	{
-	    my $spass = 0;
 	    my @refs=();
 
 	    if($spass == 1)
 	    {
-		my $spass_formulae_line = `bin/tptp4X -x -f dfg $File |bin/SPASS -Stdin -Memory=900000000 -PGiven=0 -PProblem=0 -TimeLimit=$cpulimit -DocProof | tee $File.sout | grep "Formulae used in the proof"`;
-		if($spass_formulae_line=~m/Formulae used in the proof *: *(.*) */) { @refs = split(/ +/, $1); }
+		my $spass_status_line =
+		    `$SPASS  -Memory=900000000 -DocProof -PGiven=0 -PProblem=0 -TimeLimit=$cpulimit $File |  tee $File.sout | grep "SPASS beiseite"`;
+
+		if ($spass_status_line=~m/.*SPASS beiseite *: *([^.]+)[.]/)
+		{
+		    $spass_status = $1;
+		}
+		else
+		{
+		    print "Bad SPASS status line: $spass_status_line, please complain";
+		    $spass_status = szs_UNKNOWN;
+		}
+
+		if ($spass_status=~m/Proof found/) 
+		{ 
+		    $spass_status = szs_THEOREM;
+		    my $spass_formulae_line = `grep 'Formulae used in the proof' $File.sout`;
+		    if($spass_formulae_line=~m/Formulae used in the proof *: *(.*) */) { @refs = split(/ +/, $1); }
+
+		}
+		else { $spass_status = szs_UNKNOWN; } 
+		$status = $spass_status;
 	    }
 	    else
 	    {
@@ -132,13 +157,19 @@ if(    open(F,$File))
 		{ 
 		    print '<?xml version="1.0"?><div>'; 
 		    print 'ATP explanation (';
-		    print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&idv=1'},
+		    if($spass != 1) 
+		    {
+			print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&idv=1'},
 				    $idv_img);
-		    print ', ';
+			print ', '; 
+		    }
 		    print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&DM=1'}, "Try more");
-		    print ', ';
-		    print $query->a({href=>"$MyUrl/cgi-bin/tptp/MMLQuery.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp },
+		    if($spass != 1) 
+		    {
+			print ', ';
+			print $query->a({href=>"$MyUrl/cgi-bin/tptp/MMLQuery.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp },
 				    "MMLQuery (very experimental)");
+		    }
 		    print " ):<br>\n";  
 #		    print $query->a({href=>"$MyUrl/cgi-bin/showby.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&DM=1'}, "Do more"), " ):<br>\n";  
 		    foreach my $ref (@refs) 
@@ -153,7 +184,13 @@ if(    open(F,$File))
 		else { print join(",", @refs);} 
 	    } else { 
 		print "Proof not found (status: $status, "; 
-		print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&DM=1'}, "Try more"), " ):<br>\n";  
+		if($spass != 1)
+		{
+		    print $query->a({class=>"txt",onclick=>"makeRequest(this,\'$MyUrl/cgi-bin/showby.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&ATP=refs&HTML=1&spass=1\')',href=>'javascript:()'}, 'Try SPASS, ');
+		    print    '<span> </span>';
+		    print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&DM=1'}, "Try more");
+		}
+		print " ):<br>\n";  
 	    }
 	}
 	else { system("$eproof --print-statistics -xAuto -tAuto --cpu-limit=$cpulimit --memory-limit=Auto --tstp-in --tstp-out $File"); }
