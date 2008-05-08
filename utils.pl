@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.133 $
+%% $Revision: 1.134 $
 %%
 %% File  : utils.pl
 %%
@@ -1294,6 +1294,18 @@ get_nr_type(File,N,Name):-
 	    assert(fof_section(Name,Id))
 	).
 
+
+%% the (non)zerotyp added by requirements numeral
+spec_num_type(0,_,(sort(0,(m2_subset_1(k1_numbers, k5_numbers)))
+		 & sort(0,(m1_subset_1(k5_numbers)))
+		 & sort(0,(m1_subset_1(k1_numbers))))) :- !.
+
+spec_num_type(N,MmlVersion,(sort(N,(IsPositive & m2_subset_1(k1_numbers, k5_numbers)))
+		 & sort(N,(m1_subset_1(k5_numbers)))
+		 & sort(N,(m1_subset_1(k1_numbers)))):- req_Positive(MmlVersion,IsPositive)).
+
+
+
 %% ###TODO: change this system to the one used for assert_arith_evals
 
 get_nr_fof(boole,0,fof(spc0_boole,theorem, sort(0, v1_xboole_0),
@@ -1331,12 +1343,11 @@ get_nr_fof(boole,N,Res):-
 %%          the incomplete bg in one MPTP Challenge problem.
 get_nr_fof(numerals,N,Res):-
 	integer(N),
+	mml_version(MmlVersion),
+	spec_num_type(N,MmlVersion,NumType),
 %%	N > 0,
 	concat_atom([spc,N,'_numerals'],Name),
-	Res= fof(Name,theorem,
-		 (sort(N,(v2_xreal_0 & m2_subset_1(k1_numbers, k5_numbers)))
-		 & sort(N,(m1_subset_1(k5_numbers)))
-		 & sort(N,(m1_subset_1(k1_numbers)))),
+	Res= fof(Name,theorem,NumType,
 		 file(numerals,Name),
 		 [mptp_info(0,[],theorem,position(0,0),[0])]).
 
@@ -2513,8 +2524,8 @@ parse_snow_specs(File):-
 
 
 %% this could become  MML-version specific (it is now)
-req_LessOrEqual([4,48,_],r1_xreal_0).
-req_LessOrEqual([4,100,_],r1_xxreal_0).
+req_LessOrEqual([4,48,_],r1_xreal_0):-!.
+req_LessOrEqual([4,_,_],r1_xxreal_0).
 req_ImaginaryUnit(_,k1_xcmplx_0).
 req_RealAdd(_,k2_xcmplx_0).
 req_RealDiff(_,k6_xcmplx_0).
@@ -2522,7 +2533,8 @@ req_RealDiv(_,k7_xcmplx_0).
 req_RealInv(_,k5_xcmplx_0).
 req_RealMult(_,k3_xcmplx_0).
 req_RealNeg(_,k4_xcmplx_0).
-
+req_Positive([4,48,_],v2_xreal_0):-!.
+req_Positive([4,_,_],v2_xxreal_0).
 
 
 %% decode_pn_number(+Atom, [-MizExpr, -CmplxNr])
