@@ -68,6 +68,7 @@ sub HTMLize
     elsif($ref=~m/^spc([0-9]+)_boole$/) { if($1 eq "0") { $title = $1 . " is empty"; } else { $title = $1 . " is non empty"; } } 
     elsif($ref=~m/^spc([0-9]+)_numerals$/) { if($1 eq "0") { $title = $1 . " is Element of NAT"; } else { $title = $1 . " is positive Element of NAT"; } } 
     elsif($ref=~m/^rq.*$/) { $title = "arithmetic evaluation"; }
+    elsif($ref=~m/^fraenkel_.*$/) { $title = "fraenkel functor first-order instance"; }
     return ($res, $title);
 }
 
