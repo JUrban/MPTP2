@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.134 $
+%% $Revision: 1.135 $
 %%
 %% File  : utils.pl
 %%
@@ -1302,7 +1302,7 @@ spec_num_type(0,_,(sort(0,(m2_subset_1(k1_numbers, k5_numbers)))
 
 spec_num_type(N,MmlVersion,(sort(N,(IsPositive & m2_subset_1(k1_numbers, k5_numbers)))
 		 & sort(N,(m1_subset_1(k5_numbers)))
-		 & sort(N,(m1_subset_1(k1_numbers)))):- req_Positive(MmlVersion,IsPositive)).
+		 & sort(N,(m1_subset_1(k1_numbers))))):- req_Positive(MmlVersion,IsPositive).
 
 
 
