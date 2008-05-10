@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.135 $
+%% $Revision: 1.136 $
 %%
 %% File  : utils.pl
 %%
@@ -190,6 +190,7 @@ declare_mptp_predicates:-
  abolish(fof_eq_def/2),
  abolish(fof_section/2),
  abolish(fof_level/2),
+ abolish(fof_toplevel/2),
  abolish(fof_parentlevel/2),
  dynamic(fof_parentlevel/2),
  abolish(fof_cluster/3),
@@ -4474,7 +4475,13 @@ print_include_directive(Article):-
 	write('.'),
 	nl.
 
-get_preceding_article_refs(Article, Ref, Refs):-
+%% get_preceding_article_refs(+Article, +Ref, -Refs)
+%%
+%% This is a tested version used for inclusion of theorems into TPTP,
+%% which only gets refernces with proof level [] .
+%% So it cannot be used for sublemmas.
+%% ##TODO: reimplement & test using fof_toplevel/2
+get_preceding_article_refs_old(Article, Ref, Refs):-
 	ensure(article_position(Ref,Pos), throw(article_position(Article,Ref))),
 	findall(Ref1,
 		(
@@ -4485,6 +4492,34 @@ get_preceding_article_refs(Article, Ref, Refs):-
 		),
 		Refs
 	       ).
+
+
+get_preceding_article_refs(Article, Ref, Refs):-
+	ensure(article_position(Ref,Pos), throw(article_position(Article,Ref))),
+	get_ref_fof(Ref,fof(Ref,_,_,file(Article,_),[mptp_info(_,ProofLevel,_,_,_)|_])),
+	findall(LevAtom, (sublevel(ProofLevel,Lev), level_atom(Lev, LevAtom)), LevAtoms),
+	findall(Ref0,
+		(
+		  fof_toplevel(Article, Id0),
+		  clause(fof(Ref1,_,_,file(Article,_), [mptp_info(_,[],_,_,_)|_]),_,Id0),
+		  article_position(Ref0,Pos0),
+		  Pos0 < Pos
+		),
+		Refs0
+	       ),	
+	findall(Ref1,
+		(
+		  member(LA1, LevAtoms),
+		  fof_level(LA1, Id),
+		  clause(fof(Ref1,_,_,file(Article,_), [mptp_info(_,_,_,_,_)|_]),_,Id),
+		  article_position(Ref1,Pos1),
+		  Pos1 < Pos
+		),
+		Refs1
+	       ),
+	append(Refs0, Refs1, Refs).
+
+
 
 %% All standard axioms (coming from other articles than the conjecture)
 %% which were printed to include files
@@ -5057,6 +5092,8 @@ install_index:-
 	dynamic(fof_section/2),
 	abolish(fof_level/2),
 	dynamic(fof_level/2),
+	abolish(fof_toplevel/2),
+	dynamic(fof_toplevel/2),
 	abolish(fof_parentlevel/2),
 	dynamic(fof_parentlevel/2),
 	abolish(fof_cluster/3),
@@ -5081,7 +5118,7 @@ install_index:-
 	  assert(fof_name(Ref1, Id)),
 	  assert(fof_file(File1, Id)),
 	  assert(fof_section(Sec1, Id)),
-	  assert_level(L_1,Id),
+	  assert_level(L_1, File1, Id),
 	  assert_syms(MKind,Ref1,Role1,L_1,Fla1,File1,Id,LogicSyms,Sec1,Spc),
 	  fail
 	;
@@ -5104,6 +5141,7 @@ install_index:-
 	
 
 
+assert_level([], Article, Id):- !,assert(fof_toplevel(Article, Id)).
 assert_level([H|T],Id):- !,level_atom([H|T],Lev1), assert(fof_level(Lev1, Id)).
 assert_level(_,_).
 
