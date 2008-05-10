@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.136 $
+%% $Revision: 1.137 $
 %%
 %% File  : utils.pl
 %%
@@ -4501,7 +4501,7 @@ get_preceding_article_refs(Article, Ref, Refs):-
 	findall(Ref0,
 		(
 		  fof_toplevel(Article, Id0),
-		  clause(fof(Ref1,_,_,file(Article,_), [mptp_info(_,[],_,_,_)|_]),_,Id0),
+		  clause(fof(Ref0,_,_,file(Article,_), [mptp_info(_,[],_,_,_)|_]),_,Id0),
 		  article_position(Ref0,Pos0),
 		  Pos0 < Pos
 		),
