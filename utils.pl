@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.137 $
+%% $Revision: 1.138 $
 %%
 %% File  : utils.pl
 %%
@@ -4471,7 +4471,7 @@ get_include_refs(Refs, IncludeRefs, NonIncludeRefs, IncludeArticles):-
 
 print_include_directive(Article):-
 	concat_atom(['Axioms/', Article, '.ax'], IncludeFile),
-	print(include(IncludeFile)),
+	writeq(include(IncludeFile)),
 	write('.'),
 	nl.
 
