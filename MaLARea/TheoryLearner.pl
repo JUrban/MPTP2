@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.93 $
+## $Revision: 1.94 $
 
 
 =head1 NAME
@@ -193,13 +193,16 @@ Useful for reproving. Default is 0 - no cheating.
 
 =item B<<< --alwaysmizrefs=<arg>, -m<arg> >>>
 
-Tells to always include the explicit Mizar references. This
+If 1, tells to always include the explicit Mizar references. This
 is useful for the bushy problems, where we are reasonably sure
 that the explicit Mizar references should be used in the proof,
 while we are uncertain about the background formulas.
 The explicit references are now recongized by matching the regexp
 "^[tldes][0-9]+" (for theorems, top-level lemmas, definitions,
 sublemmas, and scheme instances).
+If 2, references containing Mizar local constants are always
+included. These references are recognized by grepping
+for "\bc[0-9]+" in the formula symbols.
 
 =item B<<< --help, -h >>>
 
@@ -252,6 +255,9 @@ my %gsubrefs;     # contains direct lemmas for those proved by mizar_proof,
                   # only if $grefsbgcheat == 0
 my %gsuperrefs;   # contains additions to bg inherited from direct lemmas
                   # for those proved by mizar_proof, only if $grefsbgcheat == 0
+
+my %glocal_consts_refs; # contains references containing local constants
+
 
 my $minthreshold = 4;
 my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
@@ -370,6 +376,7 @@ sub LoadTables
     %grefnr = ();
     %gsymnr = ();
     %grefsyms = ();
+    %glocal_consts_refs = ();
     @gnrsym = ();
     @gnrref = ();
 
@@ -399,7 +406,9 @@ sub LoadTables
 	{
 
 	    $sym =~ m/^ *([^\/]+)[\/].*/ or die "Bad symbol $sym in $_";
-	    push(@{$grefsyms{$ref}}, $1);
+	    my $proper_sym = $1;
+	    push(@{$grefsyms{$ref}}, $proper_sym);
+	    if($proper_sym =~ m/^c[0-9]+.*/) { $glocal_consts_refs{$ref} = (); }
 	}
     }
 
@@ -890,7 +899,7 @@ sub HandleSpec
 
     # include all Mizar refs into @spec if we are told so,
     # and delete them from @reserve
-    if ($galwaysmizrefs == 1)
+    if ($galwaysmizrefs > 0)
     {
 	my $ref1;
 	my %mizrefs = ();
@@ -898,8 +907,12 @@ sub HandleSpec
 	@specrefs{ @spec } = ();
 	foreach $ref1 (@all_refs)
 	{
-	    if(!(exists $specrefs{$ref1}) && ($ref1 =~ m/^[tldes][0-9]+_/)
-	       && (!($ref1 =~ m/^t[0-9]+_(numerals|boole|subset|arithm|real)$/)))
+	    if(!(exists $specrefs{$ref1})
+	       &&
+	       ((($galwaysmizrefs == 1) && ($ref1 =~ m/^[tldes][0-9]+_/)
+		 && (!($ref1 =~ m/^t[0-9]+_(numerals|boole|subset|arithm|real)$/)))
+		||
+		(($galwaysmizrefs == 2) && (exists $glocal_consts_refs{$ref1}))))
 	    {
 		push(@spec, $ref1);
 		$mizrefs{$ref1} = ();
@@ -1104,9 +1117,10 @@ sub SelectRelevantFromSpecs
 	    exists $gspec{$check} or die "Parse error: $check not in gspec: $_";
 	    if ((exists ${$gspec{$check}}{$ref1}) && !($refnr == $grefnr{$check}))
 	    {
-		if (($#spec < $threshold) ||
-		    (($galwaysmizrefs == 1) && ($ref1 =~ m/^[tldes][0-9]+_/)
-		     && (!($ref1 =~ m/^t[0-9]+_(numerals|boole|subset|arithm|real)$/))))
+		if (($#spec < $threshold)
+		    || (($galwaysmizrefs == 1) && ($ref1 =~ m/^[tldes][0-9]+_/)
+			&& (!($ref1 =~ m/^t[0-9]+_(numerals|boole|subset|arithm|real)$/)))
+		    || (($galwaysmizrefs == 2) && (exists $glocal_consts_refs{$ref1})))
 		{
 		    push(@spec, $ref1);
 		}
