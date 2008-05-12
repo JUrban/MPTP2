@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.138 $
+%% $Revision: 1.139 $
 %%
 %% File  : utils.pl
 %%
@@ -3698,6 +3698,76 @@ abstract_fraenkels_if(Article):-
 	assert(fraenkels_loaded(Article)),!.
 
 %%%%%%%%%%%% End of Installation of fraenkel definitions %%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%% MoMM export %%%%%%%%%%%%%%%%%%%%%
+
+%% We want the following format for type files (.typ):
+%%
+%% for functors:
+%% type(Functor(Vars),TypeConstr(Functor(Vars),AdditionalArgs)).
+%%
+%% for types:
+%% type(TypeConstr(Vars),SuperTypeConstr(ArgsOfVars)).
+%%
+%%
+%% type(g1_struct_0(A1), l1_struct_0(g1_struct_0(A1))).
+%% type(l2_struct_0(A1), l1_struct_0(A1)).
+%% type(g2_struct_0(A1,A2), l2_struct_0(g2_struct_0(A1,A2))).
+%% type(u2_struct_0(A1), m1_subset_1(u2_struct_0(A1),u1_struct_0(A1))).
+%% type(k1_struct_0(A1,A2,A3), m1_subset_1(k1_struct_0(A1,A2,A3),k1_zfmisc_1(u1_struct_0(A1)))).
+%% type(k2_struct_0(A1,A2,A3), m1_subset_1(k2_struct_0(A1,A2,A3),k1_zfmisc_1(u1_struct_0(A1)))).
+%% type(k3_struct_0(A1,A2,A3), m1_subset_1(k3_struct_0(A1,A2,A3),k1_zfmisc_1(u1_struct_0(A1)))).
+%% type(k4_struct_0(A1,A2,A3), m1_subset_1(k4_struct_0(A1,A2,A3),k1_zfmisc_1(u1_struct_0(A1)))).
+%% type(k5_struct_0(A1,A2), m1_subset_1(k5_struct_0(A1,A2),k1_zfmisc_1(u1_struct_0(A1)))).
+%% type(k6_struct_0(A1,A2,A3), m1_subset_1(k6_struct_0(A1,A2,A3),k1_zfmisc_1(u1_struct_0(A1)))).
+%% type(m1_struct_0(A3,A1,A2), m1_subset_1(A3,u1_struct_0(A1))).
+%% type(k7_struct_0(A1,A2,A3), m2_setfam_1(k7_struct_0(A1,A2,A3),u1_struct_0(A1))).
+%% type(k8_struct_0(A1,A2,A3), m2_setfam_1(k8_struct_0(A1,A2,A3),u1_struct_0(A1))).
+%% type(k9_struct_0(A1,A2,A3), m2_setfam_1(k9_struct_0(A1,A2,A3),u1_struct_0(A1))).
+
+mk_momm_typ_files(OutDirectory):-
+	declare_mptp_predicates,
+	load_mml,
+	install_index,
+	all_articles(ArticleNames),
+	checklist(abstract_fraenkels_if, ArticleNames),
+	install_index,
+	checklist(article2tptp_include(OutDirectory), [hidden, tarski | ArticleNames]).
+
+
+article_momm_typ_file(OutDirectory,A):-
+	concat_atom([OutDirectory, A, '.', typ], OutFile),
+%	tell(OutFile),
+	repeat,
+	(
+	 fof_toplevel(A,Id),
+	 clause(fof(Ref,Role,Fla,file(A,Constr),[MptpInfo|_]),_,Id),
+	 MptpInfo = mptp_info(_,_,_,_,[ctype]),
+	 clause(fof(Ref,Role,Fla,file(A,Constr), [mptp_info(_,_,_,_,[ctype])|_]),_,Id),
+	 writeq(fof(Ref,Role,Fla,file(A,Constr),[MptpInfo|_])),
+	 write('.'), nl,
+	 fail
+	;
+	 true
+	).
+
+
+
+% 	repeat,
+% 	(
+% 	  fof_file(A,AId),
+% 	  clause(fof(Name,_Role,Fla,file(A,_Sec),_Info),_,AId),
+% 	  sort_transform_top(Fla,Fla1),
+% 	  numbervars(Fla1,0,_),
+% 	  print(fof(Name,axiom,Fla1)),
+% 	  write('.'),nl,
+% 	  fail
+% 	;
+% 	  told
+% 	).
+
+
+%%%%%%%%%%%% end of MoMM export %%%%%%%%%%%%%%%%%%%%%
 
 %% test uniqueness of references inside Article, 
 %% creating also scheme instances and abstracting fraenkels
