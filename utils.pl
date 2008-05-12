@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.139 $
+%% $Revision: 1.140 $
 %%
 %% File  : utils.pl
 %%
@@ -954,7 +954,7 @@ create_cons_info(ConsAttrs0, Radix, ConsInfo):-
 
 %% process_attrsmode_list_for_cons(+AndList, -ConsAttrs0, -Radix),
 %%
-%% Expects a list possibly ending with a radix. Coverts the negated atributes
+%% Expects a list possibly ending with a radix. Converts the negated atributes
 %% to 'w'-symbols, and forgest their arguments. If there is no radix, it
 %% pretends to be $true
 process_attrsmode_list_for_cons([AttrTermOrRadix | Rest], [ AttrSym | ConsAttrsRest], Radix):-
@@ -3734,7 +3734,7 @@ mk_momm_typ_files(OutDirectory):-
 	install_index,
 	checklist(article2tptp_include(OutDirectory), [hidden, tarski | ArticleNames]).
 
-
+%% not finished yet
 article_momm_typ_file(OutDirectory,A):-
 	concat_atom([OutDirectory, A, '.', typ], OutFile),
 %	tell(OutFile),
@@ -3751,20 +3751,40 @@ article_momm_typ_file(OutDirectory,A):-
 	 true
 	).
 
+%% functor_fla2momm(+MptpFla, -MommFla)
+%%
+%% This can fail if the sort is trivial or only attributes.
+%% sort(u2_struct_0(_G250), m1_subset_1(u1_struct_0(_G250)))
+%% becomes 
+%% type(u2_struct_0(A1), m1_subset_1(u2_struct_0(A1),u1_struct_0(A1))).
+functor_fla2momm(MptpFla, MommFla):-
+	ensure(strip_univ_quant(MptpFla,sort(Term, AttrsAndRadix),_), strip_univ_quant(MptpFla)), 
+	constr2list('&', Radix, _ , AttrsAndRadix),
+	Radix =.. [ Mode | Args],
+	mptp_mode_sym(Mode),
+	NewRadix =.. [ Mode, Term | Args],
+	MommFla = type(Term, NewRadix).
 
-
-% 	repeat,
-% 	(
-% 	  fof_file(A,AId),
-% 	  clause(fof(Name,_Role,Fla,file(A,_Sec),_Info),_,AId),
-% 	  sort_transform_top(Fla,Fla1),
-% 	  numbervars(Fla1,0,_),
-% 	  print(fof(Name,axiom,Fla1)),
-% 	  write('.'),nl,
-% 	  fail
-% 	;
-% 	  told
-% 	).
+%% type_fla2momm(+MptpFla, -MommFla)
+%%
+%% This can fail if the supersort is trivial or only attributes.
+%% (sort(_G250, l2_struct_0)=>sort(_G250, l1_struct_0))
+%% becomes 
+%% type(l2_struct_0(A1), l1_struct_0(A1)).
+%% and
+%% (sort(_G278, m2_subset_1(_G250, _G258))=>sort(_G278, m1_subset_1(_G250)))
+%% becomes
+%% type(m2_subset_1(A3,A1,A2), m1_subset_1(A3,A1)).
+type_fla2momm(MptpFla, MommFla):-
+	ensure(strip_univ_quant(MptpFla,sort(Var, DefSort) => Sorts,_), type_fla2momm(MptpFla)), 
+	constr2list('&', sort(Var1, Radix), _ , Sorts),
+	ensure((Var == Var1), type_fla2momm(MptpFla)),
+	Radix =.. [ Mode | Args],
+	mptp_mode_sym(Mode),
+	DefSort =.. [ DefMode | DefVars],
+	NewDefSort =.. [ DefMode, Var | DefVars], 
+	NewRadix =.. [ Mode, Var | Args],
+	MommFla = type(NewDefSort, NewRadix).
 
 
 %%%%%%%%%%%% end of MoMM export %%%%%%%%%%%%%%%%%%%%%
