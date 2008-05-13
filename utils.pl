@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.140 $
+%% $Revision: 1.141 $
 %%
 %% File  : utils.pl
 %%
@@ -3701,7 +3701,7 @@ abstract_fraenkels_if(Article):-
 
 %%%%%%%%%%%% MoMM export %%%%%%%%%%%%%%%%%%%%%
 
-%% We want the following format for type files (.typ):
+%% We want the following format for MoMM type files (.typ):
 %%
 %% for functors:
 %% type(Functor(Vars),TypeConstr(Functor(Vars),AdditionalArgs)).
@@ -3725,6 +3725,10 @@ abstract_fraenkels_if(Article):-
 %% type(k8_struct_0(A1,A2,A3), m2_setfam_1(k8_struct_0(A1,A2,A3),u1_struct_0(A1))).
 %% type(k9_struct_0(A1,A2,A3), m2_setfam_1(k9_struct_0(A1,A2,A3),u1_struct_0(A1))).
 
+%% mk_momm_typ_files(+OutDirectory)
+%%
+%% Create MoMM typ files for all MML articles in directory OutDirectory.
+%% ##TEST: :- mk_momm_typ_files('00mommtypes/').
 mk_momm_typ_files(OutDirectory):-
 	declare_mptp_predicates,
 	load_mml,
@@ -3732,41 +3736,58 @@ mk_momm_typ_files(OutDirectory):-
 	all_articles(ArticleNames),
 	checklist(abstract_fraenkels_if, ArticleNames),
 	install_index,
-	checklist(article2tptp_include(OutDirectory), [hidden, tarski | ArticleNames]).
+	checklist(article_momm_typ_file(OutDirectory), [hidden, tarski | ArticleNames]).
 
-%% not finished yet
+%% article_momm_typ_file(+OutDirectory,+A)
+%%
+%% Create MoMM typ file for article A in directory OutDirectory.
 article_momm_typ_file(OutDirectory,A):-
 	concat_atom([OutDirectory, A, '.', typ], OutFile),
-%	tell(OutFile),
+	tell(OutFile),
 	repeat,
 	(
 	 fof_toplevel(A,Id),
-	 clause(fof(Ref,Role,Fla,file(A,Constr),[MptpInfo|_]),_,Id),
-	 MptpInfo = mptp_info(_,_,_,_,[ctype]),
-	 clause(fof(Ref,Role,Fla,file(A,Constr), [mptp_info(_,_,_,_,[ctype])|_]),_,Id),
-	 writeq(fof(Ref,Role,Fla,file(A,Constr),[MptpInfo|_])),
+	 clause(fof(_Ref,_Role,MptpFla,file(A,_Constr),[MptpInfo|_]),_,Id),
+	 MptpInfo = mptp_info(_RelNr,[],ConstrKind,_Pos,[ctype]),
+	 constr_type_fla2momm(ConstrKind,MptpFla,MommFla),
+	 numbervars(MommFla, 0, _),
+	 print(MommFla),
 	 write('.'), nl,
 	 fail
 	;
-	 true
+	 told
 	).
 
-%% functor_fla2momm(+MptpFla, -MommFla)
+%% constr_type_fla2momm(+ConstrKind,+MptpFla,-MommFla)
 %%
+%% This fails for predicates.
+constr_type_fla2momm(ConstrKind,MptpFla,MommFla):-
+	(
+	 member(ConstrKind,[k,g,u]) ->
+	 func_type_fla2momm(MptpFla, MommFla)
+	;
+	 member(ConstrKind,[m,l]),
+	 mode_type_fla2momm(MptpFla, MommFla)
+	).
+	 
+%% func_type_fla2momm(+MptpFla, -MommFla)
+%%
+%% Create a MoMM functor type fla from MPTP functor type fla.
 %% This can fail if the sort is trivial or only attributes.
 %% sort(u2_struct_0(_G250), m1_subset_1(u1_struct_0(_G250)))
 %% becomes 
 %% type(u2_struct_0(A1), m1_subset_1(u2_struct_0(A1),u1_struct_0(A1))).
-functor_fla2momm(MptpFla, MommFla):-
-	ensure(strip_univ_quant(MptpFla,sort(Term, AttrsAndRadix),_), strip_univ_quant(MptpFla)), 
+func_type_fla2momm(MptpFla, MommFla):-
+	ensure(strip_univ_quant(MptpFla,sort(Term, AttrsAndRadix),_), func_type_fla2momm(MptpFla)), 
 	constr2list('&', Radix, _ , AttrsAndRadix),
 	Radix =.. [ Mode | Args],
 	mptp_mode_sym(Mode),
 	NewRadix =.. [ Mode, Term | Args],
 	MommFla = type(Term, NewRadix).
 
-%% type_fla2momm(+MptpFla, -MommFla)
+%% mode_type_fla2momm(+MptpFla, -MommFla)
 %%
+%% Create a MoMM mode type fla from MPTP mode type fla.
 %% This can fail if the supersort is trivial or only attributes.
 %% (sort(_G250, l2_struct_0)=>sort(_G250, l1_struct_0))
 %% becomes 
@@ -3775,10 +3796,10 @@ functor_fla2momm(MptpFla, MommFla):-
 %% (sort(_G278, m2_subset_1(_G250, _G258))=>sort(_G278, m1_subset_1(_G250)))
 %% becomes
 %% type(m2_subset_1(A3,A1,A2), m1_subset_1(A3,A1)).
-type_fla2momm(MptpFla, MommFla):-
-	ensure(strip_univ_quant(MptpFla,sort(Var, DefSort) => Sorts,_), type_fla2momm(MptpFla)), 
+mode_type_fla2momm(MptpFla, MommFla):-
+	ensure(strip_univ_quant(MptpFla,sort(Var, DefSort) => Sorts,_), mode_type_fla2momm(MptpFla)), 
 	constr2list('&', sort(Var1, Radix), _ , Sorts),
-	ensure((Var == Var1), type_fla2momm(MptpFla)),
+	ensure((Var == Var1), mode_type_fla2momm(MptpFla)),
 	Radix =.. [ Mode | Args],
 	mptp_mode_sym(Mode),
 	DefSort =.. [ DefMode | DefVars],
