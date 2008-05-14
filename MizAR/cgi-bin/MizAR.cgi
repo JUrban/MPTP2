@@ -30,6 +30,9 @@ my $doatproof = 0;
 my $atproof = '@' . 'proof';
 
 my $query	  = new CGI;
+my $ProblemSource = $query->param('ProblemSource');
+my $VocFile       = $query->param('VocFile');
+my $VocSource       = $query->param('VocSource');
 my $input_article	  = $query->param('Formula');
 my $input_name	  = $query->param('Name');
 my $atp_mode	  = $query->param('ATPMode');
@@ -131,7 +134,15 @@ unless($text_mode)
 
     system("chmod 0777 $TemporaryProblemDirectory/problems");
 
+    if (!mkdir($TemporaryProblemDirectory . "/dict" ,0777)) {
+        print("ERROR: Cannot make temp/dict dir $TemporaryProblemDirectory/dict\n");
+        die("\n");
+    }
 
+    system("chmod 0777 $TemporaryProblemDirectory/dict");
+
+## nasty hack to get around the dict/text issues 
+##    system("ln -s $TemporaryProblemDirectory $TemporaryProblemDirectory/text");
 
 
 
@@ -140,21 +151,52 @@ unless($text_mode)
     system("chmod 0777 $TemporaryProblemDirectory");
 
     my $ProblemFileOrig1 = "${TemporaryProblemDirectory}/$aname";
+#    my $ProblemFileTxt = "${TemporaryProblemDirectory}/text/$aname";
     open(PFH, ">$ProblemFileOrig1") or die "$ProblemFileOrig1 not writable";
 #    my ($ProblemFileHandle,$ProblemFileOrig1) = mkstemp("${TemporaryProblemDirectory}/$aname");
-    if ($input_article eq "") {
-      die("ERROR: No article provided\n");
+    if ($ProblemSource eq "UPLOAD") {
+	my $UploadFileHandle = $query->param('UPLOADProblem');
+	if (!defined($UploadFileHandle) || $UploadFileHandle eq "") {
+	    print("ERROR: Empty uploaded problem file\n");
+	    die("ERROR: Empty uploaded problem file\n");
+	}
+	my $UploadLine;
+#DEBUG print("UPLOAD file: $UploadFileHandle \n");
+	while (defined($UploadLine = <$UploadFileHandle>)) { print PFH $UploadLine; };
+	close($UploadFileHandle);
     }
+    elsif (!($input_article eq "")) 
+    {
 #----Convert \r (DOS EOLN) to \n (UNIX EOLN)
-     if($doatproof > 0) 
-     {
-	 $input_article =~ s/\bproof\b/$atproof/g;
-     }
+	if($doatproof > 0) 
+	{
+	    $input_article =~ s/\bproof\b/$atproof/g;
+	}
 #    $input_article =~ s/\r/\n/g;
 #----Somehow WWW services are duplicating the \n ... kill them (aargh)
 #            $Formulae =~ s/\n\n/\n/g;
-    printf(PFH "%s",$input_article);
+	printf(PFH "%s",$input_article);
+    }
+    else 
+    { 
+	print("ERROR: No article provided\n"); 
+	die("ERROR: No article provided\n"); 
+    }
+
     close(PFH);
+
+    if (defined($VocSource) && ($VocSource eq 'UPLOAD') && defined($VocFile) && !($VocFile eq "")) {
+	my $VOCFileOrig1 = "${TemporaryProblemDirectory}/dict/$VocFile";
+	open(VOC, ">$VOCFileOrig1") or die "$VOCFileOrig1 not writable";
+	my $UploadLine;
+#DEBUG print("UPLOAD file: $VocFile \n");
+	while (defined($UploadLine = <$VocFile>)) { print VOC $UploadLine; };
+	close($VocFile);
+	close(VOC)
+    }
+
+
+
     my $ProblemFileOrig = lc($ProblemFileOrig1);
     $ProblemFileOrig =~ m/.*[\/]([^\/]*)$/ or die " Bad file name $ProblemFileOrig";
     my $BaseName = $1;
