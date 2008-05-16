@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.94 $
+## $Revision: 1.95 $
 
 
 =head1 NAME
@@ -32,6 +32,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --usemodels=<arg>,       -D<arg>
    --srassemul=<arg>,       -R<arg>
    --similarity=<arg>,      -i<arg>
+   --generalize=<arg>,      -g<arg>
    --parallelize=<arg>,     -j<arg>
    --iterpolicy=<arg>,      -y<arg>
    --recadvice=<arg>,       -a<arg>
@@ -165,6 +166,18 @@ Combinations of these basic methods can be done by summing their codes
 Default is 1 (symbols only).
 
 
+=item B<<< --generalize=<arg>, -g<arg> >>>
+
+The generalization method for formulas. If 0, no generalization is done.
+If 1, new generalized formulas are created by replacing all local constants
+in formulas with a new special symbol. The generalized formulas
+become learning targets exactly as the original ones, and they are included
+into training whenever some corresponding original formula is. Accordingly,
+when a generalized fla is recommended by the trained system as an axiom,
+the corresponding original flas become recommended.
+Default is 0.
+
+
 =item B<<< --parallelize=<arg>, -j<arg> >>>
 
 If greater than 1, runs problems in parallel, using Makefile with
@@ -258,6 +271,11 @@ my %gsuperrefs;   # contains additions to bg inherited from direct lemmas
 
 my %glocal_consts_refs; # contains references containing local constants
 
+my @ggennr2fla;   # array of generalized formulas
+my %ggenfla2nr;   # hash for lookup of genflas' numbers
+my %gref2gen;     # contains references with generalized reference
+my %ggen2ref;     # for each generalized ref contains a list of corresponding original refs
+my $gggnewc = 'gggnewc'; # new symbol for generalizing ocnstants; TODO: should check it's not in spec
 
 my $minthreshold = 4;
 my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
@@ -268,7 +286,7 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $gparadox,     $geprover,       $gmace,
     $gtmpdir,      $gsrassemul,     $gusemodels,
     $gparallelize, $gmakefile,      $gloadprovedby,
-    $giterpolicy);
+    $giterpolicy,  $ggeneralize);
 
 my ($help, $man);
 my $gtargetsnr = 1233;
@@ -294,6 +312,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'usemodels|D=i'    => \$gusemodels,
 	   'srassemul|R=i'    => \$gsrassemul,
 	   'similarity|i=i'  => \$gsimilarity,
+	   'generalize|g=i'  => \$ggeneralize,
 	   'parallelize|j=i'  => \$gparallelize,
 	   'iterpolicy|y=i'  => \$giterpolicy,
 	   'recadvice|a=i'    => \$grecadvice,
@@ -673,15 +692,30 @@ sub PrintTestingFromArray
     foreach $ref (@$conjs) {
 	exists $grefsyms{$ref} or die "Unknown reference $ref";
 	my @syms = @{$grefsyms{$ref}};
+	push(@syms, $gggnewc) if exists $gref2gen{$ref};
 	my @syms_nrs   = map { $gsymnr{$_} if(exists($gsymnr{$_})) } @syms;
 	if($gdotrmstd > 0)
 	{
 	    my @trmstd_nrs   = @{$greftrmstd{$ref}};
+	    if(exists $gref2gen{$ref})
+	    {
+		my %tmp = ();
+		@tmp{ @trmstd_nrs } = ();
+		@tmp{ @{$greftrmstd{$gref2gen{$ref}}} } = ();
+		@trmstd_nrs = keys %tmp;
+	    }
 	    push(@syms_nrs, @trmstd_nrs);
 	}
 	if($gdotrmnrm > 0)
 	{
 	    my @trmnrm_nrs   = @{$greftrmnrm{$ref}};
+	    if(exists $gref2gen{$ref})
+	    {
+		my %tmp = ();
+		@tmp{ @trmnrm_nrs } = ();
+		@tmp{ @{$greftrmnrm{$gref2gen{$ref}}} } = ();
+		@trmnrm_nrs= keys %tmp;
+	    }
 	    push(@syms_nrs, @trmnrm_nrs);
 	}
 	if(($guseposmodels > 0) && (exists $grefposmods{$ref}))
@@ -1051,11 +1085,12 @@ sub SelectRelevantFromSpecs
     while($_=<TO_PROVE>) { chop; push(@to_prove, $_); }
     close TO_PROVE;
 
-    my (@spec, @reserve, $wanted, $check, $act);
+    my (@spec, @reserve, %included, $wanted, $check, $act);
     undef $check;
     undef $wanted;
     @spec = ();
     @reserve = ();
+    %included = ();
     my @active = ();
     my $do_example = 0;
     my $wantednr = $threshold * 10; # $gtargetsnr;
@@ -1096,6 +1131,7 @@ sub SelectRelevantFromSpecs
 
 	    @spec = ();
 	    @reserve = ();
+	    %included = ();
 	    $do_example = 1;
 
             /^Example.*: *([0-9]+) */ or die "Bad Example $_ in iter:$iter";
@@ -1112,19 +1148,31 @@ sub SelectRelevantFromSpecs
 
 	    my $refnr = $1;
 	    exists $gnrref[$refnr] or die "Parse error - undefined refnr: $_";
-	    my $ref1 = $gnrref[$refnr];
+	    my $ref0 = $gnrref[$refnr];
 	    defined($check) or die "Parse error - undefined example: $_";
 	    exists $gspec{$check} or die "Parse error: $check not in gspec: $_";
-	    if ((exists ${$gspec{$check}}{$ref1}) && !($refnr == $grefnr{$check}))
+	    my @tried0 = ();
+	    if(!($refnr == $grefnr{$check}))
 	    {
-		if (($#spec < $threshold)
-		    || (($galwaysmizrefs == 1) && ($ref1 =~ m/^[tldes][0-9]+_/)
-			&& (!($ref1 =~ m/^t[0-9]+_(numerals|boole|subset|arithm|real)$/)))
-		    || (($galwaysmizrefs == 2) && (exists $glocal_consts_refs{$ref1})))
+		if(exists $ggen2ref{ $ref0 } ) { @tried0 = @{ $ggen2ref{ $ref0 } }; }
+		else { @tried0 = ( $ref0 ); }
+
+		foreach my $ref1 (@tried0)
 		{
-		    push(@spec, $ref1);
+		    if ((exists ${$gspec{$check}}{$ref1})
+			&& !(exists $included{$ref1}))
+		    {
+			if (($#spec < $threshold)
+			    || (($galwaysmizrefs == 1) && ($ref1 =~ m/^[tldes][0-9]+_/)
+				&& (!($ref1 =~ m/^t[0-9]+_(numerals|boole|subset|arithm|real)$/)))
+			    || (($galwaysmizrefs == 2) && (exists $glocal_consts_refs{$ref1})))
+			{
+			    push(@spec, $ref1);
+			}
+			else { push(@reserve, $ref1); }
+			$included{$ref1} = ();
+		    }
 		}
-		else { push(@reserve, $ref1); }
 	    }
 	}
     }
@@ -1717,6 +1765,35 @@ sub GenerateProblemsFromCommonFile
     }
 }
 
+# SetupGeneralization($name,$rest_of_fla)
+#
+# If $rest_of_fla matches a local constant, it is
+# generalized. The generalization is found or created in
+# @ggennr2fla and %ggenfla2nr, and the %gref2gen and %ggen2ref
+# hashes are updated.
+sub SetupGeneralization
+{
+    my ($nm,$rest) = @_;
+
+    if($rest =~ m/([\(, ])c[0-9]+_*/)
+    {
+	$rest =~ s/([\(, ])c[0-9]+_[a-zA-Z0-9_]*/$1$gggnewc/g;
+	my $gennr;
+	if ( exists $ggenfla2nr{$rest} )
+	{
+	    $gennr = $ggenfla2nr{$rest};
+	}
+	else
+	{
+	    push(@ggennr2fla, $rest);
+	    $gennr = $#ggennr2fla;
+	    $ggenfla2nr{$rest} = $gennr;
+	}
+	$gref2gen{$nm} = $gennr;
+	push( @{$ggen2ref{'ggennew_' . $gennr}}, $nm);
+    }
+}
+
 
 # NormalizeAndCreateInitialSpecs($file_prefix, $file_postfix, $common_file);
 #
@@ -1731,6 +1808,12 @@ sub NormalizeAndCreateInitialSpecs
 {
     my ($file_prefix, $file_postfix, $common_file) = @_;
     my ($i);
+
+    @ggennr2fla = ();
+    %ggenfla2nr = ();
+    %gref2gen   = ();
+    %ggen2ref   = ();
+
     if($gtmpdir ne "")
     {
 	die "Remove $gtmpdir$file_prefix manually first!" if(-e "$gtmpdir$file_prefix");
@@ -1746,6 +1829,7 @@ sub NormalizeAndCreateInitialSpecs
     }
     open(INISPECS,">$filestem.specs");
     my %alllines2 = ();
+    my %seen = ();
     foreach $i (glob("$file_prefix*$file_postfix"))
     {
 #	chop $i;
@@ -1759,13 +1843,18 @@ sub NormalizeAndCreateInitialSpecs
 	    print PROBLEM $_;
 	    print PROBLEM1 $_;
 	    $alllines2{$_} = ();
-	    if(m/^ *fof\( *([^, ]+) *,(.*)/)
+	    if(m/^ *fof\( *([^, ]+) *, *([^, ]+) *,(.*)/)
 	    {
-		my ($nm,$rest)=($1,$2);
-		if ($rest=~m/^ *conjecture/)
+		my ($nm,$status,$rest)=($1,$2,$3);
+		if ($status=~m/^conjecture/)
 		{
 		    $conj=$nm;
 		} else {$h{$nm}=();}
+		if(($ggeneralize > 0) && (! (exists $seen{$nm})))
+		{
+		    $seen{$nm} = ();
+		    SetupGeneralization($nm,$rest);
+		}
 	    }
 	}
 	print INISPECS "spec($conj,[" . join(",", keys %h) . "]).\n";
@@ -1777,7 +1866,14 @@ sub NormalizeAndCreateInitialSpecs
     foreach $_ (sort keys %alllines2) { print ALLFLAS $_; }
     close(ALLFLAS);
     %alllines2 = ();
-    `sed -e 's/,conjecture,/,axiom,/' $filestem.allflas | sed -e 's/,lemma,/,axiom,/' | sort -u > $filestem.allasax`;
+    open(ALLGENS, ">$filestem.allgens");
+    if($ggeneralize > 0)
+    {
+	foreach $i (0 .. $#ggennr2fla) { print ALLGENS ("fof(ggennew_$i,axiom,", $ggennr2fla[$i]); }
+    }
+    close(ALLGENS);
+
+    `sed -e 's/,conjecture,/,axiom,/' $filestem.allflas $filestem.allgens | sed -e 's/,lemma,/,axiom,/' | sort -u > $filestem.allasax`;
 
 ## proper things for .axp9 is tptp2X -fprover9  $filestem.allasax; followed by:
 ## perl -e '$/="."; while(<>) { s/% ([^ ]+), axiom[.]/# label(\1) # label(axiom)/; s/[\n]+/ /g; s/[ ]+/ /g; print "$_\n"}' $1 | perl -e '$/="."; while(<>) { s/(#[^\n]*)\n(.*)[.]/\2 \1./; print $_;}'
@@ -1804,14 +1900,14 @@ sub Iterate
 	NormalizeAndCreateInitialSpecs($file_prefix, $file_postfix, $gcommonfile);
 
 	# create the refsyms file
-	`cat $filestem.allflas | bin/GetSymbols -- |sort -u > $filestem.refsyms`;
+	`cat $filestem.allasax | bin/GetSymbols -- |sort -u > $filestem.refsyms`;
 
 	# create the trmstd and trmnrm files
 	if ($gdotrmstd > 0) {
-	    `cat $filestem.allflas | bin/fofshared -|sort -u > $filestem.trmstd`;
+	    `cat $filestem.allasax | bin/fofshared -|sort -u > $filestem.trmstd`;
 	}
 	if ($gdotrmnrm > 0) {
-	    my @lines1 = `cat $filestem.allflas`;
+	    my @lines1 = `cat $filestem.allasax`;
 	    my $line;
 	    my $fofsh_pid = open(FOFSH,"|bin/fofshared -|sort -u > $filestem.trmnrm");
 	    foreach $line (@lines1) {
@@ -2278,18 +2374,40 @@ sub PrintTrainingFromHash
     foreach $ref (sort keys %$proved_by)
     {
 	my @refs = @{$proved_by->{$ref}};
+	if($ggeneralize > 0)
+	{
+	    foreach my $rr (@{$proved_by->{$ref}})
+	    {
+		if(exists $gref2gen{$rr}) { push(@refs, 'ggennew_' . $gref2gen{$rr}); }
+	    }
+	}
 	my @refs_nrs   = map { $grefnr{$_} if(exists($grefnr{$_})) } @refs;
 	my @syms = @{$grefsyms{$ref}};
+	push(@syms, $gggnewc) if exists $gref2gen{$ref};
 	my @syms_nrs   = map { $gsymnr{$_} if(exists($gsymnr{$_})) } @syms;
 	my @all_nrs = (@refs_nrs, @syms_nrs);
 	if($gdotrmstd > 0)
 	{
 	    my @trmstd_nrs   = @{$greftrmstd{$ref}};
+	    if(exists $gref2gen{$ref})
+	    {
+		my %tmp = ();
+		@tmp{ @trmstd_nrs } = ();
+		@tmp{ @{$greftrmstd{$gref2gen{$ref}}} } = ();
+		@trmstd_nrs = keys %tmp;
+	    }
 	    push(@all_nrs, @trmstd_nrs);
 	}
 	if($gdotrmnrm > 0)
 	{
 	    my @trmnrm_nrs   = @{$greftrmnrm{$ref}};
+	    if(exists $gref2gen{$ref})
+	    {
+		my %tmp = ();
+		@tmp{ @trmnrm_nrs } = ();
+		@tmp{ @{$greftrmnrm{$gref2gen{$ref}}} } = ();
+		@trmnrm_nrs = keys %tmp;
+	    }
 	    push(@all_nrs, @trmnrm_nrs);
 	}
 	if(($guseposmodels > 0) && (exists $grefposmods{$ref}))
