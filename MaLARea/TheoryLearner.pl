@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.97 $
+## $Revision: 1.98 $
 
 
 =head1 NAME
@@ -1790,7 +1790,7 @@ sub SetupGeneralization
 	    $gennr = $#ggennr2fla;
 	    $ggenfla2nr{$rest} = $gennr;
 	}
-	$gref2gen{$nm} = $gennr;
+	$gref2gen{$nm} = 'ggennew_' .  $gennr;
 	push( @{$ggen2ref{'ggennew_' . $gennr}}, $nm);
     }
 }
@@ -1868,11 +1868,17 @@ sub NormalizeAndCreateInitialSpecs
     close(ALLFLAS);
     %alllines2 = ();
     open(ALLGENS, ">$filestem.allgens");
+    open(GEN2REF, ">$filestem.gen2ref");
     if($ggeneralize > 0)
     {
-	foreach $i (0 .. $#ggennr2fla) { print ALLGENS ("fof(ggennew_$i,axiom,", $ggennr2fla[$i], "\n"); }
+	foreach $i (0 .. $#ggennr2fla) 
+	{
+	    print ALLGENS ("fof(ggennew_$i,axiom,", $ggennr2fla[$i], "\n");
+	    print GEN2REF ("gen2ref(ggennew_$gennr,[", join(",", @{$ggen2ref{'ggennew_' . $gennr}}), "]).\n");
+	}
     }
     close(ALLGENS);
+    close(GEN2REF);
 
     `sed -e 's/,conjecture,/,axiom,/' $filestem.allflas $filestem.allgens | sed -e 's/,lemma,/,axiom,/' | sort -u > $filestem.allasax`;
 
@@ -2379,7 +2385,7 @@ sub PrintTrainingFromHash
 	{
 	    foreach my $rr (@{$proved_by->{$ref}})
 	    {
-		if(exists $gref2gen{$rr}) { push(@refs, 'ggennew_' . $gref2gen{$rr}); }
+		if(exists $gref2gen{$rr}) { push(@refs, $gref2gen{$rr}); }
 	    }
 	}
 	my @refs_nrs   = map { $grefnr{$_} if(exists($grefnr{$_})) } @refs;
