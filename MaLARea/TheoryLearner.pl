@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.96 $
+## $Revision: 1.97 $
 
 
 =head1 NAME
@@ -349,6 +349,7 @@ $giterpolicy = pol_STD unless(defined($giterpolicy));
 $grecadvice = 0 unless(defined($grecadvice));
 $grefsbgcheat = 0 unless(defined($grefsbgcheat));
 $gsimilarity = 1 unless(defined($gsimilarity));
+$ggeneralize = 0 unless(defined($ggeneralize));
 $galwaysmizrefs = 0 unless(defined($galwaysmizrefs));
 $gcommonfile = "" unless(defined($gcommonfile));
 $gfileprefix = "" unless(defined($gfileprefix));
