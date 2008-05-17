@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.95 $
+## $Revision: 1.96 $
 
 
 =head1 NAME
@@ -1869,7 +1869,7 @@ sub NormalizeAndCreateInitialSpecs
     open(ALLGENS, ">$filestem.allgens");
     if($ggeneralize > 0)
     {
-	foreach $i (0 .. $#ggennr2fla) { print ALLGENS ("fof(ggennew_$i,axiom,", $ggennr2fla[$i]); }
+	foreach $i (0 .. $#ggennr2fla) { print ALLGENS ("fof(ggennew_$i,axiom,", $ggennr2fla[$i], "\n"); }
     }
     close(ALLGENS);
 
