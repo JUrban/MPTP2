@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.98 $
+## $Revision: 1.99 $
 
 
 =head1 NAME
@@ -1874,7 +1874,7 @@ sub NormalizeAndCreateInitialSpecs
 	foreach $i (0 .. $#ggennr2fla) 
 	{
 	    print ALLGENS ("fof(ggennew_$i,axiom,", $ggennr2fla[$i], "\n");
-	    print GEN2REF ("gen2ref(ggennew_$gennr,[", join(",", @{$ggen2ref{'ggennew_' . $gennr}}), "]).\n");
+	    print GEN2REF ("gen2ref(ggennew_$i,[", join(",", @{$ggen2ref{'ggennew_' . $i}}), "]).\n");
 	}
     }
     close(ALLGENS);
