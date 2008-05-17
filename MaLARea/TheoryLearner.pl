@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.99 $
+## $Revision: 1.100 $
 
 
 =head1 NAME
@@ -2085,8 +2085,17 @@ sub Iterate
 		}
 		else
 		{
-		    DumpResults(); DumpModelInfo();
-		    die "reached maximum threshold: $threshold, and timelmit: $gtimelimit";
+		    if(($giterpolicy == pol_GROWTH) && ($iter < 50))
+		    {
+			$threshold = $minthreshold;
+			$gtimelimit = $mintimelimit;
+			print "THRESHOLD: $threshold\nTIMELIMIT: $gtimelimit\n";
+		    }
+		    else
+		    {
+			DumpResults(); DumpModelInfo();
+			die "reached maximum threshold: $threshold, and timelmit: $gtimelimit";
+		    }
 		}
 	    }
 	}
