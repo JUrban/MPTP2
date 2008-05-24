@@ -9,6 +9,7 @@ XSLTPROC = /home/urban/bin/xsltproc.1.1.15
 XML2HTML = /home/urban/xsltxt/xsl4mizar/miz.xsl
 ADDABS = /home/urban/xsltxt/xsl4mizar/addabsrefs.xsl
 MIZPL = /home/urban/xsltxt/xsl4mizar/mizpl.xsl
+MIZ2DLI = /home/urban/xsltxt/xsl4mizar/miz2dli.xsl
 ACCOM = $(MFILES)/bin/accom 
 VERIFIER = $(MFILES)/bin/verifier.7.8.05_hacktopcnst_bex
 
@@ -30,6 +31,10 @@ VERIFIER = $(MFILES)/bin/verifier.7.8.05_hacktopcnst_bex
 
 %.xml1: %.xml
 	$(XSLTPROC) $(ADDABS)  $*.xml > $*.xml1 
+
+%.dli: %.xml1
+	$(XSLTPROC) $(MIZ2DLI)  $*.xml1 > $*.dli
+
 
 %.zrt1: %.zrt
 	$(XSLTPROC) $(ADDABS)  $*.zrt > $*.zrt1 
@@ -62,3 +67,4 @@ allxml2: $(addsuffix .xml2, $(SHMIZ))
 allbex: $(addsuffix .bex, $(STANDARDMIZ))
 allzrt1: $(addsuffix .zrt1, $(STANDARDMIZ))
 allzrt2: $(addsuffix .zrt2, $(STANDARDMIZ))
+alldli: $(addsuffix .dli, $(SHMIZ))
