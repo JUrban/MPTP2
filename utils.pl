@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.141 $
+%% $Revision: 1.142 $
 %%
 %% File  : utils.pl
 %%
@@ -53,6 +53,7 @@ opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme insta
 	       opt_ADDED_NON_MML,       %% unary functor passing a list of nonMML article names
 	       opt_NON_MML_DIR,         %% unary functor passing a nonstandard directory for the article
 	       opt_PROB_PRINT_FUNC,	%% unary functor passing a special printing func
+	       opt_PRINT_PROB_PROGRESS, %% print processed problems to stdout
 	       opt_PP_SMALLER_INCLUDES, %% unary functor passing a list of possible includes,
 	                                %% used with print_refs_as_tptp_includes
 	       opt_TPTPFIX_ND_ROLE,	%% make the role acceptable to GDV
@@ -4457,7 +4458,11 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 %% Print problem ProblemName into OutFile, doing sort transformation.
 print_problem(P,F,[_InferenceKinds,_PropositionKinds|Rest],Options,
 	      Outfile,Line,Col,AllRefs):-
-	
+	(member(opt_PRINT_PROB_PROGRESS,Options) ->
+	    format('% Mizar problem: ~w,~w,~w,~w ~n', [P,F,Line,Col])
+	;
+	    true
+	),
 	tell(Outfile),
 	format('% Mizar problem: ~w,~w,~w,~w ~n', [P,F,Line,Col]),
 	(member(snow_spec, Rest) ->
