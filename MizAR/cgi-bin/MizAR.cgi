@@ -99,6 +99,17 @@ sub GetRefs
     return \@res;
 }
 
+sub CreateTmpDir
+{
+    my ($tmpdir) = @_;
+
+    if (!mkdir($tmpdir,0777)) {
+        print("ERROR: Cannot make temp dir $tmpdir\n");
+        die("\n");
+    }
+
+    system("chmod 0777 $tmpdir");
+}
 # Make temporary directories for files;
 # creates the ( 'proofs', 'problems', 'dict') subdirs
 # Change permissions so tptp can cleanup later if needed
@@ -106,23 +117,11 @@ sub CreateTmpDirs
 {
     my ($tmproot) = @_;
 
-
-    if (!mkdir($tmproot,0777)) {
-        print("ERROR: Cannot make temp dir $tmproot\n");
-        die("\n");
-    }
-
-    system("chmod 0777 $tmproot");
+    CreateTmpDir($tmproot);
 
     foreach my $subdir ( 'proofs', 'problems', 'dict')
     {
-	if (!mkdir($tmproot . "/". $subdir ,0777)) 
-	{
-	    print("ERROR: Cannot make temp/$subdir dir $tmproot/$subdir\n");
-	    die("\n");
-	}
-
-	system("chmod 0777 $tmproot/$subdir");
+	CreateTmpDir($tmproot . "/". $subdir)
     }
 
 ## nasty hack to get around the dict/text issues 
@@ -155,9 +154,11 @@ unless($text_mode)
 #    my $ProblemFileTxt = "${TemporaryProblemDirectory}/text/$aname";
     open(PFH, ">$ProblemFileOrig1") or die "$ProblemFileOrig1 not writable";
 #    my ($ProblemFileHandle,$ProblemFileOrig1) = mkstemp("${TemporaryProblemDirectory}/$aname");
-    if ($ProblemSource eq "UPLOAD") {
+    if ($ProblemSource eq "UPLOAD")
+    {
 	my $UploadFileHandle = $query->param('UPLOADProblem');
-	if (!defined($UploadFileHandle) || $UploadFileHandle eq "") {
+	if (!defined($UploadFileHandle) || $UploadFileHandle eq "")
+	{
 	    print("ERROR: Empty uploaded problem file\n");
 	    die("ERROR: Empty uploaded problem file\n");
 	}
@@ -166,7 +167,7 @@ unless($text_mode)
 	while (defined($UploadLine = <$UploadFileHandle>)) { print PFH $UploadLine; };
 	close($UploadFileHandle);
     }
-    elsif (!($input_article eq "")) 
+    elsif (!($input_article eq ""))
     {
 #----Convert \r (DOS EOLN) to \n (UNIX EOLN)
 	if($doatproof > 0) 
@@ -178,15 +179,17 @@ unless($text_mode)
 #            $Formulae =~ s/\n\n/\n/g;
 	printf(PFH "%s",$input_article);
     }
-    else 
-    { 
+    else
+    {
 	print("ERROR: No article provided\n"); 
 	die("ERROR: No article provided\n"); 
     }
 
     close(PFH);
 
-    if (defined($VocSource) && ($VocSource eq 'UPLOAD') && defined($VocFile) && !($VocFile eq "")) {
+    if (defined($VocSource) && ($VocSource eq 'UPLOAD')
+	&& defined($VocFile) && !($VocFile eq ""))
+    {
 	my $VOCFileOrig1 = "${TemporaryProblemDirectory}/dict/$VocFile";
 	open(VOC, ">$VOCFileOrig1") or die "$VOCFileOrig1 not writable";
 	my $UploadLine;
@@ -202,20 +205,10 @@ unless($text_mode)
     $ProblemFileOrig =~ m/.*[\/]([^\/]*)$/ or die " Bad file name $ProblemFileOrig";
     my $BaseName = $1;
     my $AjaxProofDir = $TemporaryProblemDirectory . "/proofs/" . $BaseName;
-    if (!mkdir($TemporaryProblemDirectory . "/proofs/" . $BaseName ,0777)) {
-        print("ERROR: Cannot make temp/proofs/$BaseName dir $TemporaryProblemDirectory/proofs/$BaseName\n");
-        die("\n");
-    }
-
-    system("chmod 0777 $AjaxProofDir");
-
     my $ProblemDir = $TemporaryProblemDirectory . "/problems/" . $BaseName;
-    if (!mkdir($TemporaryProblemDirectory . "/problems/" . $BaseName ,0777)) {
-        print("ERROR: Cannot make temp/problems/$BaseName dir $TemporaryProblemDirectory/problems/$BaseName\n");
-        die("\n");
-    }
 
-    system("chmod 0777 $ProblemDir");
+    CreateTmpDir($AjaxProofDir);
+    CreateTmpDir($ProblemDir);
 
     system("dos2unix $ProblemFileOrig1");
     my $ProblemFile = $ProblemFileOrig . ".miz";
