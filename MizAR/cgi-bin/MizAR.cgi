@@ -87,42 +87,12 @@ sub CreateTmpDirs
 
 }
 
-print $query->header;
-unless($text_mode)
+# Print input article into $ProblemFile;
+# handle vocabulary, convert to unix, handle atproof.
+# Uses lots of global vars now.
+sub SetupArticleFiles
 {
-    print $query->start_html("MizAR Output");
 
-#----Check for proper article name
-    unless((length($aname) < 9) && ($aname=~m/^[a-z][a-z0-9_]*$/))
-    {
-	print "<pre>";
-	print ("Error: article name must not exceed 8 characters, has to start with a-z, and only contain [a-z0-9_]: ", $aname);
-	print "<pre/>";
-	print $query->end_html;
-	die "article name";
-    }
-
-    CreateTmpDirs($TemporaryProblemDirectory);
-
-
-    my $ProblemFileOrig = "${TemporaryProblemDirectory}/$aname";
-    my $AjaxProofDir = $TemporaryProblemDirectory . "/proofs/" . $aname;
-    my $ProblemDir = $TemporaryProblemDirectory . "/problems/" . $aname;
-    my $ProblemFile = $ProblemFileOrig . ".miz";
-    my $ProblemFileXml = $ProblemFileOrig . ".xml";
-    my $ProblemFileXml2 = $ProblemFileOrig . ".xml2";
-    my $ProblemFileHtml = $ProblemFileOrig . ".html";
-    my $ProblemFileDco = $ProblemFileOrig . ".dco";
-    my $ProblemFileDco1 = $ProblemFileOrig . ".dco1";
-    my $ProblemFileDco2 = $ProblemFileOrig . ".dco2";
-
-
-    CreateTmpDir($AjaxProofDir);
-    CreateTmpDir($ProblemDir);
-
-
-
-#----Print input article into $ProblemFileOrig
 
 #    my $ProblemFileTxt = "${TemporaryProblemDirectory}/text/$aname";
     open(PFH, ">$ProblemFileOrig") or die "$ProblemFileOrig not writable";
@@ -175,9 +145,46 @@ unless($text_mode)
     system("dos2unix $ProblemFileOrig");
     `mv $ProblemFileOrig $ProblemFile`;
     system("chmod 0666 $ProblemFile");
-    $ENV{"MIZFILES"}= $Mizfiles;
+}
+
+
+
+print $query->header;
+unless($text_mode)
+{
+    print $query->start_html("MizAR Output");
+
+#----Check for proper article name
+    unless((length($aname) < 9) && ($aname=~m/^[a-z][a-z0-9_]*$/))
+    {
+	print "<pre>";
+	print ("Error: article name must not exceed 8 characters, has to start with a-z, and only contain [a-z0-9_]: ", $aname);
+	print "<pre/>";
+	print $query->end_html;
+	die "article name";
+    }
+
+    CreateTmpDirs($TemporaryProblemDirectory);
+
+    my $ProblemFileOrig = "${TemporaryProblemDirectory}/$aname";
+    my $AjaxProofDir = $TemporaryProblemDirectory . "/proofs/" . $aname;
+    my $ProblemDir = $TemporaryProblemDirectory . "/problems/" . $aname;
+    my $ProblemFile = $ProblemFileOrig . ".miz";
+    my $ProblemFileXml = $ProblemFileOrig . ".xml";
+    my $ProblemFileXml2 = $ProblemFileOrig . ".xml2";
+    my $ProblemFileHtml = $ProblemFileOrig . ".html";
+    my $ProblemFileDco = $ProblemFileOrig . ".dco";
+    my $ProblemFileDco1 = $ProblemFileOrig . ".dco1";
+    my $ProblemFileDco2 = $ProblemFileOrig . ".dco2";
     my $MizOutput = $ProblemFileOrig . ".mizoutput";
     my $ExpOutput = $ProblemFileOrig . ".expoutput";
+
+    CreateTmpDir($AjaxProofDir);
+    CreateTmpDir($ProblemDir);
+
+    SetupArticleFiles();
+
+    $ENV{"MIZFILES"}= $Mizfiles;
     system("$mizf $ProblemFile 2>&1 > $MizOutput");
     print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.mizoutput&tmp=$PidNr\" target=\"MizarOutput$PidNr\">Show Mizar Output</a>\n";
 #    print $AjaxProofDir;
