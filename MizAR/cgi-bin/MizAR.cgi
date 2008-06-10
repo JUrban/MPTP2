@@ -55,50 +55,6 @@ my %gconstrs      =
 
 sub min { my ($x,$y) = @_; ($x <= $y)? $x : $y }
 
-# returns nr. of syms with repetitions
-sub GetQuerySymbols
-{
-    my ($fla, $syms) = @_;
-    my $res = 0;
-
-    while($fla =~ /\b([0-9A-Z_]+):(func|pred|attr|mode|aggr|sel|struct)[ .]([0-9]+)/g)
-    {
-#    MPTP-like constructors commented, we now expect Query-like format
-#	my $aname	= lc($1);
-#	my $sname	= $gconstrs{$2}."$3"."_".$aname;
-
-        my $sname	= $1.":".$2." ".$3;
-	$syms->{$sname}	= ();	# counts can be here later
-	$res++;
-    }
-    return $res;
-}
-
-# limit not used here yet
-sub GetRefs
-{
-    my ($syms, $limit) = @_;
-    my ($msgin, @res);
-    my $EOL = "\015\012";
-    my $BLANK = $EOL x 2;
-    my $remote = IO::Socket::INET->new( Proto     => "tcp",
-					PeerAddr  => $ghost,
-					PeerPort  => $gport,
-				      );
-    unless ($remote)
-    {
-	print "The server is down, sorry\n";
-	$query->end_html unless($text_mode);
-	exit;
-    }
-    $remote->autoflush(1);
-    print $remote join(",",(keys %$syms)) . "\n";
-    $msgin = <$remote>;
-    @res  = split(/\,/, $msgin);
-    close $remote;
-    return \@res;
-}
-
 sub CreateTmpDir
 {
     my ($tmpdir) = @_;
@@ -131,7 +87,6 @@ sub CreateTmpDirs
 
 }
 
-
 print $query->header;
 unless($text_mode)
 {
@@ -150,10 +105,22 @@ unless($text_mode)
     CreateTmpDirs($TemporaryProblemDirectory);
 
 
-    my $ProblemFileOrig1 = "${TemporaryProblemDirectory}/$aname";
+    my $ProblemFileOrig = "${TemporaryProblemDirectory}/$aname";
+    $ProblemFileOrig =~ m/.*[\/]([^\/]*)$/ or die " Bad file name $ProblemFileOrig";
+    my $BaseName = $1;
+    my $AjaxProofDir = $TemporaryProblemDirectory . "/proofs/" . $BaseName;
+    my $ProblemDir = $TemporaryProblemDirectory . "/problems/" . $BaseName;
+
+    CreateTmpDir($AjaxProofDir);
+    CreateTmpDir($ProblemDir);
+
+
+
+#----Print input article into $ProblemFileOrig
+
 #    my $ProblemFileTxt = "${TemporaryProblemDirectory}/text/$aname";
-    open(PFH, ">$ProblemFileOrig1") or die "$ProblemFileOrig1 not writable";
-#    my ($ProblemFileHandle,$ProblemFileOrig1) = mkstemp("${TemporaryProblemDirectory}/$aname");
+    open(PFH, ">$ProblemFileOrig") or die "$ProblemFileOrig not writable";
+#    my ($ProblemFileHandle,$ProblemFileOrig) = mkstemp("${TemporaryProblemDirectory}/$aname");
     if ($ProblemSource eq "UPLOAD")
     {
 	my $UploadFileHandle = $query->param('UPLOADProblem');
@@ -201,16 +168,8 @@ unless($text_mode)
 
 
 
-    my $ProblemFileOrig = lc($ProblemFileOrig1);
-    $ProblemFileOrig =~ m/.*[\/]([^\/]*)$/ or die " Bad file name $ProblemFileOrig";
-    my $BaseName = $1;
-    my $AjaxProofDir = $TemporaryProblemDirectory . "/proofs/" . $BaseName;
-    my $ProblemDir = $TemporaryProblemDirectory . "/problems/" . $BaseName;
 
-    CreateTmpDir($AjaxProofDir);
-    CreateTmpDir($ProblemDir);
-
-    system("dos2unix $ProblemFileOrig1");
+    system("dos2unix $ProblemFileOrig");
     my $ProblemFile = $ProblemFileOrig . ".miz";
     my $ProblemFileXml = $ProblemFileOrig . ".xml";
     my $ProblemFileXml2 = $ProblemFileOrig . ".xml2";
@@ -218,7 +177,7 @@ unless($text_mode)
     my $ProblemFileDco = $ProblemFileOrig . ".dco";
     my $ProblemFileDco1 = $ProblemFileOrig . ".dco1";
     my $ProblemFileDco2 = $ProblemFileOrig . ".dco2";
-    `mv $ProblemFileOrig1 $ProblemFile`;
+    `mv $ProblemFileOrig $ProblemFile`;
     system("chmod 0666 $ProblemFile");
     $ENV{"MIZFILES"}= $Mizfiles;
     my $MizOutput = $ProblemFileOrig . ".mizoutput";
@@ -356,3 +315,51 @@ unless($text_mode)
 #     print "<pre/>";
 #     print $query->end_html;
 # }
+
+
+#----Old advisor stuff (unused now)
+
+# returns nr. of syms with repetitions
+sub GetQuerySymbols
+{
+    my ($fla, $syms) = @_;
+    my $res = 0;
+
+    while($fla =~ /\b([0-9A-Z_]+):(func|pred|attr|mode|aggr|sel|struct)[ .]([0-9]+)/g)
+    {
+#    MPTP-like constructors commented, we now expect Query-like format
+#	my $aname	= lc($1);
+#	my $sname	= $gconstrs{$2}."$3"."_".$aname;
+
+        my $sname	= $1.":".$2." ".$3;
+	$syms->{$sname}	= ();	# counts can be here later
+	$res++;
+    }
+    return $res;
+}
+
+
+# limit not used here yet
+sub GetRefs
+{
+    my ($syms, $limit) = @_;
+    my ($msgin, @res);
+    my $EOL = "\015\012";
+    my $BLANK = $EOL x 2;
+    my $remote = IO::Socket::INET->new( Proto     => "tcp",
+					PeerAddr  => $ghost,
+					PeerPort  => $gport,
+				      );
+    unless ($remote)
+    {
+	print "The server is down, sorry\n";
+	$query->end_html unless($text_mode);
+	exit;
+    }
+    $remote->autoflush(1);
+    print $remote join(",",(keys %$syms)) . "\n";
+    $msgin = <$remote>;
+    @res  = split(/\,/, $msgin);
+    close $remote;
+    return \@res;
+}
