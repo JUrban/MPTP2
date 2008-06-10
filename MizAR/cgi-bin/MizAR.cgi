@@ -106,10 +106,16 @@ unless($text_mode)
 
 
     my $ProblemFileOrig = "${TemporaryProblemDirectory}/$aname";
-    $ProblemFileOrig =~ m/.*[\/]([^\/]*)$/ or die " Bad file name $ProblemFileOrig";
-    my $BaseName = $1;
-    my $AjaxProofDir = $TemporaryProblemDirectory . "/proofs/" . $BaseName;
-    my $ProblemDir = $TemporaryProblemDirectory . "/problems/" . $BaseName;
+    my $AjaxProofDir = $TemporaryProblemDirectory . "/proofs/" . $aname;
+    my $ProblemDir = $TemporaryProblemDirectory . "/problems/" . $aname;
+    my $ProblemFile = $ProblemFileOrig . ".miz";
+    my $ProblemFileXml = $ProblemFileOrig . ".xml";
+    my $ProblemFileXml2 = $ProblemFileOrig . ".xml2";
+    my $ProblemFileHtml = $ProblemFileOrig . ".html";
+    my $ProblemFileDco = $ProblemFileOrig . ".dco";
+    my $ProblemFileDco1 = $ProblemFileOrig . ".dco1";
+    my $ProblemFileDco2 = $ProblemFileOrig . ".dco2";
+
 
     CreateTmpDir($AjaxProofDir);
     CreateTmpDir($ProblemDir);
@@ -166,24 +172,14 @@ unless($text_mode)
 	close(VOC)
     }
 
-
-
-
     system("dos2unix $ProblemFileOrig");
-    my $ProblemFile = $ProblemFileOrig . ".miz";
-    my $ProblemFileXml = $ProblemFileOrig . ".xml";
-    my $ProblemFileXml2 = $ProblemFileOrig . ".xml2";
-    my $ProblemFileHtml = $ProblemFileOrig . ".html";
-    my $ProblemFileDco = $ProblemFileOrig . ".dco";
-    my $ProblemFileDco1 = $ProblemFileOrig . ".dco1";
-    my $ProblemFileDco2 = $ProblemFileOrig . ".dco2";
     `mv $ProblemFileOrig $ProblemFile`;
     system("chmod 0666 $ProblemFile");
     $ENV{"MIZFILES"}= $Mizfiles;
     my $MizOutput = $ProblemFileOrig . ".mizoutput";
     my $ExpOutput = $ProblemFileOrig . ".expoutput";
     system("$mizf $ProblemFile 2>&1 > $MizOutput");
-    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$BaseName.mizoutput&tmp=$PidNr\" target=\"MizarOutput$PidNr\">Show Mizar Output</a>\n";
+    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.mizoutput&tmp=$PidNr\" target=\"MizarOutput$PidNr\">Show Mizar Output</a>\n";
 #    print $AjaxProofDir;
 
 #  sort the .bex file
@@ -234,9 +230,9 @@ unless($text_mode)
 # #!/usr/bin/tcsh
     my $Tmp1 = $TemporaryProblemDirectory . '/';
 # swipl -G50M -s utils.pl -g "mptp2tptp('$1',[opt_NO_FRAENKEL_CONST_GEN],user),halt." |& grep "^fof"
-    system("cd $TemporaryProblemDirectory; swipl -G50M -s $utilspl -g \"(A=$BaseName,D=\'$Tmp1\',declare_mptp_predicates,time(load_mml_for_article(A, D, [A])),time(install_index),time(mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma, sublemma]],[opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_ADDED_NON_MML([A]),opt_NON_MML_DIR(D),opt_LINE_COL_NMS])),halt).\" > $BaseName.ploutput 2>&1");
+    system("cd $TemporaryProblemDirectory; swipl -G50M -s $utilspl -g \"(A=$aname,D=\'$Tmp1\',declare_mptp_predicates,time(load_mml_for_article(A, D, [A])),time(install_index),time(mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma, sublemma]],[opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_ADDED_NON_MML([A]),opt_NON_MML_DIR(D),opt_LINE_COL_NMS])),halt).\" > $aname.ploutput 2>&1");
 
-    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$BaseName.ploutput&tmp=$PidNr\" target=\"MPTPOutput$PidNr\">Show MPTP Output</a><br>\n";
+    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.ploutput&tmp=$PidNr\" target=\"MPTPOutput$PidNr\">Show MPTP Output</a><br>\n";
 
 
     my $lbytmpdir = $PidNr . '\&ATP=refs\&HTML=1';
