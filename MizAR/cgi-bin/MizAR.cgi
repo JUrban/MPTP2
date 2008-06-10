@@ -50,6 +50,7 @@ my $ProblemFileDco1 = $ProblemFileOrig . ".dco1";
 my $ProblemFileDco2 = $ProblemFileOrig . ".dco2";
 my $MizOutput = $ProblemFileOrig . ".mizoutput";
 my $ExpOutput = $ProblemFileOrig . ".expoutput";
+my $ProblemFileBex = $ProblemFileOrig . ".bex";
 
 my $text_mode     = $query->param('Text');
 my (%gsyms,$grefs,$ref);
@@ -174,7 +175,30 @@ sub SetupArticleFiles
     system("chmod 0666 $ProblemFile");
 }
 
+#  sort the .bex file
+sub SortByExplanations
+{
+    my ($Bex) = @_;
 
+    if(open(BEX,$Bex))
+    {
+	local $/;
+	my $bex=<BEX>;
+	close(BEX);
+	if($bex=~m/((.|[\n])*?)<PolyEval/)
+	{
+	    open(BEX,">$Bex");
+	    print BEX $1;
+	    my %h=();
+	    while($bex=~m/(<PolyEval((.|[\n])*?)<\/PolyEval>)/g)
+	    {
+		if(!(exists $h{$1})) { print BEX $1; $h{$1} = (); }
+	    }
+	    print BEX "</ByExplanations>\n";
+	    close(BEX);
+	}
+    }
+}
 
 print $query->header;
 unless($text_mode)
@@ -194,22 +218,8 @@ unless($text_mode)
     print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.mizoutput&tmp=$PidNr\" target=\"MizarOutput$PidNr\">Show Mizar Output</a>\n";
 #    print $AjaxProofDir;
 
-#  sort the .bex file
-    my $Bex = $ProblemFileOrig . ".bex";
-    if(open(BEX,$Bex))
-    {	
-	local $/;my $bex=<BEX>; 
-	close(BEX);
-	if($bex=~m/((.|[\n])*?)<PolyEval/) 
-	{ 
-	    open(BEX,">$Bex");
-	    print BEX $1;
-	    my %h=();
-	    while($bex=~m/(<PolyEval((.|[\n])*?)<\/PolyEval>)/g) { if(!(exists $h{$1})) { print BEX $1; $h{$1} = (); }} 
-	    print BEX "</ByExplanations>\n";
-	    close(BEX);
-	} 
-    }
+    SortByExplanations($ProblemFileBex);
+
 
 #    system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml > $ProblemFileXml.abs 2>$ProblemFileXml.errabs");
     system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml 2>$ProblemFileXml.errabs |tee $ProblemFileXml.abs | time $xsltproc $mizpl /dev/stdin > $ProblemFileXml2 2>$ProblemFileXml.errpl");
