@@ -99,12 +99,46 @@ sub GetRefs
     return \@res;
 }
 
+# Make temporary directories for files;
+# creates the ( 'proofs', 'problems', 'dict') subdirs
+# Change permissions so tptp can cleanup later if needed
+sub CreateTmpDirs
+{
+    my ($tmproot) = @_;
+
+
+    if (!mkdir($tmproot,0777)) {
+        print("ERROR: Cannot make temp dir $tmproot\n");
+        die("\n");
+    }
+
+    system("chmod 0777 $tmproot");
+
+    foreach my $subdir ( 'proofs', 'problems', 'dict')
+    {
+	if (!mkdir($tmproot . "/". $subdir ,0777)) 
+	{
+	    print("ERROR: Cannot make temp/$subdir dir $tmproot/$subdir\n");
+	    die("\n");
+	}
+
+	system("chmod 0777 $tmproot/$subdir");
+    }
+
+## nasty hack to get around the dict/text issues 
+##    system("ln -s $TemporaryProblemDirectory $TemporaryProblemDirectory/text");
+
+#DEBUG print("----$TemporaryProblemDirectory----$!---\n");
+
+}
+
 
 print $query->header;
 unless($text_mode)
 {
-    print $query->start_html("ATP Output");
+    print $query->start_html("MizAR Output");
 
+#----Check for proper article name
     unless((length($aname) < 9) && ($aname=~m/^[a-z][a-z0-9_]*$/))
     {
 	print "<pre>";
@@ -114,41 +148,8 @@ unless($text_mode)
 	die "article name";
     }
 
-#----Make temporary directory for files
-    if (!mkdir($TemporaryProblemDirectory,0777)) {
-        print("ERROR: Cannot make temp dir $TemporaryProblemDirectory\n");
-        die("\n");
-    }
+    CreateTmpDirs($TemporaryProblemDirectory);
 
-    if (!mkdir($TemporaryProblemDirectory . "/proofs" ,0777)) {
-        print("ERROR: Cannot make temp/proofs dir $TemporaryProblemDirectory/proofs\n");
-        die("\n");
-    }
-
-    system("chmod 0777 $TemporaryProblemDirectory/proofs");
-
-    if (!mkdir($TemporaryProblemDirectory . "/problems" ,0777)) {
-        print("ERROR: Cannot make temp/problems dir $TemporaryProblemDirectory/problems\n");
-        die("\n");
-    }
-
-    system("chmod 0777 $TemporaryProblemDirectory/problems");
-
-    if (!mkdir($TemporaryProblemDirectory . "/dict" ,0777)) {
-        print("ERROR: Cannot make temp/dict dir $TemporaryProblemDirectory/dict\n");
-        die("\n");
-    }
-
-    system("chmod 0777 $TemporaryProblemDirectory/dict");
-
-## nasty hack to get around the dict/text issues 
-##    system("ln -s $TemporaryProblemDirectory $TemporaryProblemDirectory/text");
-
-
-
-#DEBUG print("----$TemporaryProblemDirectory----$!---\n");
-#----Change permissions so tptp can cleanup later if needed
-    system("chmod 0777 $TemporaryProblemDirectory");
 
     my $ProblemFileOrig1 = "${TemporaryProblemDirectory}/$aname";
 #    my $ProblemFileTxt = "${TemporaryProblemDirectory}/text/$aname";
