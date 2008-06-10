@@ -38,6 +38,19 @@ my $input_name	  = $query->param('Name');
 my $atp_mode	  = $query->param('ATPMode');
 my $aname         = lc($input_name); 
 my $aname_uc      = uc($aname);
+my $ProblemFileOrig = $TemporaryProblemDirectory . "/$aname";
+my $AjaxProofDir = $TemporaryProblemDirectory . "/proofs/" . $aname;
+my $ProblemDir = $TemporaryProblemDirectory . "/problems/" . $aname;
+my $ProblemFile = $ProblemFileOrig . ".miz";
+my $ProblemFileXml = $ProblemFileOrig . ".xml";
+my $ProblemFileXml2 = $ProblemFileOrig . ".xml2";
+my $ProblemFileHtml = $ProblemFileOrig . ".html";
+my $ProblemFileDco = $ProblemFileOrig . ".dco";
+my $ProblemFileDco1 = $ProblemFileOrig . ".dco1";
+my $ProblemFileDco2 = $ProblemFileOrig . ".dco2";
+my $MizOutput = $ProblemFileOrig . ".mizoutput";
+my $ExpOutput = $ProblemFileOrig . ".expoutput";
+
 my $text_mode     = $query->param('Text');
 my (%gsyms,$grefs,$ref);
 my $ghost	  = "localhost";
@@ -165,20 +178,6 @@ unless($text_mode)
     }
 
     CreateTmpDirs($TemporaryProblemDirectory);
-
-    my $ProblemFileOrig = "${TemporaryProblemDirectory}/$aname";
-    my $AjaxProofDir = $TemporaryProblemDirectory . "/proofs/" . $aname;
-    my $ProblemDir = $TemporaryProblemDirectory . "/problems/" . $aname;
-    my $ProblemFile = $ProblemFileOrig . ".miz";
-    my $ProblemFileXml = $ProblemFileOrig . ".xml";
-    my $ProblemFileXml2 = $ProblemFileOrig . ".xml2";
-    my $ProblemFileHtml = $ProblemFileOrig . ".html";
-    my $ProblemFileDco = $ProblemFileOrig . ".dco";
-    my $ProblemFileDco1 = $ProblemFileOrig . ".dco1";
-    my $ProblemFileDco2 = $ProblemFileOrig . ".dco2";
-    my $MizOutput = $ProblemFileOrig . ".mizoutput";
-    my $ExpOutput = $ProblemFileOrig . ".expoutput";
-
     CreateTmpDir($AjaxProofDir);
     CreateTmpDir($ProblemDir);
 
