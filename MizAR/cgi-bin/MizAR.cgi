@@ -68,6 +68,20 @@ my %gconstrs      =
 
 sub min { my ($x,$y) = @_; ($x <= $y)? $x : $y }
 
+#----Check for proper article name
+sub CheckArticleName
+{
+    my ($aname1) = @_;
+    unless((length($aname1) < 9) && ($aname1=~m/^[a-z][a-z0-9_]*$/))
+    {
+	print "<pre>";
+	print ("Error: article name must not exceed 8 characters, has to start with a-z, and only contain [a-z0-9_]: ", $aname1);
+	print "<pre/>";
+	print $query->end_html;
+	die "article name";
+    }
+}
+
 sub CreateTmpDir
 {
     my ($tmpdir) = @_;
@@ -167,15 +181,7 @@ unless($text_mode)
 {
     print $query->start_html("MizAR Output");
 
-#----Check for proper article name
-    unless((length($aname) < 9) && ($aname=~m/^[a-z][a-z0-9_]*$/))
-    {
-	print "<pre>";
-	print ("Error: article name must not exceed 8 characters, has to start with a-z, and only contain [a-z0-9_]: ", $aname);
-	print "<pre/>";
-	print $query->end_html;
-	die "article name";
-    }
+    CheckArticleName($aname);
 
     CreateTmpDirs($TemporaryProblemDirectory);
     CreateTmpDir($AjaxProofDir);
