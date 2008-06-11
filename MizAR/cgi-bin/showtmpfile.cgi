@@ -39,7 +39,7 @@ if (defined($input_refresh))
     {
 	my $now = time;
 	my $mtime = (stat($File0))[9];
-	if ($now < $mtime + 15) { $print_refresh = 1 }
+	if ($now < $mtime + 6) { $print_refresh = 1 }
     }
 }
 
