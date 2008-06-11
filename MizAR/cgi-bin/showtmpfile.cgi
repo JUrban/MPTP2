@@ -28,18 +28,36 @@ my $query	  = new CGI;
 my $input_file	  = $query->param('file');
 my $input_tmp     = $query->param('tmp');
 my $input_refresh  = $query->param('refresh');
+my $File0 = "$TemporaryDirectory/matp_" . $input_tmp . "/" . $input_file;
 
-print $query->header(-Refresh=>'2');
+my $print_refresh = 0;
+
+if (defined($input_refresh))
+{
+    if (!(-e $File0)) { $print_refresh = 1 }
+    else
+    {
+	my $now = time;
+	my $mtime = (stat($File0))[9];
+	if ($now < $mtime + 15) { $print_refresh = 1 }
+    }
+}
+
+if ($print_refresh == 1) { print $query->header(-Refresh=>'2'); }
+else { print $query->header(); }
 
 print $query->start_html("File Output");
 
-my $File0 = "$TemporaryDirectory/matp_" . $input_tmp . "/" . $input_file;
-open(F,$File0);
+if (-e $File0) 
+{
+    open(F,$File0);
 
 # print $File1;
     print "<pre>";
 #    open(F,$File1);
     { local $/; $_= <F>; print $_; }
     print "<pre/>";
-    print $query->end_html;
     close(F);
+}
+
+print $query->end_html;
