@@ -232,11 +232,14 @@ unless($text_mode)
     my $lnr = 0;
     open(PFH, "$ProblemFile");
 
+    print ('<pre>', "\n");
     while( my $aline = <PFH>)
     {
-	print ('<div id="', ++$lnr, '"><pre>', $aline, '</pre></div>');
+	print ('<div id="', ++$lnr, '">', $aline, '</div>');
     }
     close(PFH);
+    print ('</pre>', "\n");
+
 
 
     SortByExplanations($ProblemFileBex);
