@@ -216,7 +216,7 @@ unless($text_mode)
     $ENV{"MIZFILES"}= $Mizfiles;
     system("$mizf $ProblemFile 2>&1 > $MizOutput");
 
-    my $InferenceNr = `grep -c '<\(Proof\|By\|From\|Now\)' $ProblemFileXml`;
+    my $InferenceNr = `egrep -c '<(Proof|By|From|Now)' $ProblemFileXml`;
 
     print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.mizoutput&tmp=$PidNr\" target=\"MizarOutput$PidNr\">Show Mizar Output</a>\n";
 #    print $AjaxProofDir;
