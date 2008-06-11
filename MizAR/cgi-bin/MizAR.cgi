@@ -225,6 +225,20 @@ unless($text_mode)
     print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.mizoutput&tmp=$PidNr\" target=\"MizarOutput$PidNr\">Show Mizar Output</a>\n";
 #    print $AjaxProofDir;
 
+
+    my $lnr = 0;
+    open(PFH, "$ProblemFile");
+
+    print ('<pre>', "\n");
+    while( my $aline = <PFH>)
+    {
+	print ('<div id="', ++$lnr, '">', $aline, '</div>');
+    }
+    close(PFH);
+    print ('</pre>', "\n");
+
+
+
     SortByExplanations($ProblemFileBex);
 
 
