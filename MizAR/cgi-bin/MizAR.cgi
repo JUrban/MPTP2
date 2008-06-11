@@ -51,6 +51,10 @@ my $ProblemFileDco2 = $ProblemFileOrig . ".dco2";
 my $MizOutput = $ProblemFileOrig . ".mizoutput";
 my $ExpOutput = $ProblemFileOrig . ".expoutput";
 my $ProblemFileBex = $ProblemFileOrig . ".bex";
+my $lbytmpdir = $PidNr . '\&ATP=refs\&HTML=1';
+my $lbytptpcgi= $MyUrl . '/cgi-bin/showby.cgi';
+
+
 
 my $text_mode     = $query->param('Text');
 my (%gsyms,$grefs,$ref);
@@ -225,7 +229,17 @@ unless($text_mode)
 
 
 #    system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml > $ProblemFileXml.abs 2>$ProblemFileXml.errabs");
-    system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml 2>$ProblemFileXml.errabs |tee $ProblemFileXml.abs | time $xsltproc $mizpl /dev/stdin > $ProblemFileXml2 2>$ProblemFileXml.errpl");
+
+# ###TODO: note that const_links=2 does not work correctly yet    
+
+    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.ploutput&tmp=$PidNr&refresh=1\" target=\"MPTPOutput$PidNr\">Generating $InferenceNr TPTP problems (click to see progress)</a><br>\n";
+
+
+    system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml 2>$ProblemFileXml.errabs |tee $ProblemFileXml.abs | time $xsltproc --param by_titles 1 --param const_links 1 --param ajax_by 1 --param linkbytoself 1 --param linkby 3 --param lbytptpcgi \\\'$lbytptpcgi\\\' --param lbytmpdir \\\'$lbytmpdir\\\' --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html /dev/stdin |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
+
+
+    system("time $xsltproc $mizpl $ProblemFileXml.abs  > $ProblemFileXml2 2>$ProblemFileXml.errpl");
+
 # ajax proofs are probably not wanted for the first stab
 #    system("time $xsltproc --param default_target \\\'_self\\\' --param ajax_proof_dir \\\'$AjaxProofDir\\\' --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\' --param ajax_proofs 1 --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs > $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
 
@@ -258,12 +272,6 @@ unless($text_mode)
 
 #    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.ploutput&tmp=$PidNr\" target=\"MPTPOutput$PidNr\">Show MPTP Output</a><br>\n";
 
-    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.ploutput&tmp=$PidNr&refresh=1\" target=\"MPTPOutput$PidNr\">Generating $InferenceNr TPTP problems (click to see progress)</a><br>\n";
-
-    my $lbytmpdir = $PidNr . '\&ATP=refs\&HTML=1';
-    my $lbytptpcgi= $MyUrl . '/cgi-bin/showby.cgi';
-# ###TODO: note that const_links=2 does not work correctly yet    
-    system("time $xsltproc --param by_titles 1 --param const_links 1 --param ajax_by 1 --param linkbytoself 1 --param linkby 3 --param lbytptpcgi \\\'$lbytptpcgi\\\' --param lbytmpdir \\\'$lbytmpdir\\\' --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
 
 
 
