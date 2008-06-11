@@ -235,7 +235,7 @@ unless($text_mode)
     print ('<pre>', "\n");
     while( my $aline = <PFH>)
     {
-	print ('<div id="', ++$lnr, '">', $aline, '</div>');
+	print ('<div id="', ++$lnr, '" style="display:none">', $aline, '</div>');
     }
     close(PFH);
     print ('</pre>', "\n");
