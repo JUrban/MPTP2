@@ -232,10 +232,14 @@ unless($text_mode)
 
 # ###TODO: note that const_links=2 does not work correctly yet    
 
+
+
+
+    system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml 2>$ProblemFileXml.errabs |tee $ProblemFileXml.abs"); 
+
     print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.ploutput&tmp=$PidNr&refresh=1\" target=\"MPTPOutput$PidNr\">Generating $InferenceNr TPTP problems (click to see progress)</a><br>\n";
 
-
-    system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml 2>$ProblemFileXml.errabs |tee $ProblemFileXml.abs | time $xsltproc --param by_titles 1 --param const_links 1 --param ajax_by 1 --param linkbytoself 1 --param linkby 3 --param lbytptpcgi \\\'$lbytptpcgi\\\' --param lbytmpdir \\\'$lbytmpdir\\\' --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html /dev/stdin |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
+    system("time $xsltproc --param by_titles 1 --param const_links 1 --param ajax_by 1 --param linkbytoself 1 --param linkby 3 --param lbytptpcgi \\\'$lbytptpcgi\\\' --param lbytmpdir \\\'$lbytmpdir\\\' --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
 
 
     system("time $xsltproc $mizpl $ProblemFileXml.abs  > $ProblemFileXml2 2>$ProblemFileXml.errpl");
