@@ -27,8 +27,9 @@ my $atproof = '@' . 'proof';
 my $query	  = new CGI;
 my $input_file	  = $query->param('file');
 my $input_tmp     = $query->param('tmp');
+my $input_refresh  = $query->param('refresh');
 
-print $query->header;
+print $query->header(-Refresh=>'2');
 
 print $query->start_html("File Output");
 
