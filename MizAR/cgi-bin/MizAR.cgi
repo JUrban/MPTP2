@@ -23,6 +23,7 @@ my $mizf =     "bin/mizf";
 my $exporter =     "bin/mizar/exporter";
 my $xsltproc =     "bin/xsltproc";
 my $dbenv = "bin/dbenv.pl";
+my $err2pl = "bin/err2pl.pl";
 my $addabsrefs = "$Xsl4MizarDir/addabsrefs.xsl";
 my $miz2html = "$Xsl4MizarDir/miz.xsl";
 my $mizpl = "$Xsl4MizarDir/mizpl.xsl";
@@ -224,7 +225,8 @@ unless($text_mode)
     $ENV{"MIZFILES"}= $Mizfiles;
     system("$mizf $ProblemFile 2>&1 > $MizOutput");
 
-    `cp $ProblemFileErr $ProblemFileErr1`;
+    system("cp $ProblemFileErr $ProblemFileErr1");
+    system("$err2pl $ProblemFileErr > $ProblemFileErr2");
 
     my $InferenceNr = `egrep -c '<(Proof|By|From|Now)' $ProblemFileXml`;
 
