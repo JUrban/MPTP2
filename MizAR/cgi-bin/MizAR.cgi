@@ -48,6 +48,10 @@ my $ProblemFileHtml = $ProblemFileOrig . ".html";
 my $ProblemFileDco = $ProblemFileOrig . ".dco";
 my $ProblemFileDco1 = $ProblemFileOrig . ".dco1";
 my $ProblemFileDco2 = $ProblemFileOrig . ".dco2";
+my $ProblemFileErr = $ProblemFileOrig . ".err";
+my $ProblemFileErr1 = $ProblemFileOrig . ".err1";
+my $ProblemFileErr2 = $ProblemFileOrig . ".err2";
+
 my $MizOutput = $ProblemFileOrig . ".mizoutput";
 my $ExpOutput = $ProblemFileOrig . ".expoutput";
 my $ProblemFileBex = $ProblemFileOrig . ".bex";
@@ -219,6 +223,8 @@ unless($text_mode)
 
     $ENV{"MIZFILES"}= $Mizfiles;
     system("$mizf $ProblemFile 2>&1 > $MizOutput");
+
+    `cp $ProblemFileErr $ProblemFileErr1`;
 
     my $InferenceNr = `egrep -c '<(Proof|By|From|Now)' $ProblemFileXml`;
 
