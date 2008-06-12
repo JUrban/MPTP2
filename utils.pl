@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.142 $
+%% $Revision: 1.143 $
 %%
 %% File  : utils.pl
 %%
@@ -52,6 +52,7 @@ opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme insta
 	       opt_FXP_CHECK_CNSDR,     %% add rclusters for suspisous consider_justifications
 	       opt_ADDED_NON_MML,       %% unary functor passing a list of nonMML article names
 	       opt_NON_MML_DIR,         %% unary functor passing a nonstandard directory for the article
+	       opt_LOAD_MIZ_ERRORS,     %% import err2 file with Mizar's errors
 	       opt_PROB_PRINT_FUNC,	%% unary functor passing a special printing func
 	       opt_PRINT_PROB_PROGRESS, %% print processed problems to stdout
 	       opt_PP_SMALLER_INCLUDES, %% unary functor passing a list of possible includes,
@@ -207,6 +208,8 @@ declare_mptp_predicates:-
  dynamic(fof_ante_sym_cnt/4),
  abolish(abs_name/2),
  dynamic(abs_name/2),
+ abolish(miz_errors/1),
+ dynamic(miz_errors/1),
  abolish(fof_redefines/4),
  dynamic(fof_redefines/4),
  abolish(fraenkel_cached/3),
@@ -4170,6 +4173,15 @@ load_proper_article(Article,Options,PostLoadFiles):-
 	concat_atom([Dir, Article, '.dco2'],DCO),
 	concat_atom([Dir, Article, '.the2'],THE),
 	concat_atom([Dir, Article, '.sch2'],SCH),
+	concat_atom([Dir, Article, '.err2'],ERR),
+	retractall(miz_errors(_)),
+	(
+	  member(opt_LOAD_MIZ_ERRORS,Options) ->
+	  sublist(exists_file,[ERR],ERR1),
+	  load_files(ERR1,[silent(true)])
+	;
+	  true
+	),
 	%% remove the ovelapping mml parts first
 	retractall(fof(_,_,_,file(Article,_),_)),
 	retractall(fraenkels_loaded(Article)),
