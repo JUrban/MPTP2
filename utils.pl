@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.144 $
+%% $Revision: 1.145 $
 %%
 %% File  : utils.pl
 %%
@@ -62,6 +62,7 @@ opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme insta
 	       opt_LINE_COL_NMS,        %% problem are named LINE_COL instead
 	       opt_CONJECTURE_NMS,      %% problem are named as its conjecture
 	       opt_LEVEL_REF_INFO,      %% .refspec file with immediate references is printed
+	       opt_ALLOWED_REF_INFO,    %% .allowed_local file with accessible references is printed 
 	       opt_NO_FRAENKEL_CONST_GEN %% do not generalize local consts when abstracting fraenkels
 	                                 %% (useful for fast translation, when consts are not loaded)
 	      ]).
@@ -4419,6 +4420,19 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	  InfKind1 = InfKind
 	),
 %	filter_level_refs(Lev,Refs0,Refs),
+
+	(
+	  member(opt_ALLOWED_REF_INFO, Options) ->
+	  get_preceding_article_refs(F, P, AllowedLocalRefs),
+	  concat_atom([Outfile,'.allowed_local'], AllowLocalSpecFile),
+	  tell(AllowLocalSpecFile),
+	  print(allowoed_local(P,AllowedLocalRefs)),
+	  write('.'),nl,
+	  told
+	;
+	  true
+	),	 
+
 	
 	%% Compute references into AllRefs.
 	%% This gets a bit tricky for cluster registrations - we need the original
