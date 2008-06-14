@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.148 $
+%% $Revision: 1.149 $
 %%
 %% File  : utils.pl
 %%
@@ -4667,9 +4667,10 @@ get_preceding_article_refs(Article, Ref, Refs):-
 		(
 		  member(LA1, LevAtoms),
 		  fof_level(LA1, Id),
-		  clause(fof(Ref1,_,_,file(Article,_), [mptp_info(_,_,_,_,_)|_]),_,Id),
+		  clause(fof(Ref1,Role1,_,file(Article,_), [mptp_info(_,_,_,_,_)|_]),_,Id),
 		  article_position(Ref1,Pos1),
-		  Pos1 < Pos
+		  Pos1 < Pos,
+		  Role1 \= thesis
 		),
 		Refs1
 	       ),
