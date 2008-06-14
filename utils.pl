@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.145 $
+%% $Revision: 1.146 $
 %%
 %% File  : utils.pl
 %%
@@ -4198,6 +4198,19 @@ load_proper_article(Article,Options,PostLoadFiles):-
 	abstract_fraenkels(Article, [], _, _),
 	abstract_prereq_fraenkels(Article, Options),
 	install_index,
+	(
+	  member(opt_DBG_LEVS_POS,Options) ->
+	  findall([FL1,RefL1,PosR1],
+		  (
+		    fof_level(FL1,IdL1),
+		    clause(fof(RefL1,_,_,_,_),_,IdL1),
+		    article_position(RefL1,PosR1)
+		  ),
+		  FLevs),
+	  print(FLevs)
+	;
+	  true
+	),
 	sublist(exists_file,[DCL,DCO,THE,SCH],PostLoadFiles).
 
 %% prepare_for_article(+Article,+Options,-Dir,-PostLoadFiles)
@@ -4426,7 +4439,7 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	  get_preceding_article_refs(F, P, AllowedLocalRefs),
 	  concat_atom([Outfile,'.allowed_local'], AllowLocalSpecFile),
 	  tell(AllowLocalSpecFile),
-	  print(allowoed_local(P,AllowedLocalRefs)),
+	  print(allowed_local(P,AllowedLocalRefs)),
 	  write('.'),nl,
 	  told
 	;
