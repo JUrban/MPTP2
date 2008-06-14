@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.143 $
+%% $Revision: 1.144 $
 %%
 %% File  : utils.pl
 %%
@@ -4236,7 +4236,7 @@ prepare_for_article(Article,Options,Dir,PostLoadFiles):-
 %%	       relset_2,rmod_5,tsp_2,waybel22,waybel33,waybel34,yellow17,yoneda_1], member(A,L),
 %%	    mk_article_nd_problems(A,_,[opt_REM_SCH_CONSTS,opt_MK_TPTP_INF, opt_ADD_INTEREST]),fail.
 %%
-%% generate GDV derovations for all articles:
+%% generate GDV derivations for all articles:
 %% ##TEST: :- declare_mptp_predicates,load_mml,install_index,all_articles(L),!, member(A,L),
 %%            mk_article_nd_problems(A,_,[opt_REM_SCH_CONSTS,opt_MK_TPTP_INF, opt_ADD_INTEREST]),fail.
 mk_article_nd_problems(Article,_Kinds,Options):-
