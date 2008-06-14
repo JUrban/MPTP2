@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.146 $
+%% $Revision: 1.147 $
 %%
 %% File  : utils.pl
 %%
@@ -5297,8 +5297,8 @@ install_index:-
 
 
 assert_level([], Article, Id):- !,assert(fof_toplevel(Article, Id)).
-assert_level([H|T],Id):- !,level_atom([H|T],Lev1), assert(fof_level(Lev1, Id)).
-assert_level(_,_).
+assert_level([H|T],_,Id):- !,level_atom([H|T],Lev1), assert(fof_level(Lev1, Id)).
+assert_level(_,_,_).
 
 assert_rc_syms(RCl, Fla, File):-
 	strip_univ_quant(Fla, (? [Var : Radix] : sort(Var, Attrs) ), _),
