@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.150 $
+%% $Revision: 1.151 $
 %%
 %% File  : utils.pl
 %%
@@ -63,6 +63,7 @@ opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme insta
 	       opt_CONJECTURE_NMS,      %% problem are named as its conjecture
 	       opt_LEVEL_REF_INFO,      %% .refspec file with immediate references is printed
 	       opt_ALLOWED_REF_INFO,    %% .allowed_local file with accessible references is printed
+	       opt_PROVED_BY_INFO,      %% .proved_by0 file with orig refs (no bg) printed
 	       opt_DBG_LEVS_POS,        %% print a debugging info for levels and positions
 	       opt_NO_FRAENKEL_CONST_GEN %% do not generalize local consts when abstracting fraenkels
 	                                 %% (useful for fast translation, when consts are not loaded)
@@ -313,7 +314,7 @@ mptp_func_sym(X):- atom_chars(X,[F|_]),member(F,[k,g,u,'0','1','2','3','4','5','
 mptp_attr_sym(X):- atom_chars(X,[v|_]).
 mptp_mode_sym(X):- atom_chars(X,[F|_]),member(F,[m,l]).
 mptp_attr_or_mode_sym(X):- atom_chars(X,[F|_]),member(F,[v,m,l]).
-
+mptp_req_name(X):- atom_chars(X,[r,q|_]).
 %% collect ground counts into buk/3, stack failure otherwise
 %% then print and run perl -e 'while(<>) { /.([0-9]+), (.*)./; $h{$2}+=$1;} foreach $k (sort {$h{$b} <=> $h{$a}} (keys %h)) {print "$h{$k}:$k\n";}'
 %% on the result
@@ -3876,6 +3877,24 @@ filter_level_refs(Lev,RefsIn,RefsOut):-
 %	findall(Ref,(member(Ref,RefsIn),atom_chars(Ref,[C|_]),
 %		     member(C,[t,d,l])), Refs1),
 
+%% filter_for_proved_by(+F, +P, +Lev, +MPropKind, +InfKind, +Refs0, -ProvedByRefs)
+%%
+%% Return refs used for initialising proved_by relation.
+filter_for_proved_by(_F, _P, Lev, MPropKind, InfKind, Refs0, ProvedByRefs):-
+	(
+	  InfKind == mizar_proof ->
+	  filter_level_refs(Lev, Refs0, Refs1)
+	;
+	  (
+	    member(MPropKind,[fcluster,ccluster,rcluster]) ->
+	    filter_level_refs(Lev, Refs0, Refs1)
+	  ;
+	    Refs1 = Refs0
+	  )
+	),
+	findall(R, (member(R,Refs1), not(mptp_req_name(R))), ProvedByRefs).
+
+
 %% filter out refs with this or more special level
 get_superlevel_refs(Lev,RefsIn,RefsOut):-
 	sort(RefsIn,Refs1),
@@ -4449,6 +4468,17 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	  true
 	),	 
 
+	(
+	  member(opt_PROVED_BY_INFO, Options) ->
+	  filter_for_proved_by(F, P, Lev, MPropKind, InfKind, Refs0, ProvedByRefs),
+	  concat_atom([Outfile,'.proved_by0'], ProvedByFile),
+	  tell(ProvedByFile),
+	  print(proved_by(P,ProvedByRefs)),
+	  write('.'),nl,
+	  told
+	;
+	  true
+	),
 	
 	%% Compute references into AllRefs.
 	%% This gets a bit tricky for cluster registrations - we need the original
