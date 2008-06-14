@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.149 $
+%% $Revision: 1.150 $
 %%
 %% File  : utils.pl
 %%
@@ -195,6 +195,8 @@ declare_mptp_predicates:-
  abolish(fof_section/2),
  abolish(fof_level/2),
  abolish(fof_toplevel/2),
+ abolish(fof_newlevel/3),
+ dynamic(fof_newlevel/3),
  abolish(fof_parentlevel/2),
  dynamic(fof_parentlevel/2),
  abolish(fof_cluster/3),
@@ -4649,17 +4651,22 @@ get_preceding_article_refs_old(Article, Ref, Refs):-
 		Refs
 	       ).
 
-
+%% This is the new version, used for generating the .allowed_local files .
+%% It used to behaved badly for sublemmas, because of a bug in assert_level.
+%% Note that for sublemms we have to avoid the theses, that is: those that are
+%% marked as thesis, and those that are currently being proved.
 get_preceding_article_refs(Article, Ref, Refs):-
 	ensure(article_position(Ref,Pos), throw(article_position(Article,Ref))),
 	get_ref_fof(Ref,fof(Ref,_,_,file(Article,_),[mptp_info(_,ProofLevel,_,_,_)|_])),
 	findall(LevAtom, (sublevel(ProofLevel,Lev), level_atom(Lev, LevAtom)), LevAtoms),
+	findall(Id1, (member(Lev1, LevAtoms), fof_newlevel(Lev1,Article,Id1)), BadIds),
 	findall(Ref0,
 		(
 		  fof_toplevel(Article, Id0),
 		  clause(fof(Ref0,_,_,file(Article,_), [mptp_info(_,[],_,_,_)|_]),_,Id0),
 		  article_position(Ref0,Pos0),
-		  Pos0 < Pos
+		  Pos0 < Pos,
+		  not(member(Id0, BadIds))
 		),
 		Refs0
 	       ),	
@@ -4670,7 +4677,8 @@ get_preceding_article_refs(Article, Ref, Refs):-
 		  clause(fof(Ref1,Role1,_,file(Article,_), [mptp_info(_,_,_,_,_)|_]),_,Id),
 		  article_position(Ref1,Pos1),
 		  Pos1 < Pos,
-		  Role1 \= thesis
+		  Role1 \= thesis,
+		  not(member(Id, BadIds))
 		),
 		Refs1
 	       ),
@@ -5249,6 +5257,8 @@ install_index:-
 	dynamic(fof_section/2),
 	abolish(fof_level/2),
 	dynamic(fof_level/2),
+	abolish(fof_newlevel/3),
+	dynamic(fof_newlevel/3),
 	abolish(fof_toplevel/2),
 	dynamic(fof_toplevel/2),
 	abolish(fof_parentlevel/2),
@@ -5271,11 +5281,11 @@ install_index:-
 	logic_syms(LogicSyms),
 	repeat,
 	(
-	  clause(fof(Ref1,Role1,Fla1,file(File1,Sec1), [mptp_info(_,L_1,MKind,_,Spc)|_]),_,Id),
+	  clause(fof(Ref1,Role1,Fla1,file(File1,Sec1), [mptp_info(_,L_1,MKind,_,Spc)|RestInfo]),_,Id),
 	  assert(fof_name(Ref1, Id)),
 	  assert(fof_file(File1, Id)),
 	  assert(fof_section(Sec1, Id)),
-	  assert_level(L_1, File1, Id),
+	  assert_level(L_1, File1, RestInfo, Id),
 	  assert_syms(MKind,Ref1,Role1,L_1,Fla1,File1,Id,LogicSyms,Sec1,Spc),
 	  fail
 	;
@@ -5298,9 +5308,29 @@ install_index:-
 	
 
 
-assert_level([], Article, Id):- !,assert(fof_toplevel(Article, Id)).
-assert_level([H|T],_,Id):- !,level_atom([H|T],Lev1), assert(fof_level(Lev1, Id)).
-assert_level(_,_,_).
+assert_level([], Article, RestInfo, Id):- !,
+	assert(fof_toplevel(Article, Id)),
+	assert_newlevel(RestInfo, Article, Id).
+assert_level([H|T],Article, RestInfo, Id):- !,
+	level_atom([H|T],Lev1),
+	assert(fof_level(Lev1, Id)),
+	assert_newlevel(RestInfo, Article, Id).
+assert_level(_,_,_,_).
+
+%% this keeps the article, because toplevel theorem from MML 
+%% have nontrivial newlevels which we want to avoid.
+assert_newlevel([inference(mizar_proof,[proof_level([H|T])|_],_)|_], Article, Id):- !,
+	level_atom([H|T],Lev1),
+	assert(fof_newlevel(Lev1, Article, Id)).
+assert_newlevel(_,_,_).
+
+%% this differs from assert_newlevel only for efficiency of indexing -
+%% it is called at different place.
+assert_cluster_newlevel([proof_level([H|T])|_],Article,Id):- !,
+	level_atom([H|T],Lev1),
+	assert(fof_newlevel(Lev1, Article, Id)).
+assert_cluster_newlevel(_,_,_).
+
 
 assert_rc_syms(RCl, Fla, File):-
 	strip_univ_quant(Fla, (? [Var : Radix] : sort(Var, Attrs) ), _),
@@ -5320,12 +5350,13 @@ assert_rc_syms(RCl, Fla, File):-
 %%   of constants and variables in the problem, and only add to the fixpoint algo
 %%   those attributes which appear in their types; also we shouldn't add an rc
 %%   when it only takes care of a const/var type which is already taken care of
-assert_syms(rcluster,Ref1,_,_,Fla1,File1,_,LogicSyms,_,_):- !,
+assert_syms(rcluster,Ref1,_,_,Fla1,File1,Id,LogicSyms,_,Spc):- !,
 	    collect_symbols_top(Fla1,AllSyms),
 	    subtract(AllSyms,LogicSyms,Syms),
 	    assert(fof_cluster(File1,Ref1,Syms)),
 	    assert_fxp_data(Ref1,File1,rcluster,Syms),
-	    assert_rc_syms(Ref1, Fla1, File1).
+	    assert_rc_syms(Ref1, Fla1, File1),
+	    assert_cluster_newlevel(Spc, File1, Id).
 
 assert_syms(definition,_,definition,[],Fla1,_,Id,_,_,_):-
 	strip_univ_quant(Fla1, ( KTerm = _), _),
@@ -5346,22 +5377,25 @@ assert_syms(_,Ref1,definition,[],_,_,Id,_,Sec1,[redefinition(_,_,_,Sec2)|_]):-
 	assert(fof_redefines(Sec1, Sec2, Ref1, Id)).
 
 %% ###TODO: take the symbols from the UnivVars also for clusters (definitions?)
-assert_syms(identifyexp,Ref1,_,_,Fla1,File1,_,LogicSyms,_,_):- !,
+assert_syms(identifyexp,Ref1,_,_,Fla1,File1,Id,LogicSyms,_,Spc):- !,
 	strip_univ_quant(Fla1, ( KTerm = _), UnivVars),
 	collect_symbols_top([KTerm | UnivVars], AllSyms),
 	subtract(AllSyms,LogicSyms,Syms),
 	assert(fof_identifyexp(File1,Ref1,Syms)),
-	assert_fxp_data(Ref1,File1,identifyexp,Syms).
+	assert_fxp_data(Ref1,File1,identifyexp,Syms),
+	assert_cluster_newlevel(Spc, File1, Id).
 
-assert_syms(fcluster,Ref1,_,_,Fla1,File1,_,_,_,_):- !,
+assert_syms(fcluster,Ref1,_,_,Fla1,File1,Id,_,_,Spc):- !,
 	cl_needed_syms_top(Fla1,AnteSyms),
 	assert(fof_cluster(File1,Ref1,AnteSyms)),
-	assert_fxp_data(Ref1,File1,fcluster,AnteSyms).
+	assert_fxp_data(Ref1,File1,fcluster,AnteSyms),
+	assert_cluster_newlevel(Spc, File1, Id).
 
-assert_syms(ccluster,Ref1,_,_,Fla1,File1,_,_,_,_):- !,
+assert_syms(ccluster,Ref1,_,_,Fla1,File1,Id,_,_,Spc):- !,
 	cl_needed_syms_top(Fla1,AnteSyms),
 	assert(fof_cluster(File1,Ref1,AnteSyms)),
-	assert_fxp_data(Ref1,File1,ccluster,AnteSyms).
+	assert_fxp_data(Ref1,File1,ccluster,AnteSyms),
+	assert_cluster_newlevel(Spc, File1, Id).
 
 assert_syms(theorem,Ref1,_,_,Fla1,File1,_,LogicSyms,_,_):-
 	member(File1,[numerals, boole, subset, arithm, real]),!,
