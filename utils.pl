@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.147 $
+%% $Revision: 1.148 $
 %%
 %% File  : utils.pl
 %%
@@ -62,7 +62,8 @@ opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme insta
 	       opt_LINE_COL_NMS,        %% problem are named LINE_COL instead
 	       opt_CONJECTURE_NMS,      %% problem are named as its conjecture
 	       opt_LEVEL_REF_INFO,      %% .refspec file with immediate references is printed
-	       opt_ALLOWED_REF_INFO,    %% .allowed_local file with accessible references is printed 
+	       opt_ALLOWED_REF_INFO,    %% .allowed_local file with accessible references is printed
+	       opt_DBG_LEVS_POS,        %% print a debugging info for levels and positions
 	       opt_NO_FRAENKEL_CONST_GEN %% do not generalize local consts when abstracting fraenkels
 	                                 %% (useful for fast translation, when consts are not loaded)
 	      ]).
