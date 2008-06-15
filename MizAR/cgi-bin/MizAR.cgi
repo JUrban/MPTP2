@@ -243,7 +243,7 @@ sub StartSNoW
 
     system("nohup $advisor -p $sport -a $aport $SnowFileStem > $AdvisorOutput 2>&1 &");
 
-    $lbytmpdir = $lbytmpdir . '\&aport=' . $aport;
+    $lbytmpdir = $lbytmpdir . '\&ap=' . $aport;
     return ($aport, $sport);
 }
 
