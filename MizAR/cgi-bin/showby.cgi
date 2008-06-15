@@ -53,7 +53,7 @@ my $spass	  = $query->param('spass');
 my ($line, $col) = $input_lc=~m/(.*)_(.*)/;
 my $col1 = $col - 4;
 
-my $idv_img = "<img SRC=\"$PalmTreeUrl\" alt=\"Show IDV graph\" title=\"Show IDV graph\">";
+my $idv_img = "<img SRC=\"$PalmTreeUrl\" alt=\"Show IDV proof tree\" title=\"Show IDV proof tree\">";
 
 ## provide links and titles to various MPTP references
 sub HTMLize
