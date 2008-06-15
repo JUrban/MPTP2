@@ -68,7 +68,7 @@ my $SnowMMLNet =      $SnowFileStem . ".net";
 my $SnowMMLArch =     $SnowFileStem . ".arch";
 my $AdvisorOutput  =  $ProblemFileOrig . ".adv_output";
 my $SnowOutput  =     $ProblemFileOrig . ".snow_output";
-
+my $SnowSymOffset =   500000;
 
 my $text_mode     = $query->param('Text');
 my (%gsyms,$grefs,$ref);
@@ -241,7 +241,7 @@ sub StartSNoW
     print("advisorport $aport\n");
     close(SOCK1);
 
-    system("nohup $advisor -p $sport -a $aport $SnowFileStem > $AdvisorOutput 2>&1 &");
+    system("nohup $advisor -p $sport -a $aport -o $SnowSymOffset $SnowFileStem > $AdvisorOutput 2>&1 &");
 
     $lbytmpdir = $lbytmpdir . '\&ap=' . $aport;
     return ($aport, $sport);
