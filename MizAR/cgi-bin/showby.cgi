@@ -55,23 +55,46 @@ my $col1 = $col - 4;
 
 my $idv_img = "<img SRC=\"$PalmTreeUrl\" alt=\"Show IDV graph\" title=\"Show IDV graph\">";
 
+## provide links and titles to various MPTP references
 sub HTMLize
 {
     my ($ref) = @_;
     my $res = '';
     my $title = '';
 #    print '<a href="foo">goo</a>'; $MizHtml="hj";
-    if(($ref=~m/^([dtl][0-9]+)_(.*)$/) || ($ref=~m/^(s[0-9]+)_(.*?)__.*$/) || ($ref=~m/^([fcr]c[0-9]+)_(.*)$/) || ($ref=~m/^dt_([klmugrv][0-9]+)_(.*)$/))
-    { 
+    if(($ref=~m/^([dtl][0-9]+)_(.*)$/) 
+       || ($ref=~m/^(s[0-9]+)_(.*?)__.*$/) 
+       || ($ref=~m/^([fcr]c[0-9]+)_(.*)$/) 
+       || ($ref=~m/^dt_([klmugrv][0-9]+)_(.*)$/))
+    {
 	my ($kind,$ar) = ($1,$2);
 	if($kind =~ m/^l(.*)/) { $kind = 'e' . $1; }
-	if($ar eq $input_article) {$res  = '#'.  uc($kind); } else {$res  = $MizHtml . $ar . '.html#' . uc($kind); }
+	if($ar eq $input_article) {$res  = '#'.  uc($kind); }
+	else {$res  = $MizHtml . $ar . '.html#' . uc($kind); }
+	$title =  uc($ar) . ":" . $kind;
     }
-    elsif($ref=~m/^(e[0-9]+)_(.*)__(.*)$/) { $res = '#' . uc($1) . ':' . $2; }
+    elsif($ref=~m/^(e[0-9]+)_(.*)__(.*)$/)
+    {
+	$title =  "proposition " . $1 . " in proof " . $2;
+	$res = '#' . uc($1) . ':' . $2; 
+    }
     elsif($ref=~m/^d[et]_(c[0-9]+)_(.*)__(.*)$/) { $res = '#' . lc($1) . ':' . $2; }
-    elsif($ref=~m/^(abstractness|free|existence|redefinition|symmetry|antisymmetry|asymmetry|reflexivity|irreflexivity|connectedness|commutativity|idempotence|involutiveness|projectivity)_([klmugrv][0-9]+)_(.*)$/) { if($3 eq $input_article) {$res  = '#'.  uc($2); } else { $res = $MizHtml . $3 . '.html#' . uc($2); }}
-    elsif($ref=~m/^spc([0-9]+)_boole$/) { if($1 eq "0") { $title = $1 . " is empty"; } else { $title = $1 . " is non empty"; } } 
-    elsif($ref=~m/^spc([0-9]+)_numerals$/) { if($1 eq "0") { $title = $1 . " is Element of NAT"; } else { $title = $1 . " is positive Element of NAT"; } } 
+    elsif($ref=~m/^(abstractness|free|existence|redefinition|symmetry|antisymmetry|asymmetry|reflexivity|irreflexivity|connectedness|commutativity|idempotence|involutiveness|projectivity)_([klmugrv][0-9]+)_(.*)$/)
+    {
+	$title = $1 . " of " . $3 . ":" . $2;
+	if($3 eq $input_article) {$res  = '#'.  uc($2); }
+	else { $res = $MizHtml . $3 . '.html#' . uc($2); }
+    }
+    elsif($ref=~m/^spc([0-9]+)_boole$/) 
+    {
+	if($1 eq "0") { $title = $1 . " is empty"; } 
+	else { $title = $1 . " is non empty"; } 
+    }
+    elsif($ref=~m/^spc([0-9]+)_numerals$/)
+    {
+	if($1 eq "0") { $title = $1 . " is Element of NAT"; }
+	else { $title = $1 . " is positive Element of NAT"; }
+    }
     elsif($ref=~m/^rq.*$/) { $title = "arithmetic evaluation"; }
     elsif($ref=~m/^fraenkel_.*$/) { $title = "fraenkel functor first-order instance"; }
     return ($res, $title);
