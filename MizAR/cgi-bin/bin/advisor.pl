@@ -234,10 +234,10 @@ while ($client = $server->accept())
 #    $msgout = pack("a", @res2);
     $msgout = join(",", @res2);
     $msg1 = AskSnow($msgout . ":");
-    print @$msg1, "\n" if(LOGGING);
+#    print @$msg1, "\n" if(LOGGING);
     @msg2 = map { $gnrref[$_] } @$msg1;
-    print @msg2, "\n" if(LOGGING);
     $msgout1 = join(",", @msg2);
+    print $msgout1, "\n" if(LOGGING);
 #    send $client, pack("N", length $msgout), 0;
     print $client $msgout1;
     close $client;
