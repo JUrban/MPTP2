@@ -205,7 +205,7 @@ if(    open(F,$File))
 		    print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
 				     $input_article . '&lc=' . $input_lc . '&tmp=' .
 				     $input_tmp . '&DM=1',
-				     title=>"Try 20 more ATP systems in SystemOnTPTP"},
+				     title=>"Try 20+ ATP systems in SystemOnTPTP"},
 				    "Try more");
 		    if($spass != 1)
 		    {
@@ -259,7 +259,7 @@ if(    open(F,$File))
 		    print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
 				     $input_article . '&lc=' . $input_lc .
 				     '&tmp=' . $input_tmp . '&DM=1',
-				     title=>"Try 20 more ATP systems in SystemOnTPTP"},
+				     title=>"Try 20+ ATP systems in SystemOnTPTP"},
 				    "Try more");
 		}
 		print " ):<br>\n";
