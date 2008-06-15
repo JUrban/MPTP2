@@ -97,7 +97,7 @@ $gport      = 60000 unless(defined($gport));
 $snowport   = 50000 unless(defined($snowport));
 
 # change for verbose logging
-sub LOGGING { 0 };
+sub LOGGING { 1 };
 
 sub StartServer
 {    
