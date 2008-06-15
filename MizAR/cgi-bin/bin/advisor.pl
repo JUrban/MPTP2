@@ -8,11 +8,12 @@ advisor.pl (Server translating Mizar symbols to numbers, talking to snow)
 
 advisor.pl [options] filestem
 
-advisor.pl -s/home/urban/bin/snow -p50000 /usr/local/share/mpadata/mpa1
+advisor.pl -s/home/urban/bin/snow -p50000 -a60000 /usr/local/share/mpadata/mpa1
 
  Options:
    --snowpath=<arg>,        -s<arg>
    --snowport=<arg>,        -p<arg>
+   --advport=<arg>,         -a<arg>
    --help,                  -h
    --man
 
@@ -28,6 +29,10 @@ to connect to already running Snow.
 =item B<<< --snowport=<arg>, -p<arg> >>>
 
 The port for communiacting with Snow, default is 50000.
+
+=item B<<< --advport=<arg>, -p<arg> >>>
+
+The port for communiacting with advisor, default is 60000.
 
 =item B<<< --help, -h >>>
 
@@ -70,12 +75,13 @@ my @gnrref;     # Nr2Ref array for references
 my %gsymnr;   # Sym2Nr hash for symbols
 my @gnrsym;   # Nr2Sym array for symbols - takes gsymoffset into account!
 
-my ($pathtosnow,$snowport);
+my ($pathtosnow,$snowport,$gport);
 my ($help, $man);
 Getopt::Long::Configure ("bundling");
 
 GetOptions('snowpath|s=s'    => \$pathtosnow,
 	   'snowport|p=i'    => \$snowport,
+	   'advport|p=i'     => \$gport,
 	   'help|h'          => \$help,
 	   'man'             => \$man)
     or pod2usage(2);
@@ -86,9 +92,9 @@ pod2usage(-exitstatus => 0, -verbose => 2) if($man);
 pod2usage(2) if ($#ARGV != 0);
 
 my $filestem   = shift(@ARGV);
-my $gport      = 60000;
 
-$snowport = 50000 unless(defined($snowport));
+$gport      = 60000 unless(defined($gport));
+$snowport   = 50000 unless(defined($snowport));
 
 # change for verbose logging
 sub LOGGING { 0 };
