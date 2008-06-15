@@ -212,7 +212,8 @@ if(    open(F,$File))
 			print ', ';
 			print $query->a({href=>"$MyUrl/cgi-bin/tptp/MMLQuery.cgi?article=" .
 					 $input_article . '&lc=' . $input_lc .
-					 '&tmp=' . $input_tmp },
+					 '&tmp=' . $input_tmp,
+					 title=>"Translate ATP proof using MML Query (experimental)"},
 					"MMLQuery (very experimental)");
 		    }
 		    print " ):<br>\n";
