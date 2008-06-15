@@ -106,15 +106,19 @@ sub HTMLize
 
 
 
-    if($htmlize != 1)    { 
- print $query->header;
-print $query->start_html("ATP Output"); }
+if($htmlize != 1)
+{
+    print $query->header;
+    print $query->start_html("ATP Output");
+}
 else { print $query->header('text/xml');}
 
-my $File0 = "$TemporaryDirectory/matp_" . $input_tmp . "/problems/" . $input_article . "/" . $input_article . "__" . $line . "_";
+my $File0 = "$TemporaryDirectory/matp_" . $input_tmp . "/problems/" . 
+    $input_article . "/" . $input_article . "__" . $line . "_";
 my $File1 = $File0 . $col;
 my $File2 = $File0 . $col1;
 my $File;
+
 if (-e $File1) { $File = $File1; } elsif(-e $File2) { $File = $File2}
 if(    open(F,$File))
 {
@@ -127,6 +131,7 @@ if(    open(F,$File))
 	{
 	    my @refs=();
 
+##--- Run either SPASS or EP
 	    if($spass == 1)
 	    {
 		my $spass_status_line =
@@ -142,8 +147,8 @@ if(    open(F,$File))
 		    $spass_status = szs_UNKNOWN;
 		}
 
-		if ($spass_status=~m/Proof found/) 
-		{ 
+		if ($spass_status=~m/Proof found/)
+		{
 		    $spass_status = szs_THEOREM;
 		    my $spass_formulae_line = `grep 'Formulae used in the proof' $File.sout`;
 		    if($spass_formulae_line=~m/Formulae used in the proof *: *(.*) */) { @refs = split(/ +/, $1); }
@@ -152,17 +157,20 @@ if(    open(F,$File))
 		else { $spass_status = szs_UNKNOWN; } 
 		$status = $spass_status;
 	    }
+
+##--- This is the default - EP
 	    else
 	    {
-		my $eproof_pid = open(EP,"$eproof --print-statistics -xAuto -tAuto --cpu-limit=$cpulimit --memory-limit=Auto --tstp-in --tstp-out $File| tee $File.eout1 | grep -v '^#' | tee $File.eout | grep ',file('|")  or die("bad eproof input file $File");
-#	    $proved_by{$conj} = [];
+		my $eproof_pid = open(EP,"$eproof --print-statistics -xAuto -tAuto --cpu-limit=$cpulimit --memory-limit=Auto --tstp-in --tstp-out $File| tee $File.eout1 | grep -v '^#' | tee $File.eout | grep ',file('|") or die("bad eproof input file $File");
+		#	    $proved_by{$conj} = [];
 
+##--- read the needed axioms for proof
  		while ($_=<EP>)
  		{
 		    m/.*, *file\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $File: $_";
 		    my $ref = $1;
 		    push( @refs, $ref);
-		}		
+		}
 		close(EP);
 
 
@@ -178,11 +186,13 @@ if(    open(F,$File))
 		}
  		if (!($status eq szs_THEOREM)) { @refs = () }
 	    }
-	    if($#refs >= 0) 
+
+##--- Process references if found - AJAX
+	    if($#refs >= 0)
 	    {
 		if($htmlize == 1)
-		{ 
-		    print '<?xml version="1.0"?><div>'; 
+		{
+		    print '<?xml version="1.0"?><div>';
 		    print 'ATP explanation (';
 		    if($spass != 1)
 		    {
@@ -206,9 +216,10 @@ if(    open(F,$File))
 		    }
 		    print " ):<br>\n";
 #		    print $query->a({href=>"$MyUrl/cgi-bin/showby.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&DM=1'}, "Do more"), " ):<br>\n";
+
 		    foreach my $ref (@refs)
 		    {
-			my ($href, $title) = HTMLize($ref); 
+			my ($href, $title) = HTMLize($ref);
 			if(length($href)>0)
 			{
 			    if(length($title)>0) 
@@ -226,24 +237,41 @@ if(    open(F,$File))
 			}
 			else {print $ref,", ";}
 		    }
-		    print "</div>"; 
-		} 
-		else { print join(",", @refs);} 
-	    } else { 
-		print "Proof not found (status: $status, "; 
+		    print "</div>";
+		}
+		else { print join(",", @refs);}
+	    }
+
+	    else
+	    {
+		print "Proof not found (status: $status, ";
 		if($spass != 1)
 		{
-		    print $query->a({class=>"txt",onclick=>"makeRequest(this,\'$MyUrl/cgi-bin/showby.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&ATP=refs&HTML=1&spass=1\')',href=>'javascript:()'}, 'Try SPASS, ');
+		    print $query->a({class=>"txt",
+				     onclick=>"makeRequest(this,\'$MyUrl/cgi-bin/showby.cgi?article=" .
+				     $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp .
+				     '&ATP=refs&HTML=1&spass=1\')',href=>'javascript:()'},
+				    'Try SPASS, ');
 		    print    '<span> </span>';
-		    print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&DM=1'}, "Try more");
+		    print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
+				     $input_article . '&lc=' . $input_lc .
+				     '&tmp=' . $input_tmp . '&DM=1'},
+				    "Try more");
 		}
-		print " ):<br>\n";  
+		print " ):<br>\n";
 	    }
 	}
-	else { system("$eproof --print-statistics -xAuto -tAuto --cpu-limit=$cpulimit --memory-limit=Auto --tstp-in --tstp-out $File"); }
+	else
+	{
+	    system("$eproof --print-statistics -xAuto -tAuto --cpu-limit=$cpulimit --memory-limit=Auto --tstp-in --tstp-out $File");
+	}
     }
+
     else { local $/; $_= <F>; print $_; }
     if($htmlize != 1) { print "<pre/>";    print $query->end_html;}
     close(F);
 }
-else { print "You just hit a line numbering bug, please complain"; }
+else
+{
+    print "You just hit a line numbering bug, please complain";
+}
