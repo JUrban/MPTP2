@@ -20,6 +20,8 @@ my $TemporaryProblemDirectory = "$TemporaryDirectory/matp_$$";
 my $PidNr = $$;
 my $MizHtml = $MyUrl . "/mml/html/";
 my $mizf =     "bin/mizf";
+my $snow =     "bin/snow";
+my $advisor =     "bin/advisor.pl";
 my $exporter =     "bin/mizar/exporter";
 my $xsltproc =     "bin/xsltproc";
 my $dbenv = "bin/dbenv.pl";
@@ -37,6 +39,7 @@ my $VocSource       = $query->param('VocSource');
 my $input_article	  = $query->param('Formula');
 my $input_name	  = $query->param('Name');
 my $atp_mode	  = $query->param('ATPMode');
+my $input_snow	  = $query->param('Snow');
 my $aname         = lc($input_name); 
 my $aname_uc      = uc($aname);
 my $ProblemFileOrig = $TemporaryProblemDirectory . "/$aname";
@@ -59,12 +62,20 @@ my $ProblemFileBex = $ProblemFileOrig . ".bex";
 my $lbytmpdir = $PidNr . '\&ATP=refs\&HTML=1';
 my $lbytptpcgi= $MyUrl . '/cgi-bin/showby.cgi';
 
+my $SnowDataDir =     $Mizfiles . "/mml/mptp/snowdata";
+my $SnowFileStem =    $SnowDataDir . "/mpa1";
+my $SnowMMLNet =      $SnowFileStem . ".net";
+my $SnowMMLArch =     $SnowFileStem . ".arch";
+my $AdvisorOutput  =  $ProblemFileOrig . ".adv_output";
+my $SnowOutput  =     $ProblemFileOrig . ".snow_output";
 
 
 my $text_mode     = $query->param('Text');
 my (%gsyms,$grefs,$ref);
 my $ghost	  = "localhost";
-my $gport	  = "60000";
+my $snowport	  = -1;
+my $start_snow    = 1;
+my $advisorport	  = -1;
 my %gconstrs      =
     (
      'func'   , 'k',
@@ -209,6 +220,32 @@ sub SortByExplanations
     }
 }
 
+sub StartSNoW
+{
+#--- get unused port for SNoW
+    socket(SOCK,PF_INET,SOCK_STREAM,(getprotobyname('tcp'))[2]);
+    bind( SOCK,  sockaddr_in(0, INADDR_ANY));
+    my $sport = (sockaddr_in(getsockname(SOCK)))[0];
+    print("snowport $sport\n");
+    close(SOCK);
+
+#--- start snow instance:
+# ###TODO: wrap this in a script remembering a start time, and self-destructing
+#          in one day
+    system("nohup $snow -server $sport -o allboth -F $SnowMMLNet -A $SnowMMLArch > $SnowOutput 2>&1 &");
+
+#--- get unused port for advisor
+    socket(SOCK1,PF_INET,SOCK_STREAM,(getprotobyname('tcp'))[2]);
+    bind( SOCK1,  sockaddr_in(0, INADDR_ANY));
+    my $aport = (sockaddr_in(getsockname(SOCK1)))[0];
+    print("advisorport $aport\n");
+    close(SOCK1);
+
+    system("nohup $advisor -p $sport -a $aport $SnowFileStem > $AdvisorOutput 2>&1 &");
+    return ($aport, $sport);
+}
+
+
 print $query->header;
 unless($text_mode)
 {
@@ -221,6 +258,8 @@ unless($text_mode)
     CreateTmpDir($ProblemDir);
 
     SetupArticleFiles();
+
+    if($start_snow > 0) { ($advisorport, $snowport) = StartSNoW(); }
 
     $ENV{"MIZFILES"}= $Mizfiles;
     system("$mizf $ProblemFile 2>&1 > $MizOutput");
@@ -296,6 +335,7 @@ unless($text_mode)
     my $Tmp1 = $TemporaryProblemDirectory . '/';
 # swipl -G50M -s utils.pl -g "mptp2tptp('$1',[opt_NO_FRAENKEL_CONST_GEN],user),halt." |& grep "^fof"
     system("cd $TemporaryProblemDirectory; swipl -G50M -s $utilspl -g \"(A=$aname,D=\'$Tmp1\',declare_mptp_predicates,time(load_mml_for_article(A, D, [A])),time(install_index),time(mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma, sublemma]],[opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_ADDED_NON_MML([A]),opt_NON_MML_DIR(D),opt_LINE_COL_NMS,opt_PRINT_PROB_PROGRESS,opt_ALLOWED_REF_INFO,opt_PROVED_BY_INFO])),halt).\" > $aname.ploutput 2>&1");
+
 
 #    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.ploutput&tmp=$PidNr\" target=\"MPTPOutput$PidNr\">Show MPTP Output</a><br>\n";
 
@@ -404,7 +444,7 @@ sub GetRefs
     my $BLANK = $EOL x 2;
     my $remote = IO::Socket::INET->new( Proto     => "tcp",
 					PeerAddr  => $ghost,
-					PeerPort  => $gport,
+					PeerPort  => $advisorport,
 				      );
     unless ($remote)
     {
