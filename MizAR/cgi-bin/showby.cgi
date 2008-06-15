@@ -71,17 +71,21 @@ sub HTMLize
 	if($kind =~ m/^l(.*)/) { $kind = 'e' . $1; }
 	if($ar eq $input_article) {$res  = '#'.  uc($kind); }
 	else {$res  = $MizHtml . $ar . '.html#' . uc($kind); }
-	$title =  uc($ar) . ":" . $kind;
+	$title =  uc($ar) . ":" . uc($kind);
     }
     elsif($ref=~m/^(e[0-9]+)_(.*)__(.*)$/)
     {
-	$title =  "proposition " . $1 . " in proof " . $2;
+	$title =  "proposition " . uc($1) . " in proof " . $2;
 	$res = '#' . uc($1) . ':' . $2; 
     }
-    elsif($ref=~m/^d[et]_(c[0-9]+)_(.*)__(.*)$/) { $res = '#' . lc($1) . ':' . $2; }
+    elsif($ref=~m/^d[et]_(c[0-9]+)_(.*)__(.*)$/)
+    {
+	$res = '#' . lc($1) . ':' . $2;
+	$title =  "constant " . uc($1) . " in proof " . $2;
+    }
     elsif($ref=~m/^(abstractness|free|existence|redefinition|symmetry|antisymmetry|asymmetry|reflexivity|irreflexivity|connectedness|commutativity|idempotence|involutiveness|projectivity)_([klmugrv][0-9]+)_(.*)$/)
     {
-	$title = $1 . " of " . $3 . ":" . $2;
+	$title = $1 . " of " . uc($3) . ":" . uc($2);
 	if($3 eq $input_article) {$res  = '#'.  uc($2); }
 	else { $res = $MizHtml . $3 . '.html#' . uc($2); }
     }
