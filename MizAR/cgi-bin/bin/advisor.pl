@@ -81,7 +81,7 @@ Getopt::Long::Configure ("bundling");
 
 GetOptions('snowpath|s=s'    => \$pathtosnow,
 	   'snowport|p=i'    => \$snowport,
-	   'advport|p=i'     => \$gport,
+	   'advport|a=i'     => \$gport,
 	   'help|h'          => \$help,
 	   'man'             => \$man)
     or pod2usage(2);
