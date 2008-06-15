@@ -176,32 +176,52 @@ if(    open(F,$File))
 	    }
 	    if($#refs >= 0) 
 	    {
-		if($htmlize == 1)  
+		if($htmlize == 1)
 		{ 
 		    print '<?xml version="1.0"?><div>'; 
 		    print 'ATP explanation (';
-		    if($spass != 1) 
+		    if($spass != 1)
 		    {
-			print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&idv=1'},
-				    $idv_img);
-			print ', '; 
+			print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
+					 $input_article . '&lc=' . $input_lc . '&tmp=' .
+					 $input_tmp . '&idv=1'},
+					$idv_img);
+			print ', ';
 		    }
-		    print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&DM=1'}, "Try more");
-		    if($spass != 1) 
+		    print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
+				     $input_article . '&lc=' . $input_lc . '&tmp=' .
+				     $input_tmp . '&DM=1'},
+				    "Try more");
+		    if($spass != 1)
 		    {
 			print ', ';
-			print $query->a({href=>"$MyUrl/cgi-bin/tptp/MMLQuery.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp },
-				    "MMLQuery (very experimental)");
+			print $query->a({href=>"$MyUrl/cgi-bin/tptp/MMLQuery.cgi?article=" .
+					 $input_article . '&lc=' . $input_lc .
+					 '&tmp=' . $input_tmp },
+					"MMLQuery (very experimental)");
 		    }
-		    print " ):<br>\n";  
-#		    print $query->a({href=>"$MyUrl/cgi-bin/showby.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&DM=1'}, "Do more"), " ):<br>\n";  
-		    foreach my $ref (@refs) 
+		    print " ):<br>\n";
+#		    print $query->a({href=>"$MyUrl/cgi-bin/showby.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&DM=1'}, "Do more"), " ):<br>\n";
+		    foreach my $ref (@refs)
 		    {
 			my ($href, $title) = HTMLize($ref); 
-			if(length($href)>0) { print $query->a({href=>$href}, $ref), ", "; } 
-			elsif(length($title)>0) {print $query->font({color=>"Green",title=>$title}, $ref),", ";}
+			if(length($href)>0)
+			{
+			    if(length($title)>0) 
+			    {
+				print $query->a({href=>$href,title=>$title}, $ref),", ";
+			    }
+			    else
+			    {
+				print $query->font({color=>"Green",title=>$title}, $ref),", ";
+			    }
+			}
+			elsif(length($title)>0) 
+			{
+			    print $query->font({color=>"Green",title=>$title}, $ref),", ";
+			}
 			else {print $ref,", ";}
-		    } 
+		    }
 		    print "</div>"; 
 		} 
 		else { print join(",", @refs);} 
