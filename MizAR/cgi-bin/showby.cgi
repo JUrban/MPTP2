@@ -204,7 +204,8 @@ if(    open(F,$File))
 		    }
 		    print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
 				     $input_article . '&lc=' . $input_lc . '&tmp=' .
-				     $input_tmp . '&DM=1'},
+				     $input_tmp . '&DM=1',
+				     title=>"Try 20 more ATP systems in SystemOnTPTP"},
 				    "Try more");
 		    if($spass != 1)
 		    {
@@ -250,12 +251,15 @@ if(    open(F,$File))
 		    print $query->a({class=>"txt",
 				     onclick=>"makeRequest(this,\'$MyUrl/cgi-bin/showby.cgi?article=" .
 				     $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp .
-				     '&ATP=refs&HTML=1&spass=1\')',href=>'javascript:()'},
+				     '&ATP=refs&HTML=1&spass=1\')',
+				     href=>'javascript:()',
+				     title=>"Try the SPASS ATP system"},
 				    'Try SPASS, ');
 		    print    '<span> </span>';
 		    print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
 				     $input_article . '&lc=' . $input_lc .
-				     '&tmp=' . $input_tmp . '&DM=1'},
+				     '&tmp=' . $input_tmp . '&DM=1',
+				     title=>"Try 20 more ATP systems in SystemOnTPTP"},
 				    "Try more");
 		}
 		print " ):<br>\n";
