@@ -63,7 +63,7 @@ my $lbytmpdir = $PidNr . '\&ATP=refs\&HTML=1';
 my $lbytptpcgi= $MyUrl . '/cgi-bin/showby.cgi';
 
 my $SnowDataDir =     $Mizfiles . "/mptp/snowdata";
-my $SnowFileStem =    $SnowDataDir . "/mpa1";
+my $SnowFileStem =    $SnowDataDir . "/thms3";
 my $SnowMMLNet =      $SnowFileStem . ".net";
 my $SnowMMLArch =     $SnowFileStem . ".arch";
 my $AdvisorOutput  =  $ProblemFileOrig . ".adv_output";
