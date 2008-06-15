@@ -14,6 +14,7 @@ advisor.pl -s/home/urban/bin/snow -p50000 -a60000 /usr/local/share/mpadata/mpa1
    --snowpath=<arg>,        -s<arg>
    --snowport=<arg>,        -p<arg>
    --advport=<arg>,         -a<arg>
+   --symoffset=<arg>,       -o<arg>
    --help,                  -h
    --man
 
@@ -33,6 +34,11 @@ The port for communiacting with Snow, default is 50000.
 =item B<<< --advport=<arg>, -p<arg> >>>
 
 The port for communiacting with advisor, default is 60000.
+
+=item B<<< --symoffset=<arg>, -o<arg> >>>
+
+The offset where symbol numbering starts. Has to correspond
+to the one use for training the net.
 
 =item B<<< --help, -h >>>
 
@@ -68,20 +74,20 @@ use Getopt::Long;
 use IO::Socket;
 
 my (%gsyms,$grefs,$client);
-my $gsymoffset=100000; # offset at which symbol numbering starts
 my %grefnr;     # Ref2Nr hash for references
 my @gnrref;     # Nr2Ref array for references
 
 my %gsymnr;   # Sym2Nr hash for symbols
 my @gnrsym;   # Nr2Sym array for symbols - takes gsymoffset into account!
 
-my ($pathtosnow,$snowport,$gport);
+my ($pathtosnow,$snowport,$gport,$gsymoffset);
 my ($help, $man);
 Getopt::Long::Configure ("bundling");
 
 GetOptions('snowpath|s=s'    => \$pathtosnow,
 	   'snowport|p=i'    => \$snowport,
 	   'advport|a=i'     => \$gport,
+	   'symoffset|o=i'   => \$gsymoffset,
 	   'help|h'          => \$help,
 	   'man'             => \$man)
     or pod2usage(2);
@@ -95,6 +101,11 @@ my $filestem   = shift(@ARGV);
 
 $gport      = 60000 unless(defined($gport));
 $snowport   = 50000 unless(defined($snowport));
+
+# offset at which symbol numbering starts -
+# this depends on the params used for learning!
+$gsymoffset = 500000 unless(defined($gsymoffset));;
+
 
 # change for verbose logging
 sub LOGGING { 1 };
