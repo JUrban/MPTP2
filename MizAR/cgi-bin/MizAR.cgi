@@ -242,6 +242,8 @@ sub StartSNoW
     close(SOCK1);
 
     system("nohup $advisor -p $sport -a $aport $SnowFileStem > $AdvisorOutput 2>&1 &");
+
+    $lbytmpdir = $lbytmpdir . '\&aport=' . $aport;
     return ($aport, $sport);
 }
 
@@ -259,6 +261,8 @@ unless($text_mode)
 
     SetupArticleFiles();
 
+    # this has to precede creation of html, so that $aport
+    # was set in the by-calls
     if($start_snow > 0) { ($advisorport, $snowport) = StartSNoW(); }
 
     $ENV{"MIZFILES"}= $Mizfiles;
