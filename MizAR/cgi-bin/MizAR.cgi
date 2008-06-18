@@ -226,7 +226,7 @@ sub StartSNoW
     socket(SOCK,PF_INET,SOCK_STREAM,(getprotobyname('tcp'))[2]);
     bind( SOCK,  sockaddr_in(0, INADDR_ANY));
     my $sport = (sockaddr_in(getsockname(SOCK)))[0];
-    print("snowport $sport\n");
+#    print("snowport $sport\n");
     close(SOCK);
 
 #--- start snow instance:
@@ -238,7 +238,7 @@ sub StartSNoW
     socket(SOCK1,PF_INET,SOCK_STREAM,(getprotobyname('tcp'))[2]);
     bind( SOCK1,  sockaddr_in(0, INADDR_ANY));
     my $aport = (sockaddr_in(getsockname(SOCK1)))[0];
-    print("advisorport $aport\n");
+#    print("advisorport $aport\n");
     close(SOCK1);
 
     system("nohup $advisor -p $sport -a $aport -o $SnowSymOffset $SnowFileStem > $AdvisorOutput 2>&1 &");
