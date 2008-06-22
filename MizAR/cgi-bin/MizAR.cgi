@@ -251,7 +251,7 @@ sub StartSNoW
 print $query->header;
 unless($text_mode)
 {
-    print $query->start_html("MizAR Output");
+    print $query->start_html($aname_uc);
 
     CheckArticleName($aname);
 
