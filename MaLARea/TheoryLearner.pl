@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.102 $
+## $Revision: 1.103 $
 
 
 =head1 NAME
@@ -124,20 +124,29 @@ the default info will be added for it.
 
 =item B<<< --runspass=<arg>, -B<S><arg> >>>
 
-If 1, run SPASS. Default is 1.
+If >= 1, run SPASS. Default is 1.
+If greater than 1, run only in passes where the number
+of refs is not greater than this.
 
 =item B<<< --runvampire=<arg>, -B<V><arg> >>>
 
-If 1, run Vampire. Default is 0.
+If >= 1, run Vampire. Default is 0.
+If greater than 1, run only in passes where the number
+of refs is not greater than this.
 
 =item B<<< --runparadox=<arg>, -B<p><arg> >>>
 
-If 1, run Paradox. Default is 0.
+If >= 1, run Paradox. Default is 0.
+If greater than 1, run only in passes where the number
+of refs is not greater than this. Good nonzero default
+is then 128.
 
 =item B<<< --runmace=<arg>, -B<M><arg> >>>
 
-If 1, and running Paradox, run also Mace to construct a model.
-The model is then used for evaluation of formulas. Default is 1,
+If >= 1, and running Paradox, run also Mace to construct a model.
+If greater than 1, run only in passes where the number
+of refs is not greater than this.
+The model is then used for evaluation of formulas. Default is 64,
 because this is constraint by --runparadox anyway.
 
 =item B<<< --usemodels=<arg>, -B<D><arg> >>>
@@ -277,6 +286,9 @@ my %gref2gen;     # contains references with generalized reference
 my %ggen2ref;     # for each generalized ref contains a list of corresponding original refs
 my $gggnewc = 'gggnewc'; # new symbol for generalizing ocnstants; TODO: should check it's not in spec
 
+my %gatpdata;     # for each ATP a hash of its thresholds and other useful data
+
+
 my $minthreshold = 4;
 my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $maxtimelimit, $gdofull,        $giterrecover,
@@ -339,10 +351,9 @@ $gloadprovedby = "" unless(defined($gloadprovedby));
 $gspass = 1 unless(defined($gspass));
 $gvampire = 0 unless(defined($gvampire));
 $gparadox = 0 unless(defined($gparadox));
-$gmace = 1 unless(defined($gmace));
+$gmace = 64 unless(defined($gmace));
 $gusemodels = 1 unless(defined($gusemodels));
 $gsrassemul = 1 unless(defined($gsrassemul));
-$gsrassemul = $gparadox * $gmace * $gsrassemul;
 $geprover = 1 unless(defined($geprover));
 $gparallelize = 1 unless(defined($gparallelize));
 $giterpolicy = pol_STD unless(defined($giterpolicy));
@@ -371,6 +382,10 @@ my $guseposmodels = $gusemodels & 2;
 
 if($gparallelize > 1) { $gmakefile = 1; } else { $gmakefile = 0; }
 
+InitAtpData();
+
+# at this point $gparadox and $gmace are in {0,1}
+$gsrassemul = $gparadox * $gmace * $gsrassemul;
 
 # change for debug printing
 sub WNONE	()  { 0 }
@@ -559,6 +574,42 @@ sub mod_NEGNR    ()  { 3 }
 sub mod_SYMS     ()  { 4 }
 sub mod_POSREFS  ()  { 5 }
 sub mod_NEGREFS  ()  { 6 }
+
+# available ATPs (%gatpdata entries)
+sub atp_E     		()  { 'E' }
+sub atp_EP     		()  { 'EP' }
+sub atp_SPASS		()  { 'SPASS' }
+sub atp_VAMPIRE		()  { 'VAMPIRE' }
+sub atp_PARADOX    	()  { 'PARADOX' }
+sub atp_MACE     	()  { 'MACE' }
+sub atp_RANDOCOP  	()  { 'RANDOCOP' }
+sub atp_PROVER9  	()  { 'PROVER' }
+
+
+# nice names for the table of configurable stuff for ATPs in %gatpdata entries
+sub opt_MAXREFS     	()  { 0 }
+sub opt_MINREFS		()  { 1 }
+sub opt_MINCPU		()  { 2 }
+sub opt_MAXCPU		()  { 3 }
+
+
+## Initialize %gatpdata; 1 billion is used for MAXREFS and -1 serves as uninitialized 
+## value for all other params now
+## Also normalizes $gspass, $geprover, $gvampire, $gparadox, $gmace to {0,1}
+sub InitAtpData
+{
+    %gatpdata = ();
+    @gatpdata{(atp_E,atp_EP,atp_SPASS,atp_VAMPIRE,atp_PARADOX,
+	       atp_MACE,atp_RANDOCOP,atp_PROVER9)}
+	= ();
+    foreach my $atp (keys %gatpdata) { $gatpdata{ $atp } = [1000000000,-1,-1,-1]; }
+
+    if ($gspass > 1) { $gatpdata{ atp_SPASS }->[ opt_MAXREFS ] = $gspass; $gspass = 1; }
+    if ($geprover > 1) { $gatpdata{ atp_E }->[ opt_MAXREFS ] = $geprover; $geprover = 1; }
+    if ($gvampire > 1) { $gatpdata{ atp_VAMPIRE }->[ opt_MAXREFS ] = $gvampire; $gvampire = 1; }
+    if ($gparadox > 1) { $gatpdata{ atp_PARADOX }->[ opt_MAXREFS ] = $gparadox; $gparadox = 1; }
+    if ($gmace > 1) { $gatpdata{ atp_MACE }->[ opt_MAXREFS ] = $gmace; $gmace = 1; }
+}
 
 # Following command will create all initial unpruned problem specifications,
 # in format spec(name,references), e.g.:
@@ -1519,6 +1570,7 @@ sub RunProblems
     foreach $conj (@$conjs)
     {
 	my $file = $gtmpdir . $file_prefix . $conj . $file_postfix . ".s_" . $iter;
+	my $linesnr = `cat $file | wc -l`;
 	my $status = szs_UNKNOWN;
 	my @conj_entries = @{$gresults{$conj}};
 
@@ -1529,7 +1581,8 @@ sub RunProblems
 	print "$conj: ";
 
 
-	if (($paradox == 1) && ($threshold < 256) && ($gtimelimit < 4) &&
+	if (($paradox == 1) && ($gtimelimit < 4) &&
+	    ($linesnr <= $gatpdata{ atp_PARADOX }->[ opt_MAXREFS ]) &&
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 
@@ -1561,7 +1614,7 @@ sub RunProblems
 	## mace is now used to find a model;
 	## don't run if paradox was run unsuccesfully
 	if (($mace == 1) && (($paradox == 0) || ($status eq szs_COUNTERSAT)) &&
-	    ($threshold < 128) && ($gtimelimit < 4) &&
+	    ($linesnr <= $gatpdata{ atp_MACE }->[ opt_MAXREFS ]) && ($gtimelimit < 4) &&
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || 
 	     ($status eq szs_UNKNOWN) || ($status eq szs_COUNTERSAT)))
 	{
@@ -1597,7 +1650,7 @@ sub RunProblems
 	    print " Mace: $mace_status,";
 	}
 
-	if (($eprover == 1) && 
+	if (($eprover == 1) && ($linesnr <= $gatpdata{ atp_E }->[ opt_MAXREFS ]) &&
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 
@@ -1629,7 +1682,7 @@ sub RunProblems
 	    }
 	}
 
-	if (($spass == 1) && 
+	if (($spass == 1) && ($linesnr <= $gatpdata{ atp_SPASS }->[ opt_MAXREFS ]) &&
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 	    my $spass_status_line =
@@ -1674,7 +1727,7 @@ sub RunProblems
 	    print ", SPASS: $spass_status";
 	}
 
-	if (($vampire == 1) && 
+	if (($vampire == 1) && ($linesnr <= $gatpdata{ atp_VAMPIRE }->[ opt_MAXREFS ]) &&
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 	    my $vamp_status_line =
