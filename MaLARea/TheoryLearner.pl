@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.110 $
+## $Revision: 1.111 $
 
 
 =head1 NAME
@@ -401,6 +401,10 @@ my $guseposmodels = $gusemodels & 2;
 
 if($gparallelize > 1) { $gmakefile = 1; } else { $gmakefile = 0; }
 
+# list of all handled atps
+my @gallatps = ('atp_E','atp_EP','atp_SPASS','atp_VAMPIRE','atp_PARADOX',
+		'atp_MACE','atp_RANDOCOP','atp_PROVER9');
+
 InitAtpData();
 
 # at this point $gparadox and $gmace are in {0,1}
@@ -605,9 +609,6 @@ sub mod_NEGREFS  ()  { 6 }
 # sub atp_RANDOCOP  	()  { 'RANDOCOP' }
 # sub atp_PROVER9  	()  { 'PROVER' }
 
-# list of all handled atps
-my @gallatps = ('atp_E','atp_EP','atp_SPASS','atp_VAMPIRE','atp_PARADOX',
-		'atp_MACE','atp_RANDOCOP','atp_PROVER9');
 
 # nice names for the table of configurable stuff for ATPs in %gatpdata entries
 sub opt_MAXREFS     	()  { 0 }
@@ -622,9 +623,7 @@ sub opt_MAXCPU		()  { 3 }
 sub InitAtpData
 {
     %gatpdata = ();
-    @gatpdata{('atp_E','atp_EP','atp_SPASS','atp_VAMPIRE','atp_PARADOX',
-	       'atp_MACE','atp_RANDOCOP','atp_PROVER9')}
-	= ();
+    @gatpdata{ @gallatps } = ();
     foreach my $atp (keys %gatpdata) { $gatpdata{ $atp } = [1000000000,-1,-1,-1]; }
 
     if ($gspass > 1) { $gatpdata{ 'atp_SPASS' }->[ opt_MAXREFS ] = $gspass; $gspass = 1; }
