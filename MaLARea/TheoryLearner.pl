@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.107 $
+## $Revision: 1.108 $
 
 
 =head1 NAME
@@ -1601,13 +1601,13 @@ sub RunProblems
 	print "$conj: ";
 
 
-	if (($paradox == 1) && ($gtimelimit < 4) &&
+	if (($paradox == 1) && ($gtimelimit < 16) &&
 	    ($linesnr <= $gatpdata{ 'atp_PARADOX' }->[ opt_MAXREFS ]) &&
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 
 	    my $paradox_status_line =
-		`bin/runparadox --tstp --model --time $gtimelimit $file | tee $file.pout | grep RESULT`;
+		`bin/runparadox1 $gtimelimit --tstp --model --time $gtimelimit $file | tee $file.pout | grep RESULT`;
 	    if ($paradox_status_line=~m/CounterSatisfiable/)
 	    {
 		$paradox_status = szs_COUNTERSAT;
