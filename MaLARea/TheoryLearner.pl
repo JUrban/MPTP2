@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.106 $
+## $Revision: 1.107 $
 
 
 =head1 NAME
@@ -37,6 +37,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --parallelize=<arg>,     -j<arg>
    --iterpolicy=<arg>,      -y<arg>
    --recadvice=<arg>,       -a<arg>
+   --limittargets=<arg>,    -L<arg>
    --refsbgcheat=<arg>,     -r<arg>
    --alwaysmizrefs=<arg>,   -m<arg>
    --help,                  -h
@@ -213,6 +214,14 @@ If nonzero, the axiom advising phase is repeated this many times,
 recursively using the recommended axioms to enlarge the set of symbols
 for the next advising phase. Default is 0 (no recursion).
 
+=item B<<< --limittargets=<arg>, -B<L><arg> >>>
+
+If nonzero, it is the maximum number of targets that the
+machine learner prints for further consideration. This can
+be a useful speed-up when the number of targets is very high
+(say 100000), but we only need a small number of them that
+are very likely to be recommended within a much smaller initial
+segment. Default is 0 - no limit. A useful limit is 1000.
 
 =item B<<< --refsbgcheat=<arg>, -r<arg> >>>
 
@@ -305,7 +314,7 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $gparadox,     $geprover,       $gmace,
     $gtmpdir,      $gsrassemul,     $gusemodels,
     $gparallelize, $gmakefile,      $gloadprovedby,
-    $giterpolicy,  $ggeneralize);
+    $giterpolicy,  $ggeneralize,    $glimittargets);
 
 my ($help, $man);
 my $gtargetsnr = 1233;
@@ -336,6 +345,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'parallelize|j=i'  => \$gparallelize,
 	   'iterpolicy|y=i'  => \$giterpolicy,
 	   'recadvice|a=i'    => \$grecadvice,
+	   'limittargets|L=i'    => \$glimittargets,
 	   'refsbgcheat|r=i'    => \$grefsbgcheat,
 	   'alwaysmizrefs|m=i'    => \$galwaysmizrefs,
 	   'help|h'          => \$help,
@@ -366,6 +376,7 @@ $gsrassemul = 1 unless(defined($gsrassemul));
 $gparallelize = 1 unless(defined($gparallelize));
 $giterpolicy = pol_STD unless(defined($giterpolicy));
 $grecadvice = 0 unless(defined($grecadvice));
+$glimittargets = 0 unless(defined($glimittargets));
 $grefsbgcheat = 0 unless(defined($grefsbgcheat));
 $gsimilarity = 1 unless(defined($gsimilarity));
 $ggeneralize = 0 unless(defined($ggeneralize));
@@ -1154,7 +1165,7 @@ sub SelectRelevantFromSpecs
     %included = ();
     my @active = ();
     my $do_example = 0;
-    my $wantednr = $threshold * 10; # $gtargetsnr;
+    my $wantednr = ($glimittargets > 0) ? $glimittargets : $gtargetsnr; # $threshold * 10; # $gtargetsnr;
     my @specs = ();
 
     ## becomes 0 if no recadvice
