@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.111 $
+## $Revision: 1.112 $
 
 
 =head1 NAME
@@ -38,6 +38,8 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --iterpolicy=<arg>,      -y<arg>
    --recadvice=<arg>,       -a<arg>
    --limittargets=<arg>,    -L<arg>
+   --boostlimit=<arg>,      -b<arg>
+   --boostweight=<arg>,     -w<arg>
    --refsbgcheat=<arg>,     -r<arg>
    --alwaysmizrefs=<arg>,   -m<arg>
    --help,                  -h
@@ -223,6 +225,24 @@ be a useful speed-up when the number of targets is very high
 are very likely to be recommended within a much smaller initial
 segment. Default is 0 - no limit. A useful limit is 1000.
 
+=item B<<< --boostlimit=<arg>, -b<arg> >>>
+
+If nonzero, the axioms in small specifications are slightly
+boosted in learning by the boostweight/100. A specification is
+small, if it has less axioms than (boostlimit/100) * number-of-all-axioms.
+Default is 0 (no boosting). A reasonable boosting default is 1,
+i.e. with 70000 total axioms in all specs, axioms in those
+with less than 700 will be boosted. The idea is that this will
+help to focus in the much larger specifications, in the same way
+as the info about proof helps.
+
+=item B<<< --boostweight=<arg>, -w<arg> >>>
+
+The weight used for boosting if boostlimit > 0. This
+is divided by 100 to get the boost factor. The default
+is 1 (so the boost factor is 0.01), because this is
+constraint by boostlimit anyway.
+
 =item B<<< --refsbgcheat=<arg>, -r<arg> >>>
 
 Tells to cheat by limiting background for problems
@@ -314,6 +334,7 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $gparadox,     $geprover,       $gmace,
     $gtmpdir,      $gsrassemul,     $gusemodels,
     $gparallelize, $gmakefile,      $gloadprovedby,
+    $gboostlimit,  $gboostweight,
     $giterpolicy,  $ggeneralize,    $glimittargets);
 
 my ($help, $man);
@@ -377,6 +398,8 @@ $gparallelize = 1 unless(defined($gparallelize));
 $giterpolicy = pol_STD unless(defined($giterpolicy));
 $grecadvice = 0 unless(defined($grecadvice));
 $glimittargets = 0 unless(defined($glimittargets));
+$gboostlimit = 0 unless(defined($gboostlimit));
+$gboostweight = 1 unless(defined($gboostweight));
 $grefsbgcheat = 0 unless(defined($grefsbgcheat));
 $gsimilarity = 1 unless(defined($gsimilarity));
 $ggeneralize = 0 unless(defined($ggeneralize));
@@ -400,6 +423,9 @@ my $gusenegmodels = $gusemodels & 1;
 my $guseposmodels = $gusemodels & 2;
 
 if($gparallelize > 1) { $gmakefile = 1; } else { $gmakefile = 0; }
+
+$gboostlimit  = $gboostlimit / 100;
+$gboostweight = $gboostweight / 100;
 
 # list of all handled atps
 my @gallatps = ('atp_E','atp_EP','atp_SPASS','atp_VAMPIRE','atp_PARADOX',
@@ -1880,6 +1906,7 @@ sub SetupGeneralization
 #   (some of them can occure twice - as axiom and conjecture),
 # .allasax - each fla just once (as axiom), .axp9 - the same for prover9/mace4,
 # and also all conjecures (.allconjs) and all axioms (.allaxs)
+# If ($ggeneralize > 0) formula generalizations are created and set up.
 sub NormalizeAndCreateInitialSpecs
 {
     my ($file_prefix, $file_postfix, $common_file) = @_;
@@ -2517,6 +2544,21 @@ sub PrintTrainingFromHash
 	    exists $grefsyms{$ref} or die "Unknown reference $ref in refs: @refs";
 	    exists $grefnr{$ref} or die "Unknown reference $ref in refs: @refs";
 	}
+
+	# for 0th iteration, we allow small boost of axioms of
+	# small specifications by $gboostweight
+	if(($iter == 0) && ($gboostlimit > 0) && (exists $gspec{$ref}))
+	{
+	    my @all_refs = keys %{$gspec{$ref}};
+	    # all_refs contains the conjecture too, so we don't have to add 1 to $#all_refs
+	    if($#all_refs <= ($gboostlimit * $gtargetsnr))
+	    {
+		my @ax_nrs   = map { $grefnr{$_} . '(' . $gboostweight . ')'
+					 if(exists($grefnr{$_})) } @all_refs;
+		push(@all_nrs, @ax_nrs);
+	    }
+	}
+
 	my $training_exmpl = join(",", @all_nrs);
 	print TRAIN "$training_exmpl:\n";
     }
