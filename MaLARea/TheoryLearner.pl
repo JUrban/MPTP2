@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.109 $
+## $Revision: 1.110 $
 
 
 =head1 NAME
@@ -625,7 +625,7 @@ sub InitAtpData
     @gatpdata{('atp_E','atp_EP','atp_SPASS','atp_VAMPIRE','atp_PARADOX',
 	       'atp_MACE','atp_RANDOCOP','atp_PROVER9')}
 	= ();
-    foreach my $atp (@gallatps) { $gatpdata{ $atp } = [1000000000,-1,-1,-1]; }
+    foreach my $atp (keys %gatpdata) { $gatpdata{ $atp } = [1000000000,-1,-1,-1]; }
 
     if ($gspass > 1) { $gatpdata{ 'atp_SPASS' }->[ opt_MAXREFS ] = $gspass; $gspass = 1; }
     if ($geprover > 1) { $gatpdata{ 'atp_E' }->[ opt_MAXREFS ] = $geprover; $geprover = 1; }
