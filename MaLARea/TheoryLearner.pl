@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.105 $
+## $Revision: 1.106 $
 
 
 =head1 NAME
@@ -584,6 +584,7 @@ sub mod_POSREFS  ()  { 5 }
 sub mod_NEGREFS  ()  { 6 }
 
 # available ATPs (%gatpdata entries)
+# the macros don't work as hash keys (strange)
 # sub atp_E     		()  { 'E' }
 # sub atp_EP     		()  { 'EP' }
 # sub atp_SPASS		()  { 'SPASS' }
@@ -593,6 +594,9 @@ sub mod_NEGREFS  ()  { 6 }
 # sub atp_RANDOCOP  	()  { 'RANDOCOP' }
 # sub atp_PROVER9  	()  { 'PROVER' }
 
+# list of all handled atps
+my @gallatps = ('atp_E','atp_EP','atp_SPASS','atp_VAMPIRE','atp_PARADOX',
+		'atp_MACE','atp_RANDOCOP','atp_PROVER9');
 
 # nice names for the table of configurable stuff for ATPs in %gatpdata entries
 sub opt_MAXREFS     	()  { 0 }
@@ -607,10 +611,7 @@ sub opt_MAXCPU		()  { 3 }
 sub InitAtpData
 {
     %gatpdata = ();
-    @gatpdata{('atp_E','atp_EP','atp_SPASS','atp_VAMPIRE','atp_PARADOX',
-	       'atp_MACE','atp_RANDOCOP','atp_PROVER9')}
-	= ();
-    foreach my $atp (keys %gatpdata) { $gatpdata{ $atp } = [1000000000,-1,-1,-1]; }
+    foreach my $atp (@gallatps) { $gatpdata{ $atp } = [1000000000,-1,-1,-1]; }
 
     if ($gspass > 1) { $gatpdata{ 'atp_SPASS' }->[ opt_MAXREFS ] = $gspass; $gspass = 1; }
     if ($geprover > 1) { $gatpdata{ 'atp_E' }->[ opt_MAXREFS ] = $geprover; $geprover = 1; }
