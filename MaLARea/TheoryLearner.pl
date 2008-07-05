@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.103 $
+## $Revision: 1.104 $
 
 
 =head1 NAME
@@ -25,6 +25,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --dofull=<arg>,          -f<arg>
    --iterrecover=<arg>,     -I<arg>
    --loadprovedby=<arg>,    -B<arg>
+   --runeprover=<arg>,      -E<arg>
    --runspass=<arg>,        -S<arg>
    --runvampire=<arg>,      -V<arg>
    --runparadox=<arg>,      -p<arg>
@@ -121,6 +122,12 @@ Otherwise, the default initial proved_by table contains for each formulas
 the info that it can be proved by itself (this initializes the learning).
 If an entry for some formula is missing in the given file,
 the default info will be added for it.
+
+=item B<<< --runeprover=<arg>, -B<E><arg> >>>
+
+If >= 1, run E. Default is 1.
+If greater than 1, run only in passes where the number
+of refs is not greater than this.
 
 =item B<<< --runspass=<arg>, -B<S><arg> >>>
 
@@ -317,6 +324,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'dofull|f=i'    => \$gdofull,
 	   'iterrecover|I=i' => \$giterrecover,
 	   'loadprovedby|B=s' => \$gloadprovedby,
+	   'runeprover|E=i'    => \$geprover,
 	   'runspass|S=i'    => \$gspass,
 	   'runvampire|V=i'    => \$gvampire,
 	   'runparadox|p=i'    => \$gparadox,
@@ -348,13 +356,13 @@ sub pol_GROWTH   ()  { 1 }
 $gdofull = 1 unless(defined($gdofull));
 $giterrecover = -1 unless(defined($giterrecover));
 $gloadprovedby = "" unless(defined($gloadprovedby));
+$geprover = 1 unless(defined($geprover));
 $gspass = 1 unless(defined($gspass));
 $gvampire = 0 unless(defined($gvampire));
 $gparadox = 0 unless(defined($gparadox));
 $gmace = 64 unless(defined($gmace));
 $gusemodels = 1 unless(defined($gusemodels));
 $gsrassemul = 1 unless(defined($gsrassemul));
-$geprover = 1 unless(defined($geprover));
 $gparallelize = 1 unless(defined($gparallelize));
 $giterpolicy = pol_STD unless(defined($giterpolicy));
 $grecadvice = 0 unless(defined($grecadvice));
@@ -1437,7 +1445,7 @@ sub RunProblemsFromMakefile
     my ($iter, $file_prefix, $file_postfix, $conjs,
 	$threshold, $spass, $vampire, $paradox, $keep_cpu_limit) = @_;
     my ($conj,$status,$eprover_status,$spass_status,$vamp_status,$paradox_status,$mace_status);
-    my $eprover = 1;
+    my $eprover = $geprover;
     my $mace = $paradox * $gmace;
     my %proved_by = ();
     my ($models_found, $models_old, $models_new) = (0,0,0);
@@ -1554,7 +1562,7 @@ sub RunProblems
     my ($iter, $file_prefix, $file_postfix, $conjs,
 	$threshold, $spass, $vampire, $paradox, $keep_cpu_limit) = @_;
     my ($conj,$status,$eprover_status,$spass_status,$vamp_status,$paradox_status,$mace_status);
-    my $eprover = 1;
+    my $eprover = $geprover;
     my $mace = $paradox * $gmace;
     my %proved_by = ();
     my ($models_found, $models_old, $models_new) = (0,0,0);
