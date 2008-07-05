@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.112 $
+## $Revision: 1.113 $
 
 
 =head1 NAME
@@ -367,6 +367,8 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'iterpolicy|y=i'  => \$giterpolicy,
 	   'recadvice|a=i'    => \$grecadvice,
 	   'limittargets|L=i'    => \$glimittargets,
+	   'boostlimit|b=i'    => \$gboostlimit,
+	   'boostweight|w=i'    => \$gboostweight,
 	   'refsbgcheat|r=i'    => \$grefsbgcheat,
 	   'alwaysmizrefs|m=i'    => \$galwaysmizrefs,
 	   'help|h'          => \$help,
