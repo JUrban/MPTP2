@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.104 $
+## $Revision: 1.105 $
 
 
 =head1 NAME
@@ -584,14 +584,14 @@ sub mod_POSREFS  ()  { 5 }
 sub mod_NEGREFS  ()  { 6 }
 
 # available ATPs (%gatpdata entries)
-sub atp_E     		()  { 'E' }
-sub atp_EP     		()  { 'EP' }
-sub atp_SPASS		()  { 'SPASS' }
-sub atp_VAMPIRE		()  { 'VAMPIRE' }
-sub atp_PARADOX    	()  { 'PARADOX' }
-sub atp_MACE     	()  { 'MACE' }
-sub atp_RANDOCOP  	()  { 'RANDOCOP' }
-sub atp_PROVER9  	()  { 'PROVER' }
+# sub atp_E     		()  { 'E' }
+# sub atp_EP     		()  { 'EP' }
+# sub atp_SPASS		()  { 'SPASS' }
+# sub atp_VAMPIRE		()  { 'VAMPIRE' }
+# sub atp_PARADOX    	()  { 'PARADOX' }
+# sub atp_MACE     	()  { 'MACE' }
+# sub atp_RANDOCOP  	()  { 'RANDOCOP' }
+# sub atp_PROVER9  	()  { 'PROVER' }
 
 
 # nice names for the table of configurable stuff for ATPs in %gatpdata entries
@@ -607,16 +607,16 @@ sub opt_MAXCPU		()  { 3 }
 sub InitAtpData
 {
     %gatpdata = ();
-    @gatpdata{(atp_E,atp_EP,atp_SPASS,atp_VAMPIRE,atp_PARADOX,
-	       atp_MACE,atp_RANDOCOP,atp_PROVER9)}
+    @gatpdata{('atp_E','atp_EP','atp_SPASS','atp_VAMPIRE','atp_PARADOX',
+	       'atp_MACE','atp_RANDOCOP','atp_PROVER9')}
 	= ();
     foreach my $atp (keys %gatpdata) { $gatpdata{ $atp } = [1000000000,-1,-1,-1]; }
 
-    if ($gspass > 1) { $gatpdata{ atp_SPASS }->[ opt_MAXREFS ] = $gspass; $gspass = 1; }
-    if ($geprover > 1) { $gatpdata{ atp_E }->[ opt_MAXREFS ] = $geprover; $geprover = 1; }
-    if ($gvampire > 1) { $gatpdata{ atp_VAMPIRE }->[ opt_MAXREFS ] = $gvampire; $gvampire = 1; }
-    if ($gparadox > 1) { $gatpdata{ atp_PARADOX }->[ opt_MAXREFS ] = $gparadox; $gparadox = 1; }
-    if ($gmace > 1) { $gatpdata{ atp_MACE }->[ opt_MAXREFS ] = $gmace; $gmace = 1; }
+    if ($gspass > 1) { $gatpdata{ 'atp_SPASS' }->[ opt_MAXREFS ] = $gspass; $gspass = 1; }
+    if ($geprover > 1) { $gatpdata{ 'atp_E' }->[ opt_MAXREFS ] = $geprover; $geprover = 1; }
+    if ($gvampire > 1) { $gatpdata{ 'atp_VAMPIRE' }->[ opt_MAXREFS ] = $gvampire; $gvampire = 1; }
+    if ($gparadox > 1) { $gatpdata{ 'atp_PARADOX' }->[ opt_MAXREFS ] = $gparadox; $gparadox = 1; }
+    if ($gmace > 1) { $gatpdata{ 'atp_MACE' }->[ opt_MAXREFS ] = $gmace; $gmace = 1; }
 }
 
 # Following command will create all initial unpruned problem specifications,
@@ -1590,7 +1590,7 @@ sub RunProblems
 
 
 	if (($paradox == 1) && ($gtimelimit < 4) &&
-	    ($linesnr <= $gatpdata{ atp_PARADOX }->[ opt_MAXREFS ]) &&
+	    ($linesnr <= $gatpdata{ 'atp_PARADOX' }->[ opt_MAXREFS ]) &&
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 
@@ -1622,7 +1622,7 @@ sub RunProblems
 	## mace is now used to find a model;
 	## don't run if paradox was run unsuccesfully
 	if (($mace == 1) && (($paradox == 0) || ($status eq szs_COUNTERSAT)) &&
-	    ($linesnr <= $gatpdata{ atp_MACE }->[ opt_MAXREFS ]) && ($gtimelimit < 4) &&
+	    ($linesnr <= $gatpdata{ 'atp_MACE' }->[ opt_MAXREFS ]) && ($gtimelimit < 4) &&
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || 
 	     ($status eq szs_UNKNOWN) || ($status eq szs_COUNTERSAT)))
 	{
@@ -1658,7 +1658,7 @@ sub RunProblems
 	    print " Mace: $mace_status,";
 	}
 
-	if (($eprover == 1) && ($linesnr <= $gatpdata{ atp_E }->[ opt_MAXREFS ]) &&
+	if (($eprover == 1) && ($linesnr <= $gatpdata{ 'atp_E' }->[ opt_MAXREFS ]) &&
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 
@@ -1690,7 +1690,7 @@ sub RunProblems
 	    }
 	}
 
-	if (($spass == 1) && ($linesnr <= $gatpdata{ atp_SPASS }->[ opt_MAXREFS ]) &&
+	if (($spass == 1) && ($linesnr <= $gatpdata{ 'atp_SPASS' }->[ opt_MAXREFS ]) &&
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 	    my $spass_status_line =
@@ -1735,7 +1735,7 @@ sub RunProblems
 	    print ", SPASS: $spass_status";
 	}
 
-	if (($vampire == 1) && ($linesnr <= $gatpdata{ atp_VAMPIRE }->[ opt_MAXREFS ]) &&
+	if (($vampire == 1) && ($linesnr <= $gatpdata{ 'atp_VAMPIRE' }->[ opt_MAXREFS ]) &&
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 	    my $vamp_status_line =
