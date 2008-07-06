@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.113 $
+## $Revision: 1.114 $
 
 
 =head1 NAME
@@ -239,8 +239,8 @@ as the info about proof helps.
 =item B<<< --boostweight=<arg>, -w<arg> >>>
 
 The weight used for boosting if boostlimit > 0. This
-is divided by 100 to get the boost factor. The default
-is 1 (so the boost factor is 0.01), because this is
+is negated and exponentiated to get the boost factor. The default
+is 7 (so the boost factor is exp -7 = ca. 0.01), because this is
 constraint by boostlimit anyway.
 
 =item B<<< --refsbgcheat=<arg>, -r<arg> >>>
@@ -401,7 +401,7 @@ $giterpolicy = pol_STD unless(defined($giterpolicy));
 $grecadvice = 0 unless(defined($grecadvice));
 $glimittargets = 0 unless(defined($glimittargets));
 $gboostlimit = 0 unless(defined($gboostlimit));
-$gboostweight = 1 unless(defined($gboostweight));
+$gboostweight = 7 unless(defined($gboostweight));
 $grefsbgcheat = 0 unless(defined($grefsbgcheat));
 $gsimilarity = 1 unless(defined($gsimilarity));
 $ggeneralize = 0 unless(defined($ggeneralize));
@@ -427,7 +427,7 @@ my $guseposmodels = $gusemodels & 2;
 if($gparallelize > 1) { $gmakefile = 1; } else { $gmakefile = 0; }
 
 $gboostlimit  = $gboostlimit / 100;
-$gboostweight = $gboostweight / 100;
+$gboostweight = exp (- $gboostweight);
 
 # list of all handled atps
 my @gallatps = ('atp_E','atp_EP','atp_SPASS','atp_VAMPIRE','atp_PARADOX',
