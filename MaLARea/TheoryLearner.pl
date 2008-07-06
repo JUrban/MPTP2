@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.114 $
+## $Revision: 1.115 $
 
 
 =head1 NAME
@@ -274,11 +274,29 @@ Print the manual page and exit.
 
 =head1 DESCRIPTION
 
-TODO
+Josef Urban: MaLARea: a Metasystem for Automated Reasoning in Large Theories.
+Proceedings of the CADE-21 Workshop on
+Empirically Successful Automated Reasoning in Large Theories
+Bremen, Germany, 17th July 2007.
+http://ftp.informatik.rwth-aachen.de/Publications/CEUR-WS/Vol-257/05_Urban.pdf .
+
+Urban J., Sutcliffe G., Pudlak P., Vyskocil J. (2007),
+MaLARea SG1: Machine Learner for Automated Reasoning with Semantic Guidance,
+In Baumgartner P., Armando A., Gilles D.,
+Proceedings of the 4th International Joint Conference on Automated Reasoning (Sydney, Australia),
+Lecture Notes in Artificial Intelligence (To appear).
+http://kti.mff.cuni.cz/~urban/MaLAReaSG1.pdf .
 
 =head1 CONTACT
 
 Josef Urban urban@kti.ms.mff.cuni.cz
+
+=head1 LICENCE
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
 
 =cut
 
