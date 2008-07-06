@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.115 $
+## $Revision: 1.116 $
 
 
 =head1 NAME
@@ -1387,12 +1387,20 @@ sub SelectRelevantFromSpecs
 
 
 # Learn from the .alltrain_$iter file, which was created by PrintTrainingFromHash
+# If $newly_proved == -1, and $gusemodels == 0, just move the previous net.
 sub Learn
 {
-    my ($iter) = @_;
+    my ($iter, $newly_proved) = @_;
     my $next_iter = 1 + $iter;
     print "LEARNING:$iter\n";
-    `bin/snow -train -I $filestem.alltrain_$iter -F $filestem.net_$next_iter  -B :0-$gtargetsnr`;
+    if(($newly_proved == -1) && ($gusemodels == 0))
+    {
+	`mv $filestem.net_$iter $filestem.net_$next_iter`;
+    }
+    else
+    {
+	`bin/snow -train -I $filestem.alltrain_$iter -F $filestem.net_$next_iter  -B :0-$gtargetsnr`;
+    }
 }
 
 # print the models as training examples
@@ -2163,7 +2171,7 @@ sub Iterate
     {
 
 	`cat $filestem.train_* > $filestem.alltrain_2`;
-	Learn(2);
+	Learn(2,1);
 
 	$to_solve = SelectRelevantFromSpecs(3,$threshold, $file_prefix, $file_postfix);
 
@@ -2178,7 +2186,7 @@ sub Iterate
 
 	my $previter = $giterrecover - 1;
 	`cat $filestem.train_* > $filestem.alltrain_$previter`;
-	Learn($previter);
+	Learn($previter,1);
 
 	$to_solve = SelectRelevantFromSpecs($giterrecover,$threshold, $file_prefix, $file_postfix);
 
@@ -2305,7 +2313,7 @@ sub Iterate
 	    `cat $filestem.models_$iter >> $filestem.alltrain_$iter`;
 	}
 
-	Learn($iter);
+	Learn($iter, $#newly_proved);
 	$iter++;
 	PrintTestingFromArray($iter,\@tmp_conjs);
 	$to_solve = SelectRelevantFromSpecs($iter,$threshold, $file_prefix, $file_postfix);
