@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.116 $
+## $Revision: 1.117 $
 
 
 =head1 NAME
@@ -37,6 +37,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --parallelize=<arg>,     -j<arg>
    --iterpolicy=<arg>,      -y<arg>
    --recadvice=<arg>,       -a<arg>
+   --reuseeval=<arg>,       -u<arg>
    --limittargets=<arg>,    -L<arg>
    --boostlimit=<arg>,      -b<arg>
    --boostweight=<arg>,     -w<arg>
@@ -216,6 +217,15 @@ If nonzero, the axiom advising phase is repeated this many times,
 recursively using the recommended axioms to enlarge the set of symbols
 for the next advising phase. Default is 0 (no recursion).
 
+=item B<<< --reuseeval=<arg>, -u<arg> >>>
+
+If nonzero, the evaluation of the learner is stored after each pass
+(can be a huge file), and if nothing new was proved in the previous
+pass, it is re-used (instead of running the same evaluation).
+The current implementation will conflict with the modelinfo features,
+so don't use it if usemodels is on.
+Default is 0 (no re-use, still experimental).
+
 =item B<<< --limittargets=<arg>, -B<L><arg> >>>
 
 If nonzero, it is the maximum number of targets that the
@@ -352,7 +362,7 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $gparadox,     $geprover,       $gmace,
     $gtmpdir,      $gsrassemul,     $gusemodels,
     $gparallelize, $gmakefile,      $gloadprovedby,
-    $gboostlimit,  $gboostweight,
+    $gboostlimit,  $gboostweight,   $greuseeval,
     $giterpolicy,  $ggeneralize,    $glimittargets);
 
 my ($help, $man);
@@ -384,6 +394,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'parallelize|j=i'  => \$gparallelize,
 	   'iterpolicy|y=i'  => \$giterpolicy,
 	   'recadvice|a=i'    => \$grecadvice,
+	   'reuseeval|u=i'    => \$greuseeval,
 	   'limittargets|L=i'    => \$glimittargets,
 	   'boostlimit|b=i'    => \$gboostlimit,
 	   'boostweight|w=i'    => \$gboostweight,
@@ -417,6 +428,7 @@ $gsrassemul = 1 unless(defined($gsrassemul));
 $gparallelize = 1 unless(defined($gparallelize));
 $giterpolicy = pol_STD unless(defined($giterpolicy));
 $grecadvice = 0 unless(defined($grecadvice));
+$greuseeval = 0 unless(defined($greuseeval));
 $glimittargets = 0 unless(defined($glimittargets));
 $gboostlimit = 0 unless(defined($gboostlimit));
 $gboostweight = 7 unless(defined($gboostweight));
@@ -1189,6 +1201,7 @@ sub PrintPruned
 # writes a new spec_$iter file, created by testing the to_prove_$iter file
 # on net_$iter net; the .eval file is no longer written - it goes up to Gigabytes for 
 # all of MML
+# $newly_proved tells if we have to re-evaluate, or can re-use previous evaluation.
 # Note that @spec always contains its conjecture.
 # I/O: prints .s_$iter file with spec for each active conjecture;
 #      RunProblems() uses that
@@ -1196,10 +1209,11 @@ sub PrintPruned
 # Returns: list of conjectures to try
 sub SelectRelevantFromSpecs
 {
-    my ($iter, $threshold, $file_prefix, $file_postfix, $recurse) = @_;
+    my ($iter, $newly_proved, $threshold, $file_prefix, $file_postfix, $recurse) = @_;
 
 #    LoadSpecs(); # calls LoadTables too
 
+    my $previter = $iter - 1;
     my @to_prove = (); # for checking the SNoW output
     open(TO_PROVE, "$filestem.to_prove_$iter") or die "Cannot read to_prove_$iter file";
     while($_=<TO_PROVE>) { chop; push(@to_prove, $_); }
@@ -1225,8 +1239,13 @@ sub SelectRelevantFromSpecs
     }
 
     my $iter1 = ($grecadvice > 0) ? $iter . "_" . $recurse : $iter;
-    my $snow_pid = open(SOUT,"bin/snow -test -I $filestem.test_$iter1 -F $filestem.net_$iter -L $wantednr -o allboth -B :0-$gtargetsnr|") 
-	or die("Cannot start snow: $iter1");
+    my $previter1 = ($grecadvice > 0) ? $previter . "_" . $recurse : $previter;
+    my $evalfile = ($greuseeval > 0) ? "$filestem.eval_$iter1" : "/dev/null";
+    my $prevevalfile = "$filestem.eval_$previter1";
+    my $snow_pid = (($greuseeval > 0) && ($newly_proved == -1)) ?
+	open(SOUT,"gzip -dc $prevevalfile.gz|") :
+	    open(SOUT,"bin/snow -test -I $filestem.test_$iter1 -F $filestem.net_$iter -L $wantednr -o allboth -B :0-$gtargetsnr|tee $evalfile|");
+#	or die("Cannot start snow: $iter1");
 
     while ($_=<SOUT>)
     {
@@ -1317,12 +1336,22 @@ sub SelectRelevantFromSpecs
     die "Some entries unhandled in .to_prove_$iter: @to_prove" if ($#to_prove >= 0);
     if($recurse > 0)
     {
-	return SelectRelevantFromSpecs($iter,$threshold, $file_prefix, $file_postfix, $recurse - 1);
+	return SelectRelevantFromSpecs($iter,$newly_proved,$threshold, $file_prefix, $file_postfix, $recurse - 1);
     }
     else
     {
 	close(SPEC);
-#	`gzip $filestem.eval_$iter*`;
+	if ($greuseeval > 0)
+	{
+	    if ($newly_proved == -1)
+	    {
+		`mv $prevevalfile.gz $evalfile.gz`;
+	    }
+	    else
+	    {
+		`gzip $evalfile`;
+	    }
+	}
 	return \@active;
     }
 }
@@ -2151,7 +2180,7 @@ sub Iterate
 
 	PrintTestingFromArray(1, \@tmp_conjs);    # write testing file for still unproved
 
-	$to_solve = SelectRelevantFromSpecs(1,$threshold, $file_prefix, $file_postfix); # write spec_1 file and .s_1 input files
+	$to_solve = SelectRelevantFromSpecs(1,1,$threshold, $file_prefix, $file_postfix); # write spec_1 file and .s_1 input files
 
 	print "SYMBOL ONLY PASS\n";
 	print "THRESHOLD: $threshold\nTIMELIMIT: $gtimelimit\n";
@@ -2173,7 +2202,7 @@ sub Iterate
 	`cat $filestem.train_* > $filestem.alltrain_2`;
 	Learn(2,1);
 
-	$to_solve = SelectRelevantFromSpecs(3,$threshold, $file_prefix, $file_postfix);
+	$to_solve = SelectRelevantFromSpecs(3,1,$threshold, $file_prefix, $file_postfix);
 
 	$iter = 3;
     }
@@ -2188,7 +2217,7 @@ sub Iterate
 	`cat $filestem.train_* > $filestem.alltrain_$previter`;
 	Learn($previter,1);
 
-	$to_solve = SelectRelevantFromSpecs($giterrecover,$threshold, $file_prefix, $file_postfix);
+	$to_solve = SelectRelevantFromSpecs($giterrecover,1,$threshold, $file_prefix, $file_postfix);
 
 	$iter = $giterrecover;
     }
@@ -2316,7 +2345,7 @@ sub Iterate
 	Learn($iter, $#newly_proved);
 	$iter++;
 	PrintTestingFromArray($iter,\@tmp_conjs);
-	$to_solve = SelectRelevantFromSpecs($iter,$threshold, $file_prefix, $file_postfix);
+	$to_solve = SelectRelevantFromSpecs($iter, $#newly_proved, $threshold, $file_prefix, $file_postfix);
     }
     DumpResults(); DumpModelInfo();
 }
