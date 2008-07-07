@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.117 $
+## $Revision: 1.118 $
 
 
 =head1 NAME
@@ -1505,7 +1505,8 @@ sub SetupMaceModel
 	}
     }
 
-    my $regexp = '"label( *\(' . join('\|',@allowed_refs) . '\)"';
+    # grepping takes 15s (with LANG=C) for 70000 flas; could be done faster if needed
+    my $regexp = '"label( *\(' . join('\|',@allowed_refs) . '\))"';
 
     my @pos_refs = ();
     foreach $_ (`grep $regexp $filestem.axp9 | bin/clausefilter $file.mmodel true_in_all | grep label `)
@@ -1523,6 +1524,10 @@ sub SetupMaceModel
 
     die "bad clausefilter output: $file,:,@allowed_refs,:, @pos_refs,: @neg_refs,:"
 	unless ($#allowed_refs == $#pos_refs + $#neg_refs + 1);
+
+    # memory considerations for 70000 flas
+    if($guseposmodels == 0) { @pos_refs = (); }
+    if($gusenegmodels == 0) { @neg_refs = (); }
 
     $new_model->[mod_POSNR]   = $#pos_refs;
     $new_model->[mod_NEGNR]   = $#neg_refs;
