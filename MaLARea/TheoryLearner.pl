@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.121 $
+## $Revision: 1.122 $
 
 
 =head1 NAME
@@ -238,7 +238,7 @@ segment. Default is 0 - no limit. A useful limit is 1000.
 =item B<<< --boostlimit=<arg>, -b<arg> >>>
 
 If nonzero, the axioms in small specifications are slightly
-boosted in learning by the boostweight/100. A specification is
+boosted in learning by exp( -boostweight). A specification is
 small, if it has less axioms than (boostlimit/100) * number-of-all-axioms.
 Default is 0 (no boosting). A reasonable boosting default is 1,
 i.e. with 70000 total axioms in all specs, axioms in those
@@ -1767,7 +1767,7 @@ sub RunProblems
 	    ## it will make a free var B from ~ ! [B] - this is quite frequent in
 	    ## chainy distro
 	    my $mace_status_line = 
-		`bin/tptp_to_ladr < $file | bin/mace4 -t 1 | bin/interpformat standard | tee $file.mmodel | grep interpretation`;
+		`bin/tptp_to_ladr < $file | bin/mace4 -t $gtimelimit | bin/interpformat standard | tee $file.mmodel | grep interpretation`;
 
 	    if ($mace_status_line =~ m/interpretation/)
 	    {
