@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.119 $
+## $Revision: 1.120 $
 
 
 =head1 NAME
@@ -1759,7 +1759,7 @@ sub RunProblems
 	## mace is now used to find a model;
 	## don't run if paradox was run unsuccesfully
 	if (($mace == 1) && (($paradox == 0) || ($status eq szs_COUNTERSAT)) &&
-	    ($linesnr <= $gatpdata{ 'atp_MACE' }->[ opt_MAXREFS ]) && ($gtimelimit < 4) &&
+	    ($linesnr <= $gatpdata{ 'atp_MACE' }->[ opt_MAXREFS ]) && ($gtimelimit < 16) &&
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || 
 	     ($status eq szs_UNKNOWN) || ($status eq szs_COUNTERSAT)))
 	{
