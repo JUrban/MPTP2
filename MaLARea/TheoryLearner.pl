@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.118 $
+## $Revision: 1.119 $
 
 
 =head1 NAME
@@ -314,6 +314,7 @@ use strict;
 use Pod::Usage;
 use Getopt::Long;
 use IO::Socket;
+use IPC::Open2;
 
 my $gsymoffset    = 2000000; # offset at which symbol numbering starts
 my $gstdtrmoffset = 4000000; # offset at which standard term numbering starts
@@ -344,6 +345,8 @@ my %gsuperrefs;   # contains additions to bg inherited from direct lemmas
 
 my %glocal_consts_refs; # contains references containing local constants
 
+my %gref2fla;     # hash of formula bodies in tptp
+my %gref2p9fla;   # hash of formula bodies in ladr
 my @ggennr2fla;   # array of generalized formulas
 my %ggenfla2nr;   # hash for lookup of genflas' numbers
 my %gref2gen;     # contains references with generalized reference
@@ -445,6 +448,8 @@ $mintimelimit = 1 unless(defined($mintimelimit));  # should be power of 4
 $permutetimelimit = $mintimelimit unless(defined($permutetimelimit));
 $maxthreshold = 128 unless(defined($maxthreshold)); # should be power of 2
 
+# needed for fast grepping
+$ENV{"LANG"}= 'C';
 
 my $gtimelimit = $maxtimelimit;
 my $gdotrmstd = $gsimilarity & 2;
@@ -1193,9 +1198,15 @@ sub PrintPruned
     my $conjecture = $spec->[0];
     my $old_file = $file_prefix . $conjecture . $file_postfix;
     (-r $old_file) or die "$old_file not readable!";
-    my $regexp = '"^fof( *\(' . join('\|',@{$spec}) . '\) *,"';
-    `grep $regexp $old_file > $gtmpdir$old_file.s_$iter`;
-
+#    my $regexp = '"^fof( *\(' . join('\|',@{$spec}) . '\) *,"';
+#    `grep $regexp $old_file > $gtmpdir$old_file.s_$iter`;
+    open(PRUNED,">$gtmpdir$old_file.s_$iter");
+    print PRUNED ('fof(', $conjecture, ',conjecture,', $gref2fla{$conjecture});
+    foreach my $i (1 .. $#{$spec})
+    {
+	print PRUNED ('fof(', $spec->[$i], ',axiom,', $gref2fla{$spec->[$i]});
+    }
+    close(PRUNED);
 }
 
 # writes a new spec_$iter file, created by testing the to_prove_$iter file
@@ -1506,24 +1517,48 @@ sub SetupMaceModel
     }
 
     # grepping takes 15s (with LANG=C) for 70000 flas; could be done faster if needed
+    # no - this was horribly slow (2minutes) and memory eating 700M
     my $regexp = '"label( *\(' . join('\|',@allowed_refs) . '\))"';
 
     my @pos_refs = ();
-    foreach $_ (`grep $regexp $filestem.axp9 | bin/clausefilter $file.mmodel true_in_all | grep label `)
+    if($guseposmodels > 0)
     {
-	m/[^#]*# *label\(([^)]*)\).*/;
-	push(@pos_refs, $1);
+	open2(*READER1,*WRITER1,"bin/clausefilter $file.mmodel true_in_all | grep label");
+	foreach $tmpref (@allowed_refs)
+	{
+	    print WRITER1 ($gref2p9fla{$tmpref}, '# label(', $tmpref, '\) # label(axiom).', "\n");
+	}
+	close (WRITER1);
+	while($_ = <READER1>)
+	{
+	    m/[^#]*# *label\(([^)]*)\).*/;
+	    push(@pos_refs, $1);
+	}
+	close(READER1);
     }
 
     my @neg_refs = ();
-    foreach $_ (`grep $regexp $filestem.axp9 | bin/clausefilter $file.mmodel false_in_all | grep label`)
+    if($gusenegmodels > 0)
     {
-	m/[^#]*# *label\(([^)]*)\).*/;
-	push(@neg_refs, $1);
+	open2(*READER2,*WRITER2,"bin/clausefilter $file.mmodel false_in_all | grep label");
+	foreach $tmpref (@allowed_refs)
+	{
+	    print WRITER2 ($gref2p9fla{$tmpref}, '# label(', $tmpref, '\) # label(axiom).', "\n");
+	}
+	close (WRITER2);
+	while($_ = <READER2>)
+	{
+	    m/[^#]*# *label\(([^)]*)\).*/;
+	    push(@neg_refs, $1);
+	}
+	close(READER2);
     }
 
-    die "bad clausefilter output: $file,:,@allowed_refs,:, @pos_refs,: @neg_refs,:"
-	unless ($#allowed_refs == $#pos_refs + $#neg_refs + 1);
+    if(($guseposmodels > 0) && ($gusenegmodels > 0))
+    {
+	die "bad clausefilter output: $file,:,@allowed_refs,:, @pos_refs,: @neg_refs,:"
+	    unless ($#allowed_refs == $#pos_refs + $#neg_refs + 1);
+    }
 
     # memory considerations for 70000 flas
     if($guseposmodels == 0) { @pos_refs = (); }
@@ -1952,6 +1987,7 @@ sub SetupGeneralization
 	    push(@ggennr2fla, $rest);
 	    $gennr = $#ggennr2fla;
 	    $ggenfla2nr{$rest} = $gennr;
+	    $gref2fla{'ggennew_' .  $gennr} = $rest;
 	}
 	$gref2gen{$nm} = 'ggennew_' .  $gennr;
 	push( @{$ggen2ref{'ggennew_' . $gennr}}, $nm);
@@ -1978,6 +2014,7 @@ sub NormalizeAndCreateInitialSpecs
     %ggenfla2nr = ();
     %gref2gen   = ();
     %ggen2ref   = ();
+    %gref2fla   = ();
 
     if($gtmpdir ne "")
     {
@@ -1994,7 +2031,6 @@ sub NormalizeAndCreateInitialSpecs
     }
     open(INISPECS,">$filestem.specs");
     my %alllines2 = ();
-    my %seen = ();
     foreach $i (glob("$file_prefix*$file_postfix"))
     {
 #	chop $i;
@@ -2015,10 +2051,11 @@ sub NormalizeAndCreateInitialSpecs
 		{
 		    $conj=$nm;
 		} else {$h{$nm}=();}
-		if(($ggeneralize > 0) && (! (exists $seen{$nm})))
+
+		if(! (exists $gref2fla{$nm}))
 		{
-		    $seen{$nm} = ();
-		    SetupGeneralization($nm,$rest);
+		    $gref2fla{$nm} = $rest;
+		    SetupGeneralization($nm,$rest) if($ggeneralize > 0);
 		}
 	    }
 	}
@@ -2052,6 +2089,15 @@ sub NormalizeAndCreateInitialSpecs
     if(($gparadox > 0) && ($gmace > 0))
     {
 	`bin/tptp_to_ladr < $filestem.allasax | grep -v '\(end_of_list\|formulas\|prolog_style\)' > $filestem.axp9`;
+	open(AXP9, "$filestem.axp9");
+	while($_=<AXP9>)
+	{
+	    if(m/^(.*)# *label\((.*)\) *# *label\(axiom\).*/)
+	    {
+		$gref2p9fla{$2} = $1;
+	    }
+	}
+	close(AXP9);
     }
     `grep conjecture $filestem.allflas > $filestem.allconjs`;
     `grep -v conjecture $filestem.allflas > $filestem.allaxs`;
