@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.120 $
+## $Revision: 1.121 $
 
 
 =head1 NAME
@@ -1518,7 +1518,7 @@ sub SetupMaceModel
 
     # grepping takes 15s (with LANG=C) for 70000 flas; could be done faster if needed
     # no - this was horribly slow (2minutes) and memory eating 700M
-    my $regexp = '"label( *\(' . join('\|',@allowed_refs) . '\))"';
+    # my $regexp = '"label( *\(' . join('\|',@allowed_refs) . '\))"';
 
     my @pos_refs = ();
     if($guseposmodels > 0)
@@ -1526,7 +1526,7 @@ sub SetupMaceModel
 	open2(*READER1,*WRITER1,"bin/clausefilter $file.mmodel true_in_all | grep label");
 	foreach $tmpref (@allowed_refs)
 	{
-	    print WRITER1 ($gref2p9fla{$tmpref}, '# label(', $tmpref, '\) # label(axiom).', "\n");
+	    print WRITER1 ($gref2p9fla{$tmpref}, '# label(', $tmpref, ') # label(axiom).', "\n");
 	}
 	close (WRITER1);
 	while($_ = <READER1>)
@@ -1543,7 +1543,7 @@ sub SetupMaceModel
 	open2(*READER2,*WRITER2,"bin/clausefilter $file.mmodel false_in_all | grep label");
 	foreach $tmpref (@allowed_refs)
 	{
-	    print WRITER2 ($gref2p9fla{$tmpref}, '# label(', $tmpref, '\) # label(axiom).', "\n");
+	    print WRITER2 ($gref2p9fla{$tmpref}, '# label(', $tmpref, ') # label(axiom).', "\n");
 	}
 	close (WRITER2);
 	while($_ = <READER2>)
