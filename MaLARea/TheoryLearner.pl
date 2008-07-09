@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.122 $
+## $Revision: 1.123 $
 
 
 =head1 NAME
@@ -1987,7 +1987,7 @@ sub SetupGeneralization
 	    push(@ggennr2fla, $rest);
 	    $gennr = $#ggennr2fla;
 	    $ggenfla2nr{$rest} = $gennr;
-	    $gref2fla{'ggennew_' .  $gennr} = $rest;
+	    $gref2fla{'ggennew_' .  $gennr} = $rest . "\n";
 	}
 	$gref2gen{$nm} = 'ggennew_' .  $gennr;
 	push( @{$ggen2ref{'ggennew_' . $gennr}}, $nm);
@@ -2054,7 +2054,7 @@ sub NormalizeAndCreateInitialSpecs
 
 		if(! (exists $gref2fla{$nm}))
 		{
-		    $gref2fla{$nm} = $rest;
+		    $gref2fla{$nm} = $rest . "\n";
 		    SetupGeneralization($nm,$rest) if($ggeneralize > 0);
 		}
 	    }
