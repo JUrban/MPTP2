@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.123 $
+## $Revision: 1.124 $
 
 
 =head1 NAME
@@ -30,6 +30,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --runvampire=<arg>,      -V<arg>
    --runparadox=<arg>,      -p<arg>
    --runmace=<arg>,         -M<arg>
+   --maceemul=<arg>,        -l<arg>
    --usemodels=<arg>,       -D<arg>
    --srassemul=<arg>,       -R<arg>
    --similarity=<arg>,      -i<arg>
@@ -160,12 +161,20 @@ of refs is not greater than this.
 The model is then used for evaluation of formulas. Default is 64,
 because this is constraint by --runparadox anyway.
 
+=item B<<< --maceemul=<arg>, -B<l><arg> >>>
+
+If >= 1, and running Paradox, try to forge a Mace4 model
+using the prdxprep.pl and prdx2p9.pl programs on Pradaox output. This
+replaces running Mace to create the model, which sometimes fails
+(Mace avoids models of cardinality 1).
+Default is 0 - is experimental.
+
 =item B<<< --usemodels=<arg>, -B<D><arg> >>>
 
 Use models for learning relevance of formulas. If 1, only negative
 models are used, if 2, only positive models are used, if 3,
 both positive and negative models are used, if 0, none are used.
-Default is 1. This asssumes --runmace=1.
+Default is 1. This asssumes --runmace=1 or --maceemul=1.
 
 =item B<<< --srassemul=<arg>, -B<R><arg> >>>
 
@@ -366,7 +375,8 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $gtmpdir,      $gsrassemul,     $gusemodels,
     $gparallelize, $gmakefile,      $gloadprovedby,
     $gboostlimit,  $gboostweight,   $greuseeval,
-    $giterpolicy,  $ggeneralize,    $glimittargets);
+    $giterpolicy,  $ggeneralize,    $glimittargets,
+    $gmaceemul);
 
 my ($help, $man);
 my $gtargetsnr = 1233;
@@ -390,6 +400,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'runvampire|V=i'    => \$gvampire,
 	   'runparadox|p=i'    => \$gparadox,
 	   'runmace|M=i'    => \$gmace,
+	   'maceemul|l=i'    => \$gmaceemul,
 	   'usemodels|D=i'    => \$gusemodels,
 	   'srassemul|R=i'    => \$gsrassemul,
 	   'similarity|i=i'  => \$gsimilarity,
@@ -426,6 +437,7 @@ $gspass = 1 unless(defined($gspass));
 $gvampire = 0 unless(defined($gvampire));
 $gparadox = 0 unless(defined($gparadox));
 $gmace = 64 unless(defined($gmace));
+$gmaceemul = 0 unless(defined($gmaceemul));
 $gusemodels = 1 unless(defined($gusemodels));
 $gsrassemul = 1 unless(defined($gsrassemul));
 $gparallelize = 1 unless(defined($gparallelize));
@@ -471,7 +483,7 @@ my @gallatps = ('atp_E','atp_EP','atp_SPASS','atp_VAMPIRE','atp_PARADOX',
 InitAtpData();
 
 # at this point $gparadox and $gmace are in {0,1}
-$gsrassemul = $gparadox * $gmace * $gsrassemul;
+$gsrassemul = $gparadox * ($gmace + $gmaceemul) * $gsrassemul;
 
 # change for debug printing
 sub WNONE	()  { 0 }
@@ -1738,20 +1750,24 @@ sub RunProblems
 		$paradox_status = szs_COUNTERSAT;
 		$status      = szs_COUNTERSAT;
 
-		## following has some shell quoting problems for which I do not have stomach
-		## `grep -v '^\(+++\|[*][*][*]\|SZS\|Paradox\|Reading\)' $file.pout | bin/tptp4X -c -u machine -- > $file.pmodel`;
-
-		## and following sometimes causes the whole TheoryLearner die,
-		## when tptp4X dies; the reason is probably SIGPIPE
-		## commenting for now, uncomment when models really used
-# 		open(PX,"$file.pout");
-# 		open(PX1,"| bin/tptp4X -c -u machine -- > $file.pmodel");
-# 		while ($_=<PX>)
-# 		{
-# 		    if(!(m/^([+][+][+]|[*][*][*]|SZS|Paradox|Reading)/)) { print PX1 $_; }
-# 		}
-# 		close(PX);
-# 		close(PX1);
+		## forge Mace4 model from Paradox output
+		if($gmaceemul == 1)
+		{
+		    `bin/prdxprep.pl $file.pout > $file.pout1`;
+		    `swipl -s bin/prdx2p9.pl -g "prdx2p9('$file.pout1','$file.mmodel'),halt." 2>/dev/null`;
+		    $models_found++;
+		    my $shasum = `cat $file.mmodel | grep -v interpretation | sha1sum`;
+		    if (exists $gsum2model{$shasum})
+		    {
+			$models_old++;
+		    }
+		    else
+		    {
+			SetupMaceModel($conj, $file);
+			$models_new++;
+		    }
+		    push( @{$gsum2model{$shasum}}, $file);
+		}
 	    }
 	    print " Paradox: $status,";
 	}
@@ -2086,7 +2102,7 @@ sub NormalizeAndCreateInitialSpecs
 ## proper things for .axp9 is tptp2X -fprover9  $filestem.allasax; followed by:
 ## perl -e '$/="."; while(<>) { s/% ([^ ]+), axiom[.]/# label(\1) # label(axiom)/; s/[\n]+/ /g; s/[ ]+/ /g; print "$_\n"}' $1 | perl -e '$/="."; while(<>) { s/(#[^\n]*)\n(.*)[.]/\2 \1./; print $_;}'
 
-    if(($gparadox > 0) && ($gmace > 0))
+    if(($gparadox > 0) && (($gmace > 0) || ($gmaceemul > 0)))
     {
 	`bin/tptp_to_ladr < $filestem.allasax | grep -v '\(end_of_list\|formulas\|prolog_style\)' > $filestem.axp9`;
 	open(AXP9, "$filestem.axp9");
