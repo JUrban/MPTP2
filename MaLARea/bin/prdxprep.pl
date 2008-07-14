@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.4 $
+## $Revision: 1.5 $
 
 ## prdxprep.pl
 
@@ -66,17 +66,12 @@ while(<>)
 		    foreach my $i (0 .. $#argsa1) { if($argsa1[$i] =~ m/^\d+/) { $argsa1[$i]--; }}
 		    $args1 = join(',',@argsa1);
 
-		    if($which eq '=') { print ("$pf([$args],N):- $pf([$args1],N).\n"); }
-		    else { print "$pf([$args]):- $pf([$args1]).\n"; }
+		    if($which eq '=') { print ("$pf([$args],N):- !,$pf([$args1],N).\n"); }
+		    else { print "$pf([$args]):- !,$pf([$args1]).\n"; }
 		}
 		## the nonrecursive case
-		elsif($which eq '=') { print ("$pf([$args],", $val - 1, ").\n"); }
-		else
-		{
-		    print "$pf([$args])";
-		    if($val eq 'fail') { print ":- $val.\n"; }
-		    else { print ".\n"; }
-		}
+		elsif($which eq '=') { print ("$pf([$args],", $val - 1, "):- !.\n"); }
+		else { print "$pf([$args]):- !,$val.\n"; }
 	    }
 	}
 #	print $_;
