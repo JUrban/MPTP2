@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.1 $
+## $Revision: 1.2 $
 
 ## prdxprep.pl
 
@@ -34,8 +34,8 @@ while(<>)
 	s/\"//g;
 	s/\$false/fail/g;
 	s/\$true/true/g;
-	if(m/^fof. *([^,]+), *fi_predicates/) { $pred{$1} = -1; }
-	elsif(m/^fof. *([^,]+), *fi_functors/) { $func{$1} = -1; }
+	if(m/^fof. *([^,]+), *fi_predicates/) { $pred{$1} = -1 unless('dppppp' eq $1); }
+	elsif(m/^fof. *([^,]+), *fi_functors/) { $func{$1} = -1 unless('dppppp' eq $1); }
 	elsif(m/^% +domain size is +([0-9]+)/) { print "domain_size($1).\n"; }
 	elsif(m/([a-z][a-zA-Z0-9_]*)\(?([^ \)]*)\)? *(=|:-) *([0-9]+|true|fail)/)
 	{
