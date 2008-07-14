@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.2 $
+## $Revision: 1.3 $
 
 ## prdxprep.pl
 
@@ -37,7 +37,7 @@ while(<>)
 	if(m/^fof. *([^,]+), *fi_predicates/) { $pred{$1} = -1 unless('dppppp' eq $1); }
 	elsif(m/^fof. *([^,]+), *fi_functors/) { $func{$1} = -1 unless('dppppp' eq $1); }
 	elsif(m/^% +domain size is +([0-9]+)/) { print "domain_size($1).\n"; }
-	elsif(m/([a-z][a-zA-Z0-9_]*)\(?([^ \)]*)\)? *(=|:-) *([0-9]+|true|fail)/)
+	elsif(m/([a-z][a-zA-Z0-9_]*)\(?([^ \)]*)\)? *(=|:-) *([0-9]+|true|fail|[a-zA-Z0-9_()]*)/)
 	{
 	    my ($pf, $args, $which, $val) = ($1, $2, $3, $4);
 	    if (!($pf eq 'dppppp'))
@@ -46,17 +46,31 @@ while(<>)
 
 		die "error on line: $_" unless exists $h->{$pf};
 
-		my @args1 = split(/\,/, $args);
-		if ( $h->{$pf} == -1 ) { $h->{$pf} = scalar( @args1 ); }
-		elsif( $h->{$pf} != scalar( @args1 ))
+		my @argsa = split(/\,/, $args);
+		if ( $h->{$pf} == -1 ) { $h->{$pf} = scalar( @argsa ); }
+		elsif( $h->{$pf} != scalar( @argsa ))
 		{
 		    die "arity $h->{$pf} expected on line $_";
 		}
 
-		foreach my $i (0 .. $#args1) { if($args1[$i] =~ m/^\d+/) { $args1[$i]--; }}
-		$args = join(',',@args1);
+		foreach my $i (0 .. $#argsa) { if($argsa[$i] =~ m/^\d+/) { $argsa[$i]--; }}
+		$args = join(',',@argsa);
 
-		if($which eq '=') { print ("$pf([$args],", $val - 1, ").\n"); }
+		## the recursive case
+		if(!($val eq 'true') && !($val eq 'fail') && !($val =~ m/^\d+/))
+		{
+		    $val =~ m/([a-z][a-zA-Z0-9_]*)\(?([^ \)]*)\)?/ or die "error on line: $_";
+		    my ($pf1, $args1)  = ($1, $2);
+		    ($pf eq $pf1) or die "error on line: $_";
+		    my @argsa1 = split(/\,/, $args1);
+		    foreach my $i (0 .. $#argsa1) { if($argsa1[$i] =~ m/^\d+/) { $argsa1[$i]--; }}
+		    $args1 = join(',',@argsa1);
+
+		    if($which eq '=') { print ("$pf([$args],N):- $pf([$args1],N).\n"); }
+		    else { print "$pf([$args]):- $pf([$args1]).\n"; }
+		}
+		## the nonrecursive case
+		elsif($which eq '=') { print ("$pf([$args],", $val - 1, ").\n"); }
 		else
 		{
 		    print "$pf([$args])";
