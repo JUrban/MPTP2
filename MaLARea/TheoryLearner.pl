@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.124 $
+## $Revision: 1.125 $
 
 
 =head1 NAME
@@ -333,6 +333,7 @@ my $gposmodeloffset  = 10000000; # offset at which positive model numbering star
 my %grefnr;                 # Ref2Nr hash for references
 my @gnrref;                 # Nr2Ref array for references
 
+my %gsymarity;              # for each symbol its arity and 'p' or 'f'
 my %gsymnr;                 # Sym2Nr hash for symbols
 my @gnrsym;                 # Nr2Sym array for symbols - takes gsymoffset into account!
 
@@ -588,7 +589,7 @@ sub LoadTermTable
 sub CreateTables
 {
     my $i = 0;
-    my ($ref,$sym,$trms,@syms,$psyms,$fsyms,%tmpsyms);
+    my ($ref,$sym,$trms,@syms,$psyms,$fsyms);
 
     open(REFSYMS, "$filestem.refsyms") or die "Cannot read refsyms file";
     open(REFNR, ">$filestem.refnr") or die "Cannot write refnr file";
@@ -596,6 +597,7 @@ sub CreateTables
 
     %grefnr = ();
     %gsymnr = ();
+    %gsymarity = ();
     %grefsyms = ();
     @gnrsym = ();
     @gnrref = ();
@@ -608,21 +610,29 @@ sub CreateTables
 	($ref, $psyms, $fsyms) = ($1, $2, $3);
 	my @psyms = split(/\,/, $psyms);
 	my @fsyms = split(/\,/, $fsyms);
-	my @allsyms = (@psyms, @fsyms);
 	die "Duplicate reference $ref in $_" if exists $grefnr{$ref};
 	$grefsyms{$ref} = [];
 	push(@gnrref, $ref);
 	$grefnr{$ref} = $#gnrref;
 	print REFNR "$ref\n";
-	foreach $sym (@allsyms)
+
+	## this now also remembers arity and symbol kind in %gsymarity
+	foreach $sym (@psyms)
 	{
-	    $sym =~ m/^ *([^\/]+)[\/].*/ or die "Bad symbol $sym in $_";
-	    $tmpsyms{$1} = ();
+	    $sym =~ m/^ *([^\/]+)[\/]([^\/]+)[\/].*/ or die "Bad symbol $sym in $_";
+	    $gsymarity{$1} = [$2, 'p'];
 	    push(@{$grefsyms{$ref}}, $1);
 	}
+	foreach $sym (@fsyms)
+	{
+	    $sym =~ m/^ *([^\/]+)[\/]([^\/]+)[\/].*/ or die "Bad symbol $sym in $_";
+	    $gsymarity{$1} = [$2, 'f'];
+	    push(@{$grefsyms{$ref}}, $1);
+	}
+
     }
     close REFNR;
-    foreach $sym (keys %tmpsyms)
+    foreach $sym (keys %gsymarity)
     {
 	print SYMNR "$sym\n";
 	push(@gnrsym, $sym);
@@ -1514,6 +1524,53 @@ sub SetupMaceModel
 
     $new_model->[mod_SYMNR] = $#allowed_syms;
     $new_model->[mod_SYMS]  = [ @allowed_syms ];
+
+    ## Problem with gmaceemul is that Paradox models sometimes don't
+    ## explicitly provide interpretation for irrelevant symbols,
+    ## and this kills clausefilter. So we have to forge their
+    ## interpretation (otherwise we e.g. might not evaluate some symbols
+    ## in the conjecture, and srassemul would suffer).
+    if($gmaceemul > 0)
+    {
+	my %funch = ();
+	my %predh = ();
+	my %tmp_allowed = %allowed_syms;
+	open(MMODEL, "$file.mmodel");
+	my @lines = <MMODEL>;
+	close(MMODEL);
+	my ($funcs0, $preds0) = `grep '^\(functors\|predicates\)(' $file.pout1`;
+	$lines[0] =~ m/^interpretation\( *(\d+),.*/ or die "Bad file $file.mmodel";
+	my $size = $1;
+	$funcs0 =~ m/^functors\(\[(.*)\]\)\./ or die "Bad file $file.pout1";
+	my $funcs = $1;
+	$preds0 =~ m/^predicates\(\[(.*)\]\)\./ or die "Bad file $file.pout1";
+	my $preds = $1;
+	my @funcsar = split(/\,/, $funcs);
+	my @predsar = split(/\,/, $preds);
+	foreach my $f (@funcsar) { $f =~ m/^(.+)\/(\d+)/; $funch{$1} = $2; }
+	foreach my $f (@predsar) { $f =~ m/^(.+)\/(\d+)/; $predh{$1} = $2; }
+	delete @tmp_allowed{ (keys %funch, keys %predh) };
+
+	## fix the model with the default values
+	if (scalar(keys %tmp_allowed) > 0)
+	{
+	    open(MMODEL, ">$file.mmodel");
+	    print MMODEL $lines[0];
+	    foreach my $s (keys %tmp_allowed)
+	    {
+		my ($arity, $kind) = @{$gsymarity{$s}};
+		my @resarr = (); my @argarr = ();
+		foreach (1 .. $arity * $size) { push(@resarr, 0); }
+		foreach (1 .. $arity ) { push(@argarr, '_'); }
+		my $kind1 = ($kind eq 'f') ? 'function' : 'relation';
+		my $res = $kind1 . '(' . $s . '(' . join(',',@argarr) . '), [' . join(',',@resarr) . '])';
+		print MMODEL ($res, ",\n");
+	    }
+	    print MMODEL (@lines[1 .. $#lines]);
+	    close(MMODEL);
+	}
+    }
+
 
     # select references with allowed symbols only
     # this could be done faster by dynamic programming if needed
