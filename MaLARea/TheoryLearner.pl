@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.125 $
+## $Revision: 1.126 $
 
 
 =head1 NAME
@@ -1538,7 +1538,7 @@ sub SetupMaceModel
 	open(MMODEL, "$file.mmodel");
 	my @lines = <MMODEL>;
 	close(MMODEL);
-	my ($funcs0, $preds0) = `grep '^\(functors\|predicates\)(' $file.pout1`;
+	my ($funcs0, $preds0) = `grep '^\\(functors\\|predicates\\)(' $file.pout1`;
 	$lines[0] =~ m/^interpretation\( *(\d+),.*/ or die "Bad file $file.mmodel";
 	my $size = $1;
 	$funcs0 =~ m/^functors\(\[(.*)\]\)\./ or die "Bad file $file.pout1";
@@ -1549,7 +1549,7 @@ sub SetupMaceModel
 	my @predsar = split(/\,/, $preds);
 	foreach my $f (@funcsar) { $f =~ m/^(.+)\/(\d+)/; $funch{$1} = $2; }
 	foreach my $f (@predsar) { $f =~ m/^(.+)\/(\d+)/; $predh{$1} = $2; }
-	delete @tmp_allowed{ (keys %funch, keys %predh) };
+	delete @tmp_allowed{ ('$equal', keys %funch, keys %predh) };
 
 	## fix the model with the default values
 	if (scalar(keys %tmp_allowed) > 0)
@@ -1559,8 +1559,9 @@ sub SetupMaceModel
 	    foreach my $s (keys %tmp_allowed)
 	    {
 		my ($arity, $kind) = @{$gsymarity{$s}};
-		my @resarr = (); my @argarr = ();
-		foreach (1 .. $arity * $size) { push(@resarr, 0); }
+		my @resarr = (); my @argarr = (); my $vals = 1;
+		foreach (1 .. $arity) { $vals = $vals * $size; }
+		foreach (1 .. $vals) { push(@resarr, 0); }
 		foreach (1 .. $arity ) { push(@argarr, '_'); }
 		my $kind1 = ($kind eq 'f') ? 'function' : 'relation';
 		my $res = $kind1 . '(' . $s . '(' . join(',',@argarr) . '), [' . join(',',@resarr) . '])';
