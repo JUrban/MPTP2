@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.126 $
+## $Revision: 1.127 $
 
 
 =head1 NAME
@@ -1559,12 +1559,17 @@ sub SetupMaceModel
 	    foreach my $s (keys %tmp_allowed)
 	    {
 		my ($arity, $kind) = @{$gsymarity{$s}};
-		my @resarr = (); my @argarr = (); my $vals = 1;
+		my @resarr = (); my $argstr = ""; my $vals = 1;
 		foreach (1 .. $arity) { $vals = $vals * $size; }
 		foreach (1 .. $vals) { push(@resarr, 0); }
-		foreach (1 .. $arity ) { push(@argarr, '_'); }
+		if($arity > 0)
+		{ 
+		    my @argarr = ();
+		    foreach (1 .. $arity )  { push(@argarr, '_'); }
+		    $argstr = '(' . join(',',@argarr) . ')';
+		}
 		my $kind1 = ($kind eq 'f') ? 'function' : 'relation';
-		my $res = $kind1 . '(' . $s . '(' . join(',',@argarr) . '), [' . join(',',@resarr) . '])';
+		my $res = $kind1 . '(' . $s . $argstr . ', [' . join(',',@resarr) . '])';
 		print MMODEL ($res, ",\n");
 	    }
 	    print MMODEL (@lines[1 .. $#lines]);
