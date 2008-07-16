@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.127 $
+## $Revision: 1.128 $
 
 
 =head1 NAME
@@ -1596,38 +1596,39 @@ sub SetupMaceModel
     # my $regexp = '"label( *\(' . join('\|',@allowed_refs) . '\))"';
 
     my @pos_refs = ();
-    if($guseposmodels > 0)
+    if($gusemodels > 0)
     {
-	open2(*READER1,*WRITER1,"bin/clausefilter $file.mmodel true_in_all | grep label");
+	open(TMPP9, ">$file.tmpp9");
 	foreach $tmpref (@allowed_refs)
 	{
-	    print WRITER1 ($gref2p9fla{$tmpref}, '# label(', $tmpref, ') # label(axiom).', "\n");
+	    print TMPP9 ($gref2p9fla{$tmpref}, '# label(', $tmpref, ') # label(axiom).', "\n");
 	}
-	close (WRITER1);
-	while($_ = <READER1>)
+	close (TMPP9);
+    }
+    if($guseposmodels > 0)
+    {
+	open(CLFILT,"bin/clausefilter $file.mmodel true_in_all < $file.tmpp9 | grep label|");
+	while($_ = <CLFILT>)
 	{
 	    m/[^#]*# *label\(([^)]*)\).*/;
 	    push(@pos_refs, $1);
 	}
-	close(READER1);
+	close(CLFILT);
     }
 
     my @neg_refs = ();
     if($gusenegmodels > 0)
     {
-	open2(*READER2,*WRITER2,"bin/clausefilter $file.mmodel false_in_all | grep label");
-	foreach $tmpref (@allowed_refs)
-	{
-	    print WRITER2 ($gref2p9fla{$tmpref}, '# label(', $tmpref, ') # label(axiom).', "\n");
-	}
-	close (WRITER2);
-	while($_ = <READER2>)
+	open(CLFILT,"bin/clausefilter $file.mmodel false_in_all < $file.tmpp9 | grep label|");
+	while($_ = <CLFILT>)
 	{
 	    m/[^#]*# *label\(([^)]*)\).*/;
 	    push(@neg_refs, $1);
 	}
-	close(READER2);
+	close(CLFILT);
     }
+
+    if($gusemodels > 0) { unlink "$file.tmpp9"; }
 
     if(($guseposmodels > 0) && ($gusenegmodels > 0))
     {
