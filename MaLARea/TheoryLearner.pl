@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.128 $
+## $Revision: 1.129 $
 
 
 =head1 NAME
@@ -32,6 +32,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --runmace=<arg>,         -M<arg>
    --maceemul=<arg>,        -l<arg>
    --usemodels=<arg>,       -D<arg>
+   --incrmodels=<arg>,      -N<arg>
    --srassemul=<arg>,       -R<arg>
    --similarity=<arg>,      -i<arg>
    --generalize=<arg>,      -g<arg>
@@ -175,6 +176,15 @@ Use models for learning relevance of formulas. If 1, only negative
 models are used, if 2, only positive models are used, if 3,
 both positive and negative models are used, if 0, none are used.
 Default is 1. This asssumes --runmace=1 or --maceemul=1.
+
+=item B<<< --incrmodels=<arg>, -B<N><arg> >>>
+
+If 1, printing and learning of models is done incrementally,
+i.e. a new example is printed for each fla that has a new model
+found in the last iteration. If 0, the nonincremental (older)
+implementation is used, printing the whole models info
+for all iterations as one example for each fla with a model.
+Default is 0 (more tested). This assumes --usemodels>0.
 
 =item B<<< --srassemul=<arg>, -B<R><arg> >>>
 
@@ -340,12 +350,17 @@ my @gnrsym;                 # Nr2Sym array for symbols - takes gsymoffset into a
 my %gmodnr;                 # for each model (file without .mmodel) its number (without any offset)
 my @gnrmod;                 # for each model number: its file, symbols, positive refs, negative refs
 my %gsum2model;             # hash of sha sums of existing models
+my @gitermods;		    # for each iteration holds $#gnrmod achieved at that iteration;
+                            # that is, if $gitermods[n] = $gitermods[n-1], no models were found
+                            # in n-th iteration
 
 my %grefsyms;     # Ref2Sym hash for each reference array of its symbols
 my %greftrmstd;   # Ref2Sym hash for each reference array of its stdterms (their shared-entry numbers)
 my %greftrmnrm;   # Ref2Sym hash for each reference array of its nrmterms (their shared-entry numbers)
 my %grefposmods;  # Ref2Sym hash for each ref array of its positive models (without offset)
 my %grefnegmods;  # Ref2Sym hash for each ref array of its negative models (without offset)
+my %gitrefposmods;# Ref2Sym hash for each ref array of its positive models for current iteration
+my %gitrefnegmods;# Ref2Sym hash for each ref array of its negative models for current iteration
 my %gspec;        # Ref2Spec hash for each reference hash of its initial references
 my %gresults;     # hash of results
 my %gsubrefs;     # contains direct lemmas for those proved by mizar_proof,
@@ -377,7 +392,7 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $gparallelize, $gmakefile,      $gloadprovedby,
     $gboostlimit,  $gboostweight,   $greuseeval,
     $giterpolicy,  $ggeneralize,    $glimittargets,
-    $gmaceemul);
+    $gmaceemul,    $gincrmodels);
 
 my ($help, $man);
 my $gtargetsnr = 1233;
@@ -403,6 +418,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'runmace|M=i'    => \$gmace,
 	   'maceemul|l=i'    => \$gmaceemul,
 	   'usemodels|D=i'    => \$gusemodels,
+	   'incrmodels|N=i'    => \$gincrmodels,
 	   'srassemul|R=i'    => \$gsrassemul,
 	   'similarity|i=i'  => \$gsimilarity,
 	   'generalize|g=i'  => \$ggeneralize,
@@ -440,6 +456,7 @@ $gparadox = 0 unless(defined($gparadox));
 $gmace = 64 unless(defined($gmace));
 $gmaceemul = 0 unless(defined($gmaceemul));
 $gusemodels = 1 unless(defined($gusemodels));
+$gincrmodels = 0 unless(defined($gincrmodels));
 $gsrassemul = 1 unless(defined($gsrassemul));
 $gparallelize = 1 unless(defined($gparallelize));
 $giterpolicy = pol_STD unless(defined($giterpolicy));
@@ -471,6 +488,8 @@ my $gdosyms = $gsimilarity & 1;
 
 my $gusenegmodels = $gusemodels & 1;
 my $guseposmodels = $gusemodels & 2;
+
+if($gusemodels == 0) { $gincrmodels = 0; }
 
 if($gparallelize > 1) { $gmakefile = 1; } else { $gmakefile = 0; }
 
@@ -516,6 +535,7 @@ sub LoadTables
 
     %gmodnr = ();
     @gnrmod = ();
+    @gitermods = ();
     %gsum2model = ();
     %grefposmods = ();
     %grefnegmods = ();
@@ -1473,6 +1493,37 @@ sub PrintModels
     my ($iter) = @_;
     my $tmpref;
 
+    if($gincrmodels > 0)
+    {
+	## each reference with a found (counter)model(s) gets printed only once,
+	open(MODELS, ">$filestem.incrmodels_$iter") or die "Cannot write incrmodels file";
+	foreach $tmpref (sort (keys %gitrefposmods, keys %gitrefnegmods))
+	{
+	    if ((($guseposmodels > 0) && (exists $gitrefposmods{$tmpref})
+		 && ($#gnrmod >= scalar( @{$grefposmods{$tmpref}} )))
+		|| (($gusenegmodels > 0) && (exists $gitrefnegmods{$tmpref})) )
+	    {
+		my @syms_nrs = ( $grefnr{$tmpref} );
+
+		if (($guseposmodels > 0) && (exists $gitrefposmods{$tmpref})
+		    && ($#gnrmod >= scalar( @{$grefposmods{$tmpref}} )))
+		{
+		    my @posmod_nrs   = map { $gposmodeloffset + $_ } @{$gitrefposmods{$tmpref}};
+		    push(@syms_nrs, @posmod_nrs);
+		}
+		if (($gusenegmodels > 0) && (exists $gitrefnegmods{$tmpref}))
+		{
+		    my @negmod_nrs   = map { $gnegmodeloffset + $_ } @{$gitrefnegmods{$tmpref}};
+		    push(@syms_nrs, @negmod_nrs);
+		}
+
+		my $testing_exmpl = join(",", @syms_nrs);
+		print MODELS "$testing_exmpl:\n";
+	    }
+	}
+	close(MODELS);
+    }
+
     open(MODELS, ">$filestem.models_$iter") or die "Cannot write models file";
     foreach $tmpref (sort (keys %grefnr))
     {
@@ -1645,9 +1696,16 @@ sub SetupMaceModel
     $new_model->[mod_POSREFS] = [ @pos_refs ];
     $new_model->[mod_NEGREFS] = [ @neg_refs ];
 
-    foreach $tmpref (@pos_refs) { push(@{$grefposmods{$tmpref}}, $#gnrmod); }
-    foreach $tmpref (@neg_refs) { push(@{$grefnegmods{$tmpref}}, $#gnrmod); }
-
+    foreach $tmpref (@pos_refs)
+    {
+	push(@{$grefposmods{$tmpref}}, $#gnrmod);
+	push(@{$gitrefposmods{$tmpref}}, $#gnrmod);
+    }
+    foreach $tmpref (@neg_refs)
+    {
+	push(@{$grefnegmods{$tmpref}}, $#gnrmod);
+	push(@{$gitrefnegmods{$tmpref}}, $#gnrmod);
+    }
 }
 
 # Create a makefile for this run, and run the problems via make.
@@ -1779,6 +1837,9 @@ sub RunProblems
     my $mace = $paradox * $gmace;
     my %proved_by = ();
     my ($models_found, $models_old, $models_new) = (0,0,0);
+
+    %gitrefposmods = ();
+    %gitrefnegmods = ();
 
 
 #    if($gtimelimit<16) { $spass=1; $vampire=0}
@@ -1997,6 +2058,7 @@ sub RunProblems
     DumpResults($iter);
     DumpModelInfo($iter);
     TmpProbIOCleanup($iter, $file_prefix, $file_postfix);
+    $gitermods[$iter] = $#gnrmod;
     print "MODELS: found: $models_found, old: $models_old, new: $models_new\n";
     return \%proved_by;
 }
@@ -2467,10 +2529,14 @@ sub Iterate
 
 	`cat $filestem.train_* > $filestem.alltrain_$iter`;
 
-	if(($guseposmodels > 0) || ($gusenegmodels > 0))
+	if($gusemodels > 0)
 	{
 	    PrintModels($iter);
-	    `cat $filestem.models_$iter >> $filestem.alltrain_$iter`;
+	    if($gincrmodels > 0)
+	    {
+		`cat $filestem.incrmodels_* >> $filestem.alltrain_$iter`;
+	    }
+	    else { `cat $filestem.models_$iter >> $filestem.alltrain_$iter`; }
 	}
 
 	Learn($iter, $#newly_proved);
