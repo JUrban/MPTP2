@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.129 $
+## $Revision: 1.130 $
 
 
 =head1 NAME
@@ -2093,8 +2093,8 @@ sub GenerateProblemsFromCommonFile
     my ($i,$j);
     die "Remove $file_prefix manually first!" if(-e $file_prefix);
     mkdir($file_prefix);
-    my @lAxioms = `bin/tptp4X -x -f tptp:short  -u machine -c $common_file | grep "fof.[^,]*,[ ]*axiom"`;
-    my @lConjs = `bin/tptp4X -x -f tptp:short  -u machine -c $common_file | grep "fof.[^,]*,[ ]*conjecture"`;
+    my @lAxioms = `bin/tptp4X -t aritize -x -f tptp:short  -u machine -c $common_file | grep "fof.[^,]*,[ ]*axiom"`;
+    my @lConjs = `bin/tptp4X -t aritize -x -f tptp:short  -u machine -c $common_file | grep "fof.[^,]*,[ ]*conjecture"`;
     foreach $i (@lConjs)
     {
 	$i =~ m/^fof.[ ]*([^ ,]*)[ ]*,/ or die "Bad conjecture name $i";
@@ -2176,7 +2176,7 @@ sub NormalizeAndCreateInitialSpecs
     foreach $i (glob("$file_prefix*$file_postfix"))
     {
 #	chop $i;
-	my @lines2 = `bin/tptp4X -x -f tptp:short  -u machine -c $i`;
+	my @lines2 = `bin/tptp4X -t aritize -x -f tptp:short  -u machine -c $i`;
 	my $conj = "";
 	my %h = ();
 	open(PROBLEM,">$i");
