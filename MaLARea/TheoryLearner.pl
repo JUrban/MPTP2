@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.130 $
+## $Revision: 1.131 $
 
 
 =head1 NAME
@@ -1869,7 +1869,7 @@ sub RunProblems
 	{
 
 	    my $paradox_status_line =
-		`bin/runparadox1 $gtimelimit --tstp --model --time $gtimelimit $file | tee $file.pout | grep RESULT`;
+		`bin/runwtlimit $gtimelimit bin/paradox --tstp --model --time $gtimelimit $file | tee $file.pout | grep RESULT`;
 	    if ($paradox_status_line=~m/CounterSatisfiable/)
 	    {
 		$paradox_status = szs_COUNTERSAT;
@@ -1940,7 +1940,7 @@ sub RunProblems
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 
-	    my $status_line = `bin/eprover -tAuto -xAuto --tstp-format -s --cpu-limit=$gtimelimit $file 2>$file.err | grep "SZS status" |tee $file.out`;
+	    my $status_line = `bin/runwtlimit $gtimelimit bin/eprover -tAuto -xAuto --tstp-format -s --cpu-limit=$gtimelimit $file 2>$file.err | grep "SZS status" |tee $file.out`;
 
 	    if ($status_line=~m/.*SZS status[ :]*(.*)/)
 	    {
@@ -1972,7 +1972,7 @@ sub RunProblems
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 	    my $spass_status_line =
-		`bin/tptp4X -x -f dfg $file | bin/SPASS -Stdin -Memory=900000000 -PGiven=0 -PProblem=0 -TimeLimit=$gtimelimit | grep "SPASS beiseite"| tee $file.outdfg`;
+		`bin/tptp4X -x -f dfg $file | bin/runwtlimit $gtimelimit bin/SPASS -Stdin -Memory=900000000 -PGiven=0 -PProblem=0 -TimeLimit=$gtimelimit | grep "SPASS beiseite"| tee $file.outdfg`;
 
 	    if ($spass_status_line=~m/.*SPASS beiseite *: *([^.]+)[.]/)
 	    {
@@ -1989,7 +1989,7 @@ sub RunProblems
 		$spass_status = szs_THEOREM;
 		$status= szs_THEOREM;
 		($gtimelimit = $mintimelimit) if ($keep_cpu_limit == 0);
-		my $spass_formulae_line = `bin/tptp4X -x -f dfg $file |bin/SPASS -Stdin -Memory=900000000 -PGiven=0 -PProblem=0 -DocProof | tee $file.outdfg1| grep "Formulae used in the proof"`;
+		my $spass_formulae_line = `bin/tptp4X -x -f dfg $file |bin/runwtlimit 500 bin/SPASS -Stdin -Memory=900000000 -PGiven=0 -PProblem=0 -DocProof | tee $file.outdfg1| grep "Formulae used in the proof"`;
 		($spass_formulae_line=~m/Formulae used in the proof *: *(.*) */) 
 		    or die "Bad SPASS Formulae line: $file: $spass_formulae_line";
 		my @refs = split(/ +/, $1);
@@ -2017,7 +2017,7 @@ sub RunProblems
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 	    my $vamp_status_line =
-		`bin/vampire9 --output_syntax tptp -t $gtimelimit $file 2>$file.errv | tee $file.vout |grep "Refutation"`;
+		`bin/runwtlimit $gtimelimit bin/vampire9 --output_syntax tptp -t $gtimelimit $file 2>$file.errv | tee $file.vout |grep "Refutation"`;
 
 	    if ($vamp_status_line=~m/Refutation/)
 	    {
