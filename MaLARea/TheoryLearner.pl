@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.132 $
+## $Revision: 1.133 $
 
 
 =head1 NAME
@@ -442,6 +442,8 @@ pod2usage(2) if ($#ARGV != 0);
 
 my $filestem   = shift(@ARGV);
 
+sub min { my ($x,$y) = @_; ($x <= $y)? $x : $y }
+
 # $giterpolicy possible values
 sub pol_STD      ()  { 0 }
 sub pol_GROWTH   ()  { 1 }
@@ -724,6 +726,7 @@ sub opt_MAXCPU		()  { 3 }
 
 ## Initialize %gatpdata; 1 billion is used for MAXREFS and -1 serves as uninitialized 
 ## value for all other params now
+## Paradox gets 4 seconds maximal timelimit
 ## Also normalizes $gspass, $geprover, $gvampire, $gparadox, $gmace to {0,1}
 sub InitAtpData
 {
@@ -733,8 +736,12 @@ sub InitAtpData
 
     if ($gspass > 1) { $gatpdata{ 'atp_SPASS' }->[ opt_MAXREFS ] = $gspass; $gspass = 1; }
     if ($geprover > 1) { $gatpdata{ 'atp_E' }->[ opt_MAXREFS ] = $geprover; $geprover = 1; }
-    if ($gvampire > 1) { $gatpdata{ 'atp_VAMPIRE' }->[ opt_MAXREFS ] = $gvampire; $gvampire = 1; }
-    if ($gparadox > 1) { $gatpdata{ 'atp_PARADOX' }->[ opt_MAXREFS ] = $gparadox; $gparadox = 1; }
+    if ($gvampire > 1) {$gatpdata{ 'atp_VAMPIRE' }->[ opt_MAXREFS ] = $gvampire; $gvampire = 1;}
+    if ($gparadox > 1)
+    {
+	$gatpdata{ 'atp_PARADOX' }->[ opt_MAXREFS ] = $gparadox; $gparadox = 1;
+	$gatpdata{ 'atp_PARADOX' }->[ opt_MAXCPU ] = 4;
+    }
     if ($gmace > 1) { $gatpdata{ 'atp_MACE' }->[ opt_MAXREFS ] = $gmace; $gmace = 1; }
 }
 
@@ -1862,14 +1869,16 @@ sub RunProblems
 
 	print "$conj: ";
 
-
-	if (($paradox == 1) && ($gtimelimit < 16) &&
+	## Paradox is now not bounded from above by gtimelimit, but by
+	## $gatpdata{ 'atp_PARADOX' }->[ opt_MAXCPU ] = 4;
+	## so the $gtimelimit entry is slightly incorrect in the results table
+	if (($paradox == 1) &&
 	    ($linesnr <= $gatpdata{ 'atp_PARADOX' }->[ opt_MAXREFS ]) &&
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
-
+	    my $prdxlimit = min($gtimelimit, $gatpdata{ 'atp_PARADOX' }->[ opt_MAXCPU ]);
 	    my $paradox_status_line =
-		`bin/runwtlimit $gtimelimit bin/paradox --tstp --model --time $gtimelimit $file | tee $file.pout | grep RESULT`;
+		`bin/runwtlimit $prdxlimit bin/paradox --tstp --model --time $prdxlimit $file | tee $file.pout | grep RESULT`;
 	    if ($paradox_status_line=~m/CounterSatisfiable/)
 	    {
 		$paradox_status = szs_COUNTERSAT;
