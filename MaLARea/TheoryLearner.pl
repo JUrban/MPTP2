@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.131 $
+## $Revision: 1.132 $
 
 
 =head1 NAME
@@ -1940,7 +1940,7 @@ sub RunProblems
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 
-	    my $status_line = `bin/runwtlimit $gtimelimit bin/eprover -tAuto -xAuto --tstp-format -s --cpu-limit=$gtimelimit $file 2>$file.err | grep "SZS status" |tee $file.out`;
+	    my $status_line = `bin/eprover -tAuto -xAuto --tstp-format -s --cpu-limit=$gtimelimit $file 2>$file.err | grep "SZS status" |tee $file.out`;
 
 	    if ($status_line=~m/.*SZS status[ :]*(.*)/)
 	    {
