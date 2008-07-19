@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.133 $
+## $Revision: 1.134 $
 
 
 =head1 NAME
@@ -734,14 +734,12 @@ sub InitAtpData
     @gatpdata{ @gallatps } = ();
     foreach my $atp (keys %gatpdata) { $gatpdata{ $atp } = [1000000000,-1,-1,-1]; }
 
+    $gatpdata{ 'atp_PARADOX' }->[ opt_MAXCPU ] = 4;
+
     if ($gspass > 1) { $gatpdata{ 'atp_SPASS' }->[ opt_MAXREFS ] = $gspass; $gspass = 1; }
     if ($geprover > 1) { $gatpdata{ 'atp_E' }->[ opt_MAXREFS ] = $geprover; $geprover = 1; }
     if ($gvampire > 1) {$gatpdata{ 'atp_VAMPIRE' }->[ opt_MAXREFS ] = $gvampire; $gvampire = 1;}
-    if ($gparadox > 1)
-    {
-	$gatpdata{ 'atp_PARADOX' }->[ opt_MAXREFS ] = $gparadox; $gparadox = 1;
-	$gatpdata{ 'atp_PARADOX' }->[ opt_MAXCPU ] = 4;
-    }
+    if ($gparadox > 1) {$gatpdata{ 'atp_PARADOX' }->[ opt_MAXREFS ] = $gparadox; $gparadox = 1;}
     if ($gmace > 1) { $gatpdata{ 'atp_MACE' }->[ opt_MAXREFS ] = $gmace; $gmace = 1; }
 }
 
