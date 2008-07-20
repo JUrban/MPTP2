@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.3 $
+%% $Revision: 1.4 $
 %%
 %% File  : prdx2p9.pl
 %%
@@ -83,6 +83,12 @@ get_pred_res(Elems,Arity,Name,Res):-
 ulist(1,['_']):-!.
 ulist(N,['_',','|L]):- N1 is N-1, ulist(N1,L).
 
+%% list with commas without spaces
+my_writelist([H]):-!, write(H).
+my_writelist([H|T]):-!, write(H), write(','), my_writelist(T).
+my_writelist([]):-!.
+
+
 %% print one functor interpretation in Mace4 format
 print_functor(Elems,Arity,Name):-
 	findall(Res, get_functor_res(Elems,Arity,Name,Res), Ress),
@@ -107,8 +113,7 @@ print_res(Arity, Name, Ress):-
 	  write(Term)
 	),
 	write(', ['),
-	concat_atom(Ress,',',Ress1),
-	write(Ress1),
+	my_writelist(Ress),
 	write('])').
 
 %% print all functors
