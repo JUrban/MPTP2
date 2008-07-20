@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.134 $
+## $Revision: 1.135 $
 
 
 =head1 NAME
@@ -38,6 +38,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --generalize=<arg>,      -g<arg>
    --parallelize=<arg>,     -j<arg>
    --iterpolicy=<arg>,      -y<arg>
+   --iterlimit=<arg>,       -t<arg>
    --recadvice=<arg>,       -a<arg>
    --reuseeval=<arg>,       -u<arg>
    --limittargets=<arg>,    -L<arg>
@@ -230,6 +231,19 @@ minimal axioms loop. Another implemented option is 1: prefers
 to grow the axiomlimit to the maximum regardless of previous
 success, and only when it is maximal, it drops to the lowest value.
 
+=item B<<< --iterlimit=<arg>, -t<arg> >>>
+
+Depending on the iterpolicy, this is the maximal/minimal number of
+iterations. If iterpolicy is 0, it is maximum, otherwise minimum.
+One particular use is to set maxcpulimit to 1, iterpolicy to 1,
+and this to e.g. 200. It ensures that 200 iterations with
+timilimit 1 will be done repetitively through all axiom thresholds,
+even if nothing new was learned (so setting permutetimelimit
+to a reasonable value is recommended, as it is the only source of
+possible new results). Defaults to 10000 with the standard iterpolicy,
+and to 50 with the axiomlimit growth policy.
+
+
 =item B<<< --recadvice=<arg>, -a<arg> >>>
 
 If nonzero, the axiom advising phase is repeated this many times,
@@ -392,7 +406,7 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $gparallelize, $gmakefile,      $gloadprovedby,
     $gboostlimit,  $gboostweight,   $greuseeval,
     $giterpolicy,  $ggeneralize,    $glimittargets,
-    $gmaceemul,    $gincrmodels);
+    $gmaceemul,    $gincrmodels,    $giterlimit);
 
 my ($help, $man);
 my $gtargetsnr = 1233;
@@ -424,6 +438,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'generalize|g=i'  => \$ggeneralize,
 	   'parallelize|j=i'  => \$gparallelize,
 	   'iterpolicy|y=i'  => \$giterpolicy,
+	   'iterlimit|t=i'  => \$giterlimit,
 	   'recadvice|a=i'    => \$grecadvice,
 	   'reuseeval|u=i'    => \$greuseeval,
 	   'limittargets|L=i'    => \$glimittargets,
@@ -462,6 +477,7 @@ $gincrmodels = 0 unless(defined($gincrmodels));
 $gsrassemul = 1 unless(defined($gsrassemul));
 $gparallelize = 1 unless(defined($gparallelize));
 $giterpolicy = pol_STD unless(defined($giterpolicy));
+$giterlimit = 0 unless(defined($giterlimit));
 $grecadvice = 0 unless(defined($grecadvice));
 $greuseeval = 0 unless(defined($greuseeval));
 $glimittargets = 0 unless(defined($glimittargets));
@@ -490,6 +506,15 @@ my $gdosyms = $gsimilarity & 1;
 
 my $gusenegmodels = $gusemodels & 1;
 my $guseposmodels = $gusemodels & 2;
+
+my $gmaxiterlimit = 10000;
+my $gminiterlimit = 50;
+
+if($giterlimit > 0)
+{
+    if($giterpolicy == pol_STD) { $gmaxiterlimit = $giterlimit; }
+    else { $gminiterlimit = $giterlimit; }
+}
 
 if($gusemodels == 0) { $gincrmodels = 0; }
 
@@ -2423,7 +2448,7 @@ sub Iterate
     }
 
 
-    while ($iter < 10000)
+    while ($iter < $gmaxiterlimit)
     {
 	my $proved_by = RunProblems($iter,$file_prefix, $file_postfix,$to_solve,$threshold,$gspass,$gvampire,$gparadox,0);
 	my @newly_proved = keys %$proved_by;
@@ -2444,7 +2469,7 @@ sub Iterate
 		}
 		else
 		{
-		    if(($giterpolicy == pol_GROWTH) && ($iter < 50))
+		    if(($giterpolicy == pol_GROWTH) && ($iter < $gminiterlimit))
 		    {
 			$threshold = $minthreshold;
 			$gtimelimit = $mintimelimit;
