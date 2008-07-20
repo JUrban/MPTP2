@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.1 $
+%% $Revision: 1.2 $
 %%
 %% File  : prdx2p9.pl
 %%
@@ -68,9 +68,9 @@ get_pred_res(Elems,Arity,Name,Res):-
 	  Res = 0
 	).
 
-%% list of N underscores
-ulist(0,[]):-!.
-ulist(N,['_'|L]):- N1 is N-1, ulist(N1,L).
+%% list of N underscores separated by commas, N >0
+ulist(1,['_']):-!.
+ulist(N,['_',','|L]):- N1 is N-1, ulist(N1,L).
 
 %% print one functor interpretation in Mace4 format
 print_functor(Elems,Arity,Name):-
@@ -91,7 +91,7 @@ print_res(Arity, Name, Ress):-
 	  write(Name)
 	;
 	  ulist(Arity, UL),
-	  concat_atom(UL,',',Arg1),
+	  atom_chars(Arg1, UL),
 	  Term =.. [Name | [Arg1]],
 	  write(Term)
 	),
