@@ -1,6 +1,6 @@
 %%- -*-Mode: Prolog;-*--------------------------------------------------
 %%
-%% $Revision: 1.2 $
+%% $Revision: 1.3 $
 %%
 %% File  : prdx2p9.pl
 %%
@@ -30,7 +30,7 @@ prdx2p9(FileIn, FileOut):-
 	write(', [number = 1,seconds = 0], ['),
 	nl,
 	Last is Size - 1,
-	numlist(0,Last,Elems),
+	my_numlist(0,Last,Elems),
 	print_functors(Elems,Functors),
 	(
 	  (Functors = [_|_], Predicates = [_|_]) ->
@@ -44,6 +44,17 @@ prdx2p9(FileIn, FileOut):-
 	told,!.
 
 prdx2p9(_,_):- write('something went wrong'),nl.
+
+%% own implementation of SWI's numlist/3, for iso-compat
+my_numlist(First, Last, [First|Res]) :-
+	(
+	  First=:=Last ->
+	  Res=[]
+	;
+	  Next is First+1,
+	  my_numlist(Next, Last, Res)
+	).
+
 
 %% generate permutations with repetition,
 %% hopefully in the same implcit order as used by Mace4 format.
