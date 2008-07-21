@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.136 $
+## $Revision: 1.137 $
 
 
 =head1 NAME
@@ -2224,7 +2224,9 @@ sub NormalizeAndCreateInitialSpecs
     foreach $i (glob("$file_prefix*$file_postfix"))
     {
 #	chop $i;
-	my @lines2 = `bin/tptp4X -t aritize -x -f tptp:short  -u machine -c $i`;
+	## true axioms formulas are ignored from the very start now, and not included
+	## into the normalized problems; saves memory and also crap when boosting is used
+	my @lines2 = `bin/tptp4X -t aritize -x -f tptp:short  -u machine -c $i | grep -v 'fof.[^,]*,axiom,[$( ]*true[) ]*[.]'`;
 	my $conj = "";
 	my %h = ();
 	open(PROBLEM,">$i");
