@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.137 $
+## $Revision: 1.138 $
 
 
 =head1 NAME
@@ -738,6 +738,7 @@ sub szs_GAVEUP      ()  { 'GaveUp' }   # system exited before the time limit for
 
 # fields in the @gnrmod entries
 # [$file, -1, -1, -1, [], [], []];
+# for references just their numbers in @gnrref are used for memory considerations
 sub mod_FILE     ()  { 0 }
 sub mod_SYMNR    ()  { 1 }
 sub mod_POSNR    ()  { 2 }
@@ -1016,8 +1017,10 @@ sub DumpModelInfo
 	$i++;
 	print MODINFO "model($i,['$entry->[mod_FILE]',$entry->[mod_SYMNR],$entry->[mod_POSNR],$entry->[mod_NEGNR],";
 	print MODINFO ("[", join(",", @{$entry->[mod_SYMS]}), "],");
-	print MODINFO ("[", join(",", @{$entry->[mod_POSREFS]}), "],");
-	print MODINFO ("[", join(",", @{$entry->[mod_NEGREFS]}), "]]).\n");
+	my @posrefs = map { $grefnr{$_} } @{$entry->[mod_POSREFS]};
+	my @negrefs = map { $grefnr{$_} } @{$entry->[mod_NEGREFS]};
+	print MODINFO ("[", join(",", @posrefs), "],");
+	print MODINFO ("[", join(",", @negrefs), "]]).\n");
     }
     close MODINFO;
 
@@ -1708,7 +1711,7 @@ sub SetupMaceModel
 	while($_ = <CLFILT>)
 	{
 	    m/[^#]*# *label\(([^)]*)\).*/;
-	    push(@pos_refs, $1);
+	    push(@pos_refs, $grefnr{$1});
 	}
 	close(CLFILT);
     }
@@ -1720,7 +1723,7 @@ sub SetupMaceModel
 	while($_ = <CLFILT>)
 	{
 	    m/[^#]*# *label\(([^)]*)\).*/;
-	    push(@neg_refs, $1);
+	    push(@neg_refs, $grefnr{$1});
 	}
 	close(CLFILT);
     }
@@ -1744,13 +1747,13 @@ sub SetupMaceModel
 
     foreach $tmpref (@pos_refs)
     {
-	push(@{$grefposmods{$tmpref}}, $#gnrmod);
-	push(@{$gitrefposmods{$tmpref}}, $#gnrmod);
+	push(@{$grefposmods{$gnrref[$tmpref]}}, $#gnrmod);
+	push(@{$gitrefposmods{$gnrref[$tmpref]}}, $#gnrmod);
     }
     foreach $tmpref (@neg_refs)
     {
-	push(@{$grefnegmods{$tmpref}}, $#gnrmod);
-	push(@{$gitrefnegmods{$tmpref}}, $#gnrmod);
+	push(@{$grefnegmods{$gnrref[$tmpref]}}, $#gnrmod);
+	push(@{$gitrefnegmods{$gnrref[$tmpref]}}, $#gnrmod);
     }
 }
 
