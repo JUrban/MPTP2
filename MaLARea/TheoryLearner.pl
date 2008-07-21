@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.138 $
+## $Revision: 1.139 $
 
 
 =head1 NAME
@@ -1017,8 +1017,8 @@ sub DumpModelInfo
 	$i++;
 	print MODINFO "model($i,['$entry->[mod_FILE]',$entry->[mod_SYMNR],$entry->[mod_POSNR],$entry->[mod_NEGNR],";
 	print MODINFO ("[", join(",", @{$entry->[mod_SYMS]}), "],");
-	my @posrefs = map { $grefnr{$_} } @{$entry->[mod_POSREFS]};
-	my @negrefs = map { $grefnr{$_} } @{$entry->[mod_NEGREFS]};
+	my @posrefs = map { $gnrref[$_] } @{$entry->[mod_POSREFS]};
+	my @negrefs = map { $gnrref[$_] } @{$entry->[mod_NEGREFS]};
 	print MODINFO ("[", join(",", @posrefs), "],");
 	print MODINFO ("[", join(",", @negrefs), "]]).\n");
     }
