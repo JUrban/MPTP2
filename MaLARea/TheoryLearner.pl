@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.141 $
+## $Revision: 1.142 $
 
 
 =head1 NAME
@@ -1326,6 +1326,7 @@ sub Srassify
 		splice(@$reserve, $i, 1);
 	    }
 	}
+	$i++;
     }
 }
 
