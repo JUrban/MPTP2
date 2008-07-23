@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.139 $
+## $Revision: 1.140 $
 
 
 =head1 NAME
@@ -35,6 +35,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --usemodels=<arg>,       -D<arg>
    --incrmodels=<arg>,      -N<arg>
    --srassemul=<arg>,       -R<arg>
+   --countersatcheck=<arg>, -k<arg>
    --similarity=<arg>,      -i<arg>
    --generalize=<arg>,      -g<arg>
    --parallelize=<arg>,     -j<arg>
@@ -119,7 +120,8 @@ Upper time limit upto which fixing of subsumed specifications is done.
 I.e. if a specification suggested by the adviser is subsumed, and
 the suggested timelimit is less or equal to permutetimelimit, then
 the specification will be fixed by adding additional axioms
-in order of their relevance.
+in order of their relevance. The fixing method is influnced
+by --countersatcheck.
 Default is equal to mincpulimit. If 0, no fixing is done.
 
 =item B<<< --dofull=<arg>, -f<arg> >>>
@@ -207,7 +209,22 @@ specifications using the SRASS algorithm. That is: axioms that were
 evaluated as false in some model of the negated conjecture are
 greedily added (in order of their relevance) until all such models
 are covered (or we run out of falsifying axioms).
-Default is 1, because this is constraint by --runmace anyway.
+Default is 1, because this is constraint by --runmace=1 or --maceemul=1 anyway.
+
+=item B<<< --countersatcheck=<arg>, -k<arg> >>>
+
+Default is 1, which means that if a suggested specification is
+a subset of a specification that is already known to be countersatisfiable,
+axioms will be greedily added (by relevance) until it is no longer
+known to be countersatisfiable.
+If 2, and --runmace=1 or --maceemul=1 (i.e. models are used), the
+model info will be used to fix countersatisfiable specifications. That is,
+if a model was found for a previous countersatisfiable specification S, all formulas
+will be evaluated in the model, and usually many more will be known to be true
+in the model than just the axioms of the specification S. So instead of extending
+just the countersatisfiable specifications, the whole set of true axioms has to be
+extended for each model. This is a bit related to --srassemul.
+Use --permutetimelimit=0 to switch off fixing of countersatisfiable specs completely.
 
 =item B<<< --similarity=<arg>, -i<arg> >>>
 
@@ -420,7 +437,7 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $gboostlimit,  $gboostweight,   $greuseeval,
     $giterpolicy,  $ggeneralize,    $glimittargets,
     $gmaceemul,    $gincrmodels,    $giterlimit,
-    $guniquify);
+    $guniquify,    $gcountersatcheck);
 
 my ($help, $man);
 my $gtargetsnr = 1233;
@@ -449,6 +466,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'usemodels|D=i'    => \$gusemodels,
 	   'incrmodels|N=i'    => \$gincrmodels,
 	   'srassemul|R=i'    => \$gsrassemul,
+	   'countersatcheck|k=i'    => \$gcountersatcheck,
 	   'similarity|i=i'  => \$gsimilarity,
 	   'generalize|g=i'  => \$ggeneralize,
 	   'parallelize|j=i'  => \$gparallelize,
@@ -490,6 +508,7 @@ $gmaceemul = 0 unless(defined($gmaceemul));
 $gusemodels = 1 unless(defined($gusemodels));
 $gincrmodels = 0 unless(defined($gincrmodels));
 $gsrassemul = 1 unless(defined($gsrassemul));
+$gcountersatcheck = 1 unless(defined($gcountersatcheck));
 $gparallelize = 1 unless(defined($gparallelize));
 $giterpolicy = pol_STD unless(defined($giterpolicy));
 $giterlimit = 0 unless(defined($giterlimit));
@@ -547,6 +566,13 @@ InitAtpData();
 
 # at this point $gparadox and $gmace are in {0,1}
 $gsrassemul = $gparadox * ($gmace + $gmaceemul) * $gsrassemul;
+
+## only weak countersatcheck if models are not available
+if(($gcountersatcheck == 2) &&
+   (($gparadox == 0) || (($gmace == 0) && ($gmaceemul == 0))))
+{
+    $gcountersatcheck = 1;
+}
 
 # change for debug printing
 sub WNONE	()  { 0 }
@@ -725,7 +751,12 @@ sub res_STATUS  ()  { 0 }
 sub res_REFNR   ()  { 1 }
 sub res_CPULIM  ()  { 2 }
 sub res_REFS    ()  { 3 }  # without the conjecture
-sub res_NEEDED  ()  { 4 }  # only for res_STATUS == szs_THEOREM
+sub res_NEEDED  ()  { 4 }  # only for res_STATUS == szs_THEOREM (the needed refs)
+                           # and possibly for res_STATUS == szs_COUNTERSAT
+                           # (if model was found, it contains its number in @gnrmod -
+                           #  this tells to ignore these res_REFS for the countersat precheck,
+                           #  because it is subsumed by model precheck; this is slightly imperfect
+                           #  now, because a subsuming model can be found later, but I don't care now)
 
 # possible SZS statuses
 sub szs_INIT        ()  { 'Initial' } # system was not run on the problem yet
@@ -1155,10 +1186,6 @@ sub HandleSpec
     my $conjecture = $spec[0];
     my @all_refs = keys %{$gspec{$conjecture}};
 
-    my $result;
-    my $subsumed = 0;
-    my $i = 0;
-
     # include all Mizar refs into @spec if we are told so,
     # and delete them from @reserve
     if ($galwaysmizrefs > 0)
@@ -1192,6 +1219,18 @@ sub HandleSpec
 	@reserve = @newreserve;
     }
 
+    ## first do srassification - that might avoid addition of more relevant axioms just to
+    ## kill countersatisfiability (because the countersatisfiability gets killed by srass);
+    ## this modifies @spec and @reserve
+    if (($gsrassemul > 0) && ($#reserve >= 0) && (exists $grefnegmods{$conjecture}))
+    {
+	watch(WSRASS, ("bef_SRASS($conjecture, $iter, [", join(",",@spec), "]).\n"));
+	Srassify($conjecture, \@spec, \@reserve);
+	watch(WSRASS, ("aft_SRASS($conjecture, $iter, [", join(",",@spec), "]).\n"));
+    }
+
+    my $subsumed = 0;
+    my $i = 0;
 
     # for each previous result, check that it does not subsume the
     # new specification; this is now achieved either by being subset of
@@ -1199,18 +1238,30 @@ sub HandleSpec
     # If subsumed, try to add one reference from @reserve to @spec and check again -
     # but do this only if $gtimelimit == $mintimelimit not to waste CPU on randomness
     my @results = @{$gresults{$conjecture}};
-    while ($i <= $#results)
+    while (($i <= $#results) && (0 == $subsumed))
     {
-	$result = $results[$i];
+	my $result = $results[$i];
 	$i++;
 
-	if((0 == $subsumed) &&
-	   ((($#spec <= $result->[res_REFNR]) && (szs_COUNTERSAT eq $result->[res_STATUS]))
-	    || ($#spec == $result->[res_REFNR])))
+	## precompute - this can be taken from the model now
+	my ($resrefs, $resrefsnr) = ($result->[res_REFS], $result->[res_REFNR]);
+	if(($gcountersatcheck == 2) && (szs_COUNTERSAT eq $result->[res_STATUS]))
+	{
+	    my @needed = @{$result->[res_NEEDED]};
+	    if(exists $needed[0])
+	    {
+		my $model = $gnrmod[$needed[0]];
+		$resrefs = $model->[mod_POSREFS];
+		$resrefsnr = $model->[mod_POSNR];
+	    }
+	}
+
+	if(((($#spec <= $resrefsnr) && (szs_COUNTERSAT eq $result->[res_STATUS]))
+	    || ($#spec == $resrefsnr)))
 	{
 	    my %cmp_refs = ();
 	    @cmp_refs{ @spec } = ();            # insert the new refs
-	    delete @cmp_refs{ @{$result->[res_REFS]} };   # delete the old ones
+	    delete @cmp_refs{ @{$resrefs} };   # delete the old ones
 	    my @remaining = keys %cmp_refs;
 	    if ((-1 == $#remaining) &&
 		(($gtimelimit <= $result->[res_CPULIM]) ||
@@ -1228,15 +1279,9 @@ sub HandleSpec
 	}
     }
 
+
     if (0 == $subsumed)
     {
-	if (($gsrassemul > 0) && ($#reserve >= 0) && (exists $grefnegmods{$conjecture}))
-	{
-	    watch(WSRASS, ("bef_SRASS($conjecture, $iter, [", join(",",@spec), "]).\n"));
-	    Srassify($conjecture, \@spec, \@reserve);
-	    watch(WSRASS, ("aft_SRASS($conjecture, $iter, [", join(",",@spec), "]).\n"));
-
-	}
 	my $new_spec = [szs_INIT, $#spec, -1, [@spec], [] ];
 	push(@{$gresults{$conjecture}}, $new_spec);
 	my $new_refs = join(",", @spec);
@@ -1247,7 +1292,7 @@ sub HandleSpec
     else { return 0; }
 }
 
-## can modify $spec; $reserve (incorrectly) stays the same
+## can modify $spec; $reserve is now also correctly spliced
 sub Srassify
 {
     my ($conj, $spec, $reserve) = @_;
@@ -1263,10 +1308,10 @@ sub Srassify
     }
 
     my $remains = scalar(keys %neg_conj_mods);
-    my @reserve = @$reserve;
-    while (($remains > 0) && ($#reserve >= 0))
+    my $i = 0;
+    while (($remains > 0) && ($i <= $#{$reserve}))
     {
-	my $cand = shift @reserve;
+	my $cand = $reserve->[$i];
 	if (exists $grefnegmods{$cand})
 	{
 	    delete @neg_conj_mods{ @{$grefnegmods{$cand}} };
@@ -1276,6 +1321,7 @@ sub Srassify
 	    {
 		push(@$spec, $cand);
 		$remains = $tmp;
+		splice(@$reserve, $i, 1);
 	    }
 	}
     }
@@ -1705,7 +1751,7 @@ sub SetupMaceModel
 	}
 	close (TMPP9);
     }
-    if($guseposmodels > 0)
+    if(($guseposmodels > 0) || ($gcountersatcheck ==2))
     {
 	open(CLFILT,"bin/clausefilter $file.mmodel true_in_all < $file.tmpp9 | grep label|");
 	while($_ = <CLFILT>)
@@ -1730,14 +1776,14 @@ sub SetupMaceModel
 
     if($gusemodels > 0) { unlink "$file.tmpp9"; }
 
-    if(($guseposmodels > 0) && ($gusenegmodels > 0))
+    if((($guseposmodels > 0) || ($gcountersatcheck == 2)) && ($gusenegmodels > 0))
     {
 	die "bad clausefilter output: $file,:,@allowed_refs,:, @pos_refs,: @neg_refs,:"
 	    unless ($#allowed_refs == $#pos_refs + $#neg_refs + 1);
     }
 
     # memory considerations for 70000 flas
-    if($guseposmodels == 0) { @pos_refs = (); }
+    if(($guseposmodels == 0) && ($gcountersatcheck != 2)) { @pos_refs = (); }
     if($gusenegmodels == 0) { @neg_refs = (); }
 
     $new_model->[mod_POSNR]   = $#pos_refs;
@@ -1904,6 +1950,7 @@ sub RunProblems
 	my $linesnr = `cat $file | wc -l`;
 	my $status = szs_UNKNOWN;
 	my @conj_entries = @{$gresults{$conj}};
+	my $modelnr = -1;
 
 	($conj_entries[$#conj_entries]->[res_STATUS] eq szs_INIT) 
 	    or die "Bad initial results entry for $conj";
@@ -1936,10 +1983,12 @@ sub RunProblems
 		    if (exists $gsum2model{$shasum})
 		    {
 			$models_old++;
+			$modelnr = $gmodnr{ $gsum2model{$shasum}->[0] };
 		    }
 		    else
 		    {
 			SetupMaceModel($conj, $file);
+			$modelnr = $#gnrmod;
 			$models_new++;
 		    }
 		    push( @{$gsum2model{$shasum}}, $file);
@@ -1975,10 +2024,12 @@ sub RunProblems
 		if (exists $gsum2model{$shasum})
 		{
 		    $models_old++;
+		    $modelnr = $gmodnr{ $gsum2model{$shasum}->[0] };
 		}
 		else
 		{
 		    SetupMaceModel($conj, $file);
+		    $modelnr = $#gnrmod;
 		    $models_new++;
 		}
 		push( @{$gsum2model{$shasum}}, $file);
@@ -2102,6 +2153,10 @@ sub RunProblems
 	    @nonconj_refs{ @{$proved_by{$conj}} } = ();
 	    delete $nonconj_refs{ $conj };
 	    $conj_entries[$#conj_entries]->[res_NEEDED] = [ keys %nonconj_refs ];
+	}
+	elsif(($status eq szs_COUNTERSAT) && ($modelnr > -1))
+	{
+	    $conj_entries[$#conj_entries]->[res_NEEDED] = [ $modelnr ];
 	}
 
     }
