@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.140 $
+## $Revision: 1.141 $
 
 
 =head1 NAME
@@ -1243,6 +1243,7 @@ sub HandleSpec
 	my $result = $results[$i];
 	$i++;
 
+	my @posrefs = ();
 	## precompute - this can be taken from the model now
 	my ($resrefs, $resrefsnr) = ($result->[res_REFS], $result->[res_REFNR]);
 	if(($gcountersatcheck == 2) && (szs_COUNTERSAT eq $result->[res_STATUS]))
@@ -1251,7 +1252,8 @@ sub HandleSpec
 	    if(exists $needed[0])
 	    {
 		my $model = $gnrmod[$needed[0]];
-		$resrefs = $model->[mod_POSREFS];
+		@posrefs = map { $gnrref[$_] } @{$model->[mod_POSREFS]};
+		$resrefs = \@posrefs;
 		$resrefsnr = $model->[mod_POSNR];
 	    }
 	}
