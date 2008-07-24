@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.144 $
+## $Revision: 1.145 $
 
 
 =head1 NAME
@@ -1527,6 +1527,7 @@ sub SelectRelevantFromSpecs
 		`gzip $evalfile`;
 	    }
 	}
+	`gzip $filestem.net_$iter`;
 	return \@active;
     }
 }
@@ -1599,7 +1600,7 @@ sub Learn
     print "LEARNING:$iter\n";
     if(($newly_proved == -1) && ($gusemodels == 0))
     {
-	`mv $filestem.net_$iter $filestem.net_$next_iter`;
+	`gzip -dc $filestem.net_$iter.gz > $filestem.net_$next_iter`;
     }
     else
     {
