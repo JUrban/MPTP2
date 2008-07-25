@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.147 $
+## $Revision: 1.148 $
 
 
 =head1 NAME
@@ -1274,7 +1274,7 @@ sub HandleSpec
 	if(($gcountersatcheck == 2) && (szs_COUNTERSAT eq $result->[res_STATUS]))
 	{
 	    my @needed = @{$result->[res_NEEDED]};
- 	    watch(WCSAT, ("csat1($conjecture, $iter, $i, [", join(",",@needed), "]).\n"));
+ 	    watch(WCSAT, ("csat1($conjecture, $iter, $i, $#spec, [", join(",",@needed), "]).\n"));
 	    if(exists $needed[0])
 	    {
 		my $model = $gnrmod[$needed[0]];
