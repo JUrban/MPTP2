@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.145 $
+## $Revision: 1.146 $
 
 
 =head1 NAME
@@ -84,7 +84,7 @@ renamed in all problems (with the exception of the same conjecture shared
 by two different problems).
 The name mappings are remembered, i.e., a mapping of problem names is kept,
 and for each problem, the original names of its formulas are kept.
-This can be used to observe the CASC solution format.
+This can be used to observe the CASC solution format (see also --problemsfile).
 The default is 0 (experimental so far).
 The renaming algo is: downcase problem basenames, replace nonalphanumeric
 characters in them with '_', die if conflict detected. In each problem rename
@@ -432,7 +432,7 @@ my %gsuperrefs;   # contains additions to bg inherited from direct lemmas
 
 my %glocal_consts_refs; # contains references containing local constants
 
-my %gltbnames;    # for each problem its LTB input and solution paths
+my %gltbnames;    # for each problem its LTB input and solution (absolute) paths
 my %gorigprobs;   # for each conjecture its original problem name
 my %gorigflas;    # for each conjecture the hash of fla names that got renamed
                   # (with the original names as values) (if st. is missing, it was not renamed)
@@ -601,6 +601,7 @@ if(($gcountersatcheck == 2) &&
 # change for debug printing
 sub WNONE	()  { 0 }
 sub WSRASS	()  { 1 }
+sub WCSAT	()  { 2 }
 sub GWATCHED 	()  { WNONE }
 
 # print @msgs if $flag is in GWATCHED
@@ -1273,12 +1274,14 @@ sub HandleSpec
 	if(($gcountersatcheck == 2) && (szs_COUNTERSAT eq $result->[res_STATUS]))
 	{
 	    my @needed = @{$result->[res_NEEDED]};
+	    watch(WCSAT, ("csat1($conjecture, $iter, $i, [", join(",",@needed), "]).\n"));
 	    if(exists $needed[0])
 	    {
 		my $model = $gnrmod[$needed[0]];
 		@posrefs = map { $gnrref[$_] } @{$model->[mod_POSREFS]};
 		$resrefs = \@posrefs;
 		$resrefsnr = $model->[mod_POSNR];
+		watch(WCSAT, ("csat2($conjecture, $iter, $i, $model, $resrefsnr, '$model->[mod_FILE]', [", join(",",@posrefs), "]).\n"));
 	    }
 	}
 
