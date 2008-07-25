@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.149 $
+## $Revision: 1.150 $
 
 
 =head1 NAME
@@ -1442,7 +1442,7 @@ sub SelectRelevantFromSpecs
 	close(TEST);
 	my $evals = AskSnow(\@testlines, $gsnowport);
 	die "Evals not in sync: $#testlines, $#{$evals}" unless( $#testlines == $#{$evals});
-	foreach my $i (0 .. @testlines)
+	foreach my $i (0 .. $#testlines)
 	{
 	    @spec = ();
 	    @reserve = ();
@@ -1707,6 +1707,7 @@ sub Learn
 	    # ###TODO: wrap this in a script remembering a start time, and self-destructing
 	    #          in one day
 	    system("nohup bin/snow -server $gsnowport -i+ -o allboth -F $filestem.net_$next_iter -B :0-$gtargetsnr > $filestem.snowout 2>&1 &");
+	    sleep $gsnowserver;
 	}
     }
 
