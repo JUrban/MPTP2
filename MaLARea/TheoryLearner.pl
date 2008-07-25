@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.148 $
+## $Revision: 1.149 $
 
 
 =head1 NAME
@@ -43,6 +43,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --iterpolicy=<arg>,      -y<arg>
    --iterlimit=<arg>,       -t<arg>
    --recadvice=<arg>,       -a<arg>
+   --snowserver=<arg>,      -W<arg>
    --reuseeval=<arg>,       -u<arg>
    --limittargets=<arg>,    -L<arg>
    --boostlimit=<arg>,      -b<arg>
@@ -297,6 +298,15 @@ If nonzero, the axiom advising phase is repeated this many times,
 recursively using the recommended axioms to enlarge the set of symbols
 for the next advising phase. Default is 0 (no recursion).
 
+=item B<<< --snowserver=<arg>, -B<W><arg> >>>
+
+If nonzero, snow is running as server for iterations > 3,
+learning only the new info and not re-learning all things again.
+If --usemodels>0, it will set --incrmodels to 1, so that
+only the new model info could be used. This should speed things
+up with large numbers of targets, however it is not clear if
+snow really can learn in the server mode, so the default is 0.
+
 =item B<<< --reuseeval=<arg>, -u<arg> >>>
 
 If nonzero, the evaluation of the learner is stored after each pass
@@ -445,7 +455,7 @@ my %ggen2ref;     # for each generalized ref contains a list of corresponding or
 my $gggnewc = 'gggnewc'; # new symbol for generalizing ocnstants; TODO: should check it's not in spec
 
 my %gatpdata;     # for each ATP a hash of its thresholds and other useful data
-
+my $gsnowport;    # port for snow running as a server of guseserver>0; determined at Learn
 
 my $minthreshold = 4;
 my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
@@ -459,7 +469,8 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $gboostlimit,  $gboostweight,   $greuseeval,
     $giterpolicy,  $ggeneralize,    $glimittargets,
     $gmaceemul,    $gincrmodels,    $giterlimit,
-    $guniquify,    $gcountersatcheck, $gproblemsfile);
+    $guniquify,    $gcountersatcheck, $gproblemsfile,
+    $gsnowserver);
 
 my ($help, $man);
 my $gtargetsnr = 1233;
@@ -496,6 +507,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'iterpolicy|y=i'  => \$giterpolicy,
 	   'iterlimit|t=i'  => \$giterlimit,
 	   'recadvice|a=i'    => \$grecadvice,
+	   'snowserver|W=i'    => \$gsnowserver,
 	   'reuseeval|u=i'    => \$greuseeval,
 	   'limittargets|L=i'    => \$glimittargets,
 	   'boostlimit|b=i'    => \$gboostlimit,
@@ -536,6 +548,7 @@ $gparallelize = 1 unless(defined($gparallelize));
 $giterpolicy = pol_STD unless(defined($giterpolicy));
 $giterlimit = 0 unless(defined($giterlimit));
 $grecadvice = 0 unless(defined($grecadvice));
+$gsnowserver = 0 unless(defined($gsnowserver));
 $greuseeval = 0 unless(defined($greuseeval));
 $glimittargets = 0 unless(defined($glimittargets));
 $gboostlimit = 0 unless(defined($gboostlimit));
@@ -602,6 +615,7 @@ if(($gcountersatcheck == 2) &&
 sub WNONE	()  { 0 }
 sub WSRASS	()  { 1 }
 sub WCSAT	()  { 2 }
+sub WSNOW	()  { 4 }
 sub GWATCHED 	()  { WNONE }
 
 # print @msgs if $flag is in GWATCHED
@@ -1418,6 +1432,63 @@ sub SelectRelevantFromSpecs
     }
 
     my $iter1 = ($grecadvice > 0) ? $iter . "_" . $recurse : $iter;
+
+    ## experimental comm through server;
+    ## we rely on conjecture being the last number in each testing example
+    if(($gsnowserver > 0) && ($iter > 3))
+    {
+	open(TEST, "$filestem.test_$iter1");
+	my @testlines = <TEST>;
+	close(TEST);
+	my $evals = AskSnow(\@testlines, $gsnowport);
+	die "Evals not in sync: $#testlines, $#{$evals}" unless( $#testlines == $#{$evals});
+	foreach my $i (0 .. @testlines)
+	{
+	    @spec = ();
+	    @reserve = ();
+	    %included = ();
+
+	    $testlines[$i] =~ m/.*\b(\d+):/ or die "Bad test line $testlines[$i]";
+	    ($wanted, $check) = ($1, shift @to_prove);
+	    (exists $gnrref[$wanted]) or die "Unknown reference $wanted";
+	    ($wanted == $grefnr{$check}) or
+		die "Not in sync with .to_prove_$iter: $wanted,$gnrref[$wanted],$grefnr{$check},$check";
+	    push(@spec, $check);
+
+	    ## ##TODO: this is copy and paste from below - fix it
+	    foreach my $refnr (@{$evals->[$i]})
+	    {
+		my @tried0 = ();
+		exists $gnrref[$refnr] or die "Parse error - undefined refnr: $_";
+		my $ref0 = $gnrref[$refnr];
+		if(!($refnr == $grefnr{$check}))
+		{
+		    if(exists $ggen2ref{ $ref0 } ) { @tried0 = @{ $ggen2ref{ $ref0 } }; }
+		    else { @tried0 = ( $ref0 ); }
+
+		    foreach my $ref1 (@tried0)
+		    {
+			if ((exists ${$gspec{$check}}{$ref1}) && !(exists $included{$ref1}))
+			{
+			    if (($#spec < $threshold)
+				|| (($galwaysmizrefs == 1) && ($ref1 =~ m/^[tldes][0-9]+_/)
+				    && (!($ref1 =~ m/^t[0-9]+_(numerals|boole|subset|arithm|real)$/)))
+				|| (($galwaysmizrefs == 2) && (exists $glocal_consts_refs{$ref1})))
+			    {
+				push(@spec, $ref1);
+			    }
+			    else { push(@reserve, $ref1); }
+			    $included{$ref1} = ();
+			}
+		    }
+		}
+	    }
+	    $act = HandleSpec($iter, $file_prefix, $file_postfix, \@spec, \@reserve);
+	    push(@active, $spec[0]) if ($act == 1);
+	}
+	return \@active;
+    }
+
     my $previter1 = ($grecadvice > 0) ? $previter . "_" . $recurse : $previter;
     my $evalfile = ($greuseeval > 0) ? "$filestem.eval_$iter1" : "/dev/null";
     my $prevevalfile = "$filestem.eval_$previter1";
@@ -1602,7 +1673,44 @@ sub Learn
     my ($iter, $newly_proved) = @_;
     my $next_iter = 1 + $iter;
     print "LEARNING:$iter\n";
-    if(($newly_proved == -1) && ($gusemodels == 0))
+
+    if(($gsnowserver > 0) && ($iter >= 3))
+    {
+	if($iter > 3)
+	{
+	    open(TRAIN1, "$filestem.train_$iter");
+	    my @trainlines = <TRAIN1>;
+	    close(TRAIN1);
+	    if($gusemodels > 0)
+	    {
+		open(MODELS, "$filestem.incrmodels_$iter");
+		my @modellines = <MODELS>;
+		close(MODELS);
+		push (@trainlines, @modellines);
+	    }
+	    ## we don't care fro the result here
+	    if($#trainlines >= 0) { AskSnow(\@trainlines, $gsnowport); }
+	}
+	elsif($iter == 3)
+	{
+	    ## do initial training with alltrain_$iter and
+	    ## start snow as server
+	    `bin/snow -train -I $filestem.alltrain_$iter -F $filestem.net_$next_iter  -B :0-$gtargetsnr`;
+
+	    #--- get unused port for SNoW
+	    socket(SOCK,PF_INET,SOCK_STREAM,(getprotobyname('tcp'))[2]);
+	    bind( SOCK,  sockaddr_in(0, INADDR_ANY));
+	    $gsnowport = (sockaddr_in(getsockname(SOCK)))[0];
+	    close(SOCK);
+
+	    #--- start snow instance:
+	    # ###TODO: wrap this in a script remembering a start time, and self-destructing
+	    #          in one day
+	    system("nohup bin/snow -server $gsnowport -i+ -o allboth -F $filestem.net_$next_iter -B :0-$gtargetsnr > $filestem.snowout 2>&1 &");
+	}
+    }
+
+    elsif(($newly_proved == -1) && ($gusemodels == 0))
     {
 	`gzip -dc $filestem.net_$iter.gz > $filestem.net_$next_iter`;
     }
@@ -2995,6 +3103,87 @@ sub PrintTrainingFromHash
     }
     close TRAIN;
 }
+
+## AskSnow($examples, $snowport)
+##
+## ask a SnoW server running on $snowport
+## with an arrayref $examples of examples of the form "0,3,4:"
+## result is an arrayref of arrayrefs of numbers 
+## (output features for each example)
+sub AskSnow
+{
+    my ($examples, $snowport) = @_;
+    ## couldn't +i+ be added here if we want to train?
+    my $parameters = "-o allboth";
+    my @res = ();
+
+    # First, establish a connection with the server.
+    my $socket = IO::Socket::INET->new( Proto     => "tcp",
+					PeerAddr  => "localhost",
+					PeerPort  => $snowport,
+				      );
+    die "The server is down, sorry" unless ($socket);
+
+    # Next, send the server your parameters
+    # You can (and should) use the command
+    # commented below if you have no parameters to send:
+    # send $socket, pack("N", 0), 0;
+    send $socket, pack("N", length $parameters), 0;
+    print $socket $parameters;
+
+    # Whether you sent parameters or not, 
+    # the server will then send you information
+    # about the algorithms used in training the network.
+    my $message = ReceiveFrom($socket);
+    watch(WSNOW, ("snow('$message').\n"));
+
+    # Now, we're ready to start sending examples and receiving the results.
+    foreach my $msg (@$examples)
+    {
+	# Send one example:
+	send $socket, pack("N", length $msg), 0;
+	print $socket $msg;
+
+	# Receive the server's classification information:
+	$message = ReceiveFrom($socket);
+	watch(WSNOW, ("snow('$message').\n"));
+	push(@res, []);
+	while($message=~/\b([0-9]+):/g) { push (@{$res[$#res]}, $1); };
+    }
+    # Last, tell the server that this client is done.
+    send $socket, pack("N", 0), 0;
+    return \@res;
+}
+
+## receive a message from a SNoW socket
+sub ReceiveFrom #($socket)
+{
+  my($socket) = $_[0];
+  my($length, $char, $msg, $message, $received);
+
+  $received = 0;
+  $message = "";
+  while ($received < 4)
+  {
+    recv $socket, $msg, 4 - $received, 0;
+    $received += length $msg;
+    $message .= $msg;
+  }
+  $length = unpack("N", $message);
+
+  $received = 0;
+  $message = "";
+  while ($received < $length)
+  {
+    recv $socket, $msg, $length - $received, 0;
+    $received += length $msg;
+    $message .= $msg;
+  }
+
+  return $message;
+}
+
+
 
 
 # PrintTesting(0);
