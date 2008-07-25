@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.146 $
+## $Revision: 1.147 $
 
 
 =head1 NAME
@@ -1274,7 +1274,7 @@ sub HandleSpec
 	if(($gcountersatcheck == 2) && (szs_COUNTERSAT eq $result->[res_STATUS]))
 	{
 	    my @needed = @{$result->[res_NEEDED]};
-	    watch(WCSAT, ("csat1($conjecture, $iter, $i, [", join(",",@needed), "]).\n"));
+ 	    watch(WCSAT, ("csat1($conjecture, $iter, $i, [", join(",",@needed), "]).\n"));
 	    if(exists $needed[0])
 	    {
 		my $model = $gnrmod[$needed[0]];
@@ -1288,6 +1288,7 @@ sub HandleSpec
 	if(((($#spec <= $resrefsnr) && (szs_COUNTERSAT eq $result->[res_STATUS]))
 	    || ($#spec == $resrefsnr)))
 	{
+	    watch(WCSAT, ("csat3($conjecture, $iter, $i, $resrefsnr, [", join(",",@{$resrefs}), "]).\n"));
 	    my %cmp_refs = ();
 	    @cmp_refs{ @spec } = ();            # insert the new refs
 	    delete @cmp_refs{ @{$resrefs} };   # delete the old ones
