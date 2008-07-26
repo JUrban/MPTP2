@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.155 $
+## $Revision: 1.156 $
 
 
 =head1 NAME
@@ -1713,12 +1713,14 @@ sub Learn
 	}
 	elsif($iter == 3)
 	{
+
+	    my $wantednr = ($glimittargets > 0) ? $glimittargets : $gtargetsnr; # $threshold * 10; # $gtargetsnr;
 	    ## do initial training with alltrain_$iter
 	    `bin/snow -train -I $filestem.alltrain_$iter -F $filestem.net_$next_iter  -B :0-$gtargetsnr`;
 
 	    watch(WSNOW, ('starting snow as server with net ', "$filestem.net_$next_iter", "\n"));
 	    ## start snow "server"; bogus gets written only on testing
-	    $gsnowpid = open2(*SNOWREADER,*SNOWWRITER,"bin/snow -test  -i+ -I /dev/stdin -c- -o allboth -F $filestem.net_$next_iter -B :0-$gtargetsnr");
+	    $gsnowpid = open2(*SNOWREADER,*SNOWWRITER,"bin/snow -test  -i+ -I /dev/stdin -c- -o allboth -F $filestem.net_$next_iter -L $wantednr -B :0-$gtargetsnr");
 	    watch(WSNOW, ('snow started as server with pid ', $gsnowpid, "\n"));
 	}
     }
