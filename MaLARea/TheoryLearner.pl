@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.158 $
+## $Revision: 1.159 $
 
 
 =head1 NAME
@@ -650,7 +650,8 @@ sub WNONE	()  { 0 }
 sub WSRASS	()  { 1 }
 sub WCSAT	()  { 2 }
 sub WSNOW	()  { 4 }
-sub GWATCHED 	()  { WNONE }
+sub WREVAL	()  { 8 }
+sub GWATCHED 	()  { WREVAL }
 
 # print @msgs if $flag is in GWATCHED
 sub watch
@@ -1541,15 +1542,27 @@ sub SelectRelevantFromSpecs
 	    @spec = ();
 	    @reserve = ();
 	    %included = ();
-	    $do_example = 1;
 
             /^Example.*: *([0-9]+) */ or die "Bad Example $_ in iter:$iter";
-            ($wanted, $check) = ($1, shift @to_prove);
-#	    print "$check\n";
+
+            ($wanted, $check) = ($1, $to_prove[0]);
 	    (exists $gnrref[$wanted]) or die "Unknown reference $wanted";
-	    ($wanted == $grefnr{$check}) or
-		die "Not in sync with .to_prove_$iter: $wanted,$gnrref[$wanted],$grefnr{$check},$check";
-	    push(@spec, $check);
+	    if($wanted != $grefnr{$check})
+	    {
+		if($greuseeval > 0)
+		{
+		    watch(WREVAL, ('Skipping already proved ', $gnrref[$wanted], ' at ', $check, "\n"));
+		    $do_example = 0;
+		    $skipdata = 1;
+		    next LINE;
+		}
+		else { die "Not in sync with .to_prove_$iter: $wanted,$gnrref[$wanted],$grefnr{$check},$check"; }
+	    }
+	    else
+	    {
+		$do_example = 1;
+		push(@spec, shift @to_prove);
+	    }
         }
 	if (/^([0-9]+):/)
         {
