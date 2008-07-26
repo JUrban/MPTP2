@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.150 $
+## $Revision: 1.151 $
 
 
 =head1 NAME
@@ -610,6 +610,26 @@ if(($gcountersatcheck == 2) &&
 {
     $gcountersatcheck = 1;
 }
+
+## string used to overcome Snow's I/O buffering;
+## it is gueranteed to consist of otherwise unused input features
+my $gsnowbuffbogus = MkSnowBuffBogus();
+
+## the number of time $gsnowbuffbogus gets written as a separator/flusher
+my $gsnowbogusfactor = 10;
+
+## state var saying how many snow ouputs should be ignored
+## (because they come from training or bogus)
+my $gskipsnowres = 0;
+
+sub MkSnowBuffBogus
+{
+    my $bogusvalue = 100000000;
+    my @foo = ();
+    foreach my $i (0..100) { push(@foo, $bogusvalue); }
+    return join(",", @foo) . ":\n";
+}
+
 
 # change for debug printing
 sub WNONE	()  { 0 }
@@ -1433,74 +1453,57 @@ sub SelectRelevantFromSpecs
 
     my $iter1 = ($grecadvice > 0) ? $iter . "_" . $recurse : $iter;
 
+    my $toread = scalar(@to_prove);  ## only used for snowserver
     ## experimental comm through server;
     ## we rely on conjecture being the last number in each testing example
     if(($gsnowserver > 0) && ($iter > 3))
     {
+
+	## print initial bogus and set up $gskipsnowres
+	foreach my $i (1..$gsnowbogusfactor) { print SNOWWRITER $gsnowbuffbogus; }
+	$gskipsnowres += $gsnowbogusfactor;
+
 	open(TEST, "$filestem.test_$iter1");
 	my @testlines = <TEST>;
 	close(TEST);
-	my $evals = AskSnow(\@testlines, $gsnowport);
-	die "Evals not in sync: $#testlines, $#{$evals}" unless( $#testlines == $#{$evals});
-	foreach my $i (0 .. $#testlines)
-	{
-	    @spec = ();
-	    @reserve = ();
-	    %included = ();
 
-	    $testlines[$i] =~ m/.*\b(\d+):/ or die "Bad test line $testlines[$i]";
-	    ($wanted, $check) = ($1, shift @to_prove);
-	    (exists $gnrref[$wanted]) or die "Unknown reference $wanted";
-	    ($wanted == $grefnr{$check}) or
-		die "Not in sync with .to_prove_$iter: $wanted,$gnrref[$wanted],$grefnr{$check},$check";
-	    push(@spec, $check);
+	print SNOWWRITER (@testlines);
 
-	    ## ##TODO: this is copy and paste from below - fix it
-	    foreach my $refnr (@{$evals->[$i]})
-	    {
-		my @tried0 = ();
-		exists $gnrref[$refnr] or die "Parse error - undefined refnr: $_";
-		my $ref0 = $gnrref[$refnr];
-		if(!($refnr == $grefnr{$check}))
-		{
-		    if(exists $ggen2ref{ $ref0 } ) { @tried0 = @{ $ggen2ref{ $ref0 } }; }
-		    else { @tried0 = ( $ref0 ); }
-
-		    foreach my $ref1 (@tried0)
-		    {
-			if ((exists ${$gspec{$check}}{$ref1}) && !(exists $included{$ref1}))
-			{
-			    if (($#spec < $threshold)
-				|| (($galwaysmizrefs == 1) && ($ref1 =~ m/^[tldes][0-9]+_/)
-				    && (!($ref1 =~ m/^t[0-9]+_(numerals|boole|subset|arithm|real)$/)))
-				|| (($galwaysmizrefs == 2) && (exists $glocal_consts_refs{$ref1})))
-			    {
-				push(@spec, $ref1);
-			    }
-			    else { push(@reserve, $ref1); }
-			    $included{$ref1} = ();
-			}
-		    }
-		}
-	    }
-	    $act = HandleSpec($iter, $file_prefix, $file_postfix, \@spec, \@reserve);
-	    push(@active, $spec[0]) if ($act == 1);
-	}
-	return \@active;
+	$toread = $gskipsnowres + scalar(@testlines);
+	## print final bogus; $gskipsnowres will be set up later
+	foreach my $i (1..$gsnowbogusfactor) { print SNOWWRITER $gsnowbuffbogus; }
     }
 
     my $previter1 = ($grecadvice > 0) ? $previter . "_" . $recurse : $previter;
     my $evalfile = ($greuseeval > 0) ? "$filestem.eval_$iter1" : "/dev/null";
     my $prevevalfile = "$filestem.eval_$previter1";
-    my $snow_pid = (($greuseeval > 0) && ($newly_proved == -1)) ?
-	open(SOUT,"gzip -dc $prevevalfile.gz|") :
-	    open(SOUT,"bin/snow -test -I $filestem.test_$iter1 -F $filestem.net_$iter -L $wantednr -o allboth -B :0-$gtargetsnr|tee $evalfile|");
-#	or die("Cannot start snow: $iter1");
-
-    while ($_=<SOUT>)
+    if(!(($gsnowserver > 0) && ($iter > 3)))
     {
+	my $snow_pid = (($greuseeval > 0) && ($newly_proved == -1)) ?
+	    open(SOUT,"gzip -dc $prevevalfile.gz|") :
+		open(SOUT,"bin/snow -test -I $filestem.test_$iter1 -F $filestem.net_$iter -L $wantednr -o allboth -B :0-$gtargetsnr|tee $evalfile|");
+#	or die("Cannot start snow: $iter1");
+    }
+
+    my $skipdata = 0;   ## skips training and bogus evals if > 0
+    my $exs = 0;
+ LINE:
+    while ((($gsnowserver > 0) && ($iter > 3) && ($exs <= $toread) && ($_=<SNOWREADER>))
+	   || (!(($gsnowserver > 0) && ($iter > 3)) && ($_=<SOUT>)))
+    {
+	## empty line after the last example was fully read - exit the loop
+	last LINE if(($gsnowserver > 0) && ($iter > 3) && ($exs == $toread) && (/^\s*$/));
+
         if (/^Example/)        # Start entry for a new example
         {
+	    $exs++;
+	    $skipdata = 0;
+	    if($gskipsnowres > 0)
+	    {
+		$gskipsnowres--;
+		$skipdata = 1;
+		next LINE;
+	    }
 	    # print the previous entry
 	    if ($do_example == 1)
 	    {
@@ -1533,6 +1536,9 @@ sub SelectRelevantFromSpecs
         }
 	if (/^([0-9]+):/)
         {
+
+	    next LINE if($skipdata > 0);
+
 	    # Push eligible references - those which are in the initial spec
 
 	    my $refnr = $1;
@@ -1566,7 +1572,11 @@ sub SelectRelevantFromSpecs
 	}
     }
 
-    close(SOUT);
+    if(($gsnowserver > 0) && ($iter > 3))
+    {
+	$gskipsnowres = $gsnowbogusfactor;
+    }
+    else { close(SOUT); }
 
     # print the last entry
     if ($do_example == 1)
@@ -1602,7 +1612,7 @@ sub SelectRelevantFromSpecs
 		`gzip $evalfile`;
 	    }
 	}
-	`gzip $filestem.net_$iter`;
+	`gzip $filestem.net_$iter` if(!(($gsnowserver > 0) && ($iter > 3)));
 	return \@active;
     }
 }
@@ -1689,25 +1699,16 @@ sub Learn
 		push (@trainlines, @modellines);
 	    }
 	    ## we don't care fro the result here
-	    if($#trainlines >= 0) { AskSnow(\@trainlines, $gsnowport); }
+	    if($#trainlines >= 0) { print SNOWWRITER (@trainlines) };
+	    $gskipsnowres = $gskipsnowres + scalar(@trainlines);
 	}
 	elsif($iter == 3)
 	{
-	    ## do initial training with alltrain_$iter and
-	    ## start snow as server
+	    ## do initial training with alltrain_$iter
 	    `bin/snow -train -I $filestem.alltrain_$iter -F $filestem.net_$next_iter  -B :0-$gtargetsnr`;
 
-	    #--- get unused port for SNoW
-	    socket(SOCK,PF_INET,SOCK_STREAM,(getprotobyname('tcp'))[2]);
-	    bind( SOCK,  sockaddr_in(0, INADDR_ANY));
-	    $gsnowport = (sockaddr_in(getsockname(SOCK)))[0];
-	    close(SOCK);
-
-	    #--- start snow instance:
-	    # ###TODO: wrap this in a script remembering a start time, and self-destructing
-	    #          in one day
-	    system("nohup bin/snow -server $gsnowport -i+ -o allboth -F $filestem.net_$next_iter -B :0-$gtargetsnr > $filestem.snowout 2>&1 &");
-	    sleep $gsnowserver;
+	    ## start snow "server"; bogus gets written only on testing
+	    open2(*SNOWREADER,*SNOWWRITER,"bin/snow -test  -i+ -I /dev/stdin -c- -o allboth -F $filestem.net_$next_iter -B :0-$gtargetsnr");
 	}
     }
 
@@ -3104,87 +3105,6 @@ sub PrintTrainingFromHash
     }
     close TRAIN;
 }
-
-## AskSnow($examples, $snowport)
-##
-## ask a SnoW server running on $snowport
-## with an arrayref $examples of examples of the form "0,3,4:"
-## result is an arrayref of arrayrefs of numbers 
-## (output features for each example)
-sub AskSnow
-{
-    my ($examples, $snowport) = @_;
-    ## couldn't +i+ be added here if we want to train?
-    my $parameters = "-o allboth";
-    my @res = ();
-
-    # First, establish a connection with the server.
-    my $socket = IO::Socket::INET->new( Proto     => "tcp",
-					PeerAddr  => "localhost",
-					PeerPort  => $snowport,
-				      );
-    die "The server is down, sorry" unless ($socket);
-
-    # Next, send the server your parameters
-    # You can (and should) use the command
-    # commented below if you have no parameters to send:
-    # send $socket, pack("N", 0), 0;
-    send $socket, pack("N", length $parameters), 0;
-    print $socket $parameters;
-
-    # Whether you sent parameters or not, 
-    # the server will then send you information
-    # about the algorithms used in training the network.
-    my $message = ReceiveFrom($socket);
-    watch(WSNOW, ("snow('$message').\n"));
-
-    # Now, we're ready to start sending examples and receiving the results.
-    foreach my $msg (@$examples)
-    {
-	# Send one example:
-	send $socket, pack("N", length $msg), 0;
-	print $socket $msg;
-
-	# Receive the server's classification information:
-	$message = ReceiveFrom($socket);
-	watch(WSNOW, ("snow('$message').\n"));
-	push(@res, []);
-	while($message=~/\b([0-9]+):/g) { push (@{$res[$#res]}, $1); };
-    }
-    # Last, tell the server that this client is done.
-    send $socket, pack("N", 0), 0;
-    return \@res;
-}
-
-## receive a message from a SNoW socket
-sub ReceiveFrom #($socket)
-{
-  my($socket) = $_[0];
-  my($length, $char, $msg, $message, $received);
-
-  $received = 0;
-  $message = "";
-  while ($received < 4)
-  {
-    recv $socket, $msg, 4 - $received, 0;
-    $received += length $msg;
-    $message .= $msg;
-  }
-  $length = unpack("N", $message);
-
-  $received = 0;
-  $message = "";
-  while ($received < $length)
-  {
-    recv $socket, $msg, $length - $received, 0;
-    $received += length $msg;
-    $message .= $msg;
-  }
-
-  return $message;
-}
-
-
 
 
 # PrintTesting(0);
