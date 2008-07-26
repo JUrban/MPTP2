@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.153 $
+## $Revision: 1.154 $
 
 
 =head1 NAME
@@ -621,6 +621,9 @@ my $gsnowbogusfactor = 10;
 ## state var saying how many snow ouputs should be ignored
 ## (because they come from training or bogus)
 my $gskipsnowres = 0;
+
+## pid of the snow run as a server
+my $gsnowpid;
 
 sub MkSnowBuffBogus
 {
@@ -1713,8 +1716,10 @@ sub Learn
 	    ## do initial training with alltrain_$iter
 	    `bin/snow -train -I $filestem.alltrain_$iter -F $filestem.net_$next_iter  -B :0-$gtargetsnr`;
 
+	    watch(WSNOW, ('starting snow as server with net ', $filestem.net_$next_iter, "\n"));
 	    ## start snow "server"; bogus gets written only on testing
-	    open2(*SNOWREADER,*SNOWWRITER,"bin/snow -test  -i+ -I /dev/stdin -c- -o allboth -F $filestem.net_$next_iter -B :0-$gtargetsnr");
+	    $gsnowpid = open2(*SNOWREADER,*SNOWWRITER,"bin/snow -test  -i+ -I /dev/stdin -c- -o allboth -F $filestem.net_$next_iter -B :0-$gtargetsnr");
+	    watch(WSNOW, ('snow started as server with pid ', $gsnowpid, "\n"));
 	}
     }
 
