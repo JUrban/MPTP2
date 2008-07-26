@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.156 $
+## $Revision: 1.157 $
 
 
 =head1 NAME
@@ -1708,7 +1708,9 @@ sub Learn
 		push (@trainlines, @modellines);
 	    }
 	    ## we don't care fro the result here
+	    watch(WSNOW, ('snow, printing to server training  ', $#trainlines, "examples\n"));
 	    if($#trainlines >= 0) { print SNOWWRITER (@trainlines) };
+	    watch(WSNOW, ("examples printed to server\n"));
 	    $gskipsnowres = $gskipsnowres + scalar(@trainlines);
 	}
 	elsif($iter == 3)
@@ -1720,7 +1722,7 @@ sub Learn
 
 	    watch(WSNOW, ('starting snow as server with net ', "$filestem.net_$next_iter", "\n"));
 	    ## start snow "server"; bogus gets written only on testing
-	    $gsnowpid = open2(*SNOWREADER,*SNOWWRITER,"bin/snow -test  -i+ -I /dev/stdin -c- -o allboth -F $filestem.net_$next_iter -L $wantednr -B :0-$gtargetsnr");
+	    $gsnowpid = open2(*SNOWREADER,*SNOWWRITER,"bin/snow -test  -i+ -I /dev/stdin -c- -o allboth -F $filestem.net_$next_iter -L $wantednr -B :0-$gtargetsnr|tee");
 	    watch(WSNOW, ('snow started as server with pid ', $gsnowpid, "\n"));
 	}
     }
