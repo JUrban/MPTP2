@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.157 $
+## $Revision: 1.158 $
 
 
 =head1 NAME
@@ -41,6 +41,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --generalize=<arg>,      -g<arg>
    --parallelize=<arg>,     -j<arg>
    --iterpolicy=<arg>,      -y<arg>
+   --learnpolicy=<arg>,     -O<arg>
    --iterlimit=<arg>,       -t<arg>
    --recadvice=<arg>,       -a<arg>
    --snowserver=<arg>,      -W<arg>
@@ -279,6 +280,14 @@ minimal axioms loop. Another implemented option is 1: prefers
 to grow the axiomlimit to the maximum regardless of previous
 success, and only when it is maximal, it drops to the lowest value.
 
+=item B<<< --learnpolicy=<arg>, -B<O><arg> >>>
+
+Policy for learning. Default is 0 - learning is always done.
+If > 1, and --iterpolicy is 1, learning only occurs when the maximum
+values of the axiomlimit is reached. This can speed things up
+when learning is slow, the price is that the new info is not available
+immediatelly.
+
 =item B<<< --iterlimit=<arg>, -t<arg> >>>
 
 Depending on the iterpolicy, this is the maximal/minimal number of
@@ -470,7 +479,7 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $giterpolicy,  $ggeneralize,    $glimittargets,
     $gmaceemul,    $gincrmodels,    $giterlimit,
     $guniquify,    $gcountersatcheck, $gproblemsfile,
-    $gsnowserver);
+    $gsnowserver,  $glearnpolicy);
 
 my ($help, $man);
 my $gtargetsnr = 1233;
@@ -505,6 +514,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'generalize|g=i'  => \$ggeneralize,
 	   'parallelize|j=i'  => \$gparallelize,
 	   'iterpolicy|y=i'  => \$giterpolicy,
+	   'learnpolicy|O=i'  => \$glearnpolicy,
 	   'iterlimit|t=i'  => \$giterlimit,
 	   'recadvice|a=i'    => \$grecadvice,
 	   'snowserver|W=i'    => \$gsnowserver,
@@ -546,6 +556,7 @@ $gsrassemul = 1 unless(defined($gsrassemul));
 $gcountersatcheck = 1 unless(defined($gcountersatcheck));
 $gparallelize = 1 unless(defined($gparallelize));
 $giterpolicy = pol_STD unless(defined($giterpolicy));
+$glearnpolicy = 0 unless(defined($glearnpolicy));
 $giterlimit = 0 unless(defined($giterlimit));
 $grecadvice = 0 unless(defined($grecadvice));
 $gsnowserver = 0 unless(defined($gsnowserver));
@@ -1483,7 +1494,8 @@ sub SelectRelevantFromSpecs
     my $prevevalfile = "$filestem.eval_$previter1";
     if(!(($gsnowserver > 0) && ($iter > 3)))
     {
-	my $snow_pid = (($greuseeval > 0) && ($newly_proved == -1)) ?
+	my $snow_pid = (($greuseeval > 0) &&
+			 (NoTesting($iter,$threshold,$newly_proved) > 0)) ?
 	    open(SOUT,"gzip -dc $prevevalfile.gz|") :
 		open(SOUT,"bin/snow -test -I $filestem.test_$iter1 -F $filestem.net_$iter -L $wantednr -o allboth -B :0-$gtargetsnr|tee $evalfile|");
 #	or die("Cannot start snow: $iter1");
@@ -1685,7 +1697,7 @@ sub SelectRelevantFromSpecs
 # If $newly_proved == -1, and $gusemodels == 0, just move the previous net.
 sub Learn
 {
-    my ($iter, $newly_proved) = @_;
+    my ($iter, $newly_proved, $threshold) = @_;
     my $next_iter = 1 + $iter;
     print "LEARNING:$iter\n";
 
@@ -1727,7 +1739,7 @@ sub Learn
 	}
     }
 
-    elsif(($newly_proved == -1) && ($gusemodels == 0))
+    elsif(NoLearning($iter,$threshold,$newly_proved) > 0)
     {
 	`gzip -dc $filestem.net_$iter.gz > $filestem.net_$next_iter`;
     }
@@ -1736,6 +1748,37 @@ sub Learn
 	`bin/snow -train -I $filestem.alltrain_$iter -F $filestem.net_$next_iter  -B :0-$gtargetsnr`;
     }
 }
+
+sub NoLearning
+{
+    my ($iter,$threshold,$newly_proved) = @_;
+
+    if(($glearnpolicy == 0) || ($giterpolicy != pol_GROWTH))
+    {
+	return 1 if(($newly_proved == -1) && ($gusemodels == 0));
+	return 0;
+    }
+
+    return 0 if(($threshold == $maxthreshold) || ($iter < 4));
+    return 1;
+}
+
+sub NoTesting
+{
+    my ($iter,$threshold,$newly_proved) = @_;
+
+    if(($glearnpolicy == 0) || ($giterpolicy != pol_GROWTH))
+    {
+	return 1 if(($newly_proved == -1) && ($gusemodels == 0));
+	return 0;
+    }
+
+    return 0 if(($threshold == $minthreshold)
+		|| (($gtimelimit > $mintimelimit) && ($threshold == 2 * $minthreshold))
+		|| ($iter < 4));
+    return 1;
+}
+
 
 # print the models as training examples
 # if positive models are also used, print only those that
@@ -2695,7 +2738,7 @@ sub Iterate
     {
 
 	`cat $filestem.train_* > $filestem.alltrain_2`;
-	Learn(2,1);
+	Learn(2,1,$threshold);
 
 	$to_solve = SelectRelevantFromSpecs(3,1,$threshold, $file_prefix, $file_postfix);
 
@@ -2710,7 +2753,7 @@ sub Iterate
 
 	my $previter = $giterrecover - 1;
 	`cat $filestem.train_* > $filestem.alltrain_$previter`;
-	Learn($previter,1);
+	Learn($previter,1,$threshold);
 
 	$to_solve = SelectRelevantFromSpecs($giterrecover,1,$threshold, $file_prefix, $file_postfix);
 
@@ -2841,7 +2884,7 @@ sub Iterate
 	    else { `cat $filestem.models_$iter >> $filestem.alltrain_$iter`; }
 	}
 
-	Learn($iter, $#newly_proved);
+	Learn($iter, $#newly_proved,$threshold);
 	$iter++;
 	PrintTestingFromArray($iter,\@tmp_conjs);
 	$to_solve = SelectRelevantFromSpecs($iter, $#newly_proved, $threshold, $file_prefix, $file_postfix);
