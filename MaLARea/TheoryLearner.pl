@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.151 $
+## $Revision: 1.152 $
 
 
 =head1 NAME
@@ -1688,10 +1688,14 @@ sub Learn
     {
 	if($iter > 3)
 	{
-	    open(TRAIN1, "$filestem.train_$iter");
-	    my @trainlines = <TRAIN1>;
-	    close(TRAIN1);
-	    if($gusemodels > 0)
+	    my @trainlines = ();
+	    if(-e "$filestem.train_$iter")
+	    {
+		open(TRAIN1, "$filestem.train_$iter");
+		@trainlines = <TRAIN1>;
+		close(TRAIN1);
+	    }
+	    if(($gusemodels > 0) && (-e "$filestem.incrmodels_$iter"))
 	    {
 		open(MODELS, "$filestem.incrmodels_$iter");
 		my @modellines = <MODELS>;
