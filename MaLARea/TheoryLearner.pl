@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.152 $
+## $Revision: 1.153 $
 
 
 =head1 NAME
@@ -1472,6 +1472,7 @@ sub SelectRelevantFromSpecs
 	$toread = $gskipsnowres + scalar(@testlines);
 	## print final bogus; $gskipsnowres will be set up later
 	foreach my $i (1..$gsnowbogusfactor) { print SNOWWRITER $gsnowbuffbogus; }
+	watch(WSNOW, ('wsn: ', $gskipsnowres, ', ', $toread, "\n"));
     }
 
     my $previter1 = ($grecadvice > 0) ? $previter . "_" . $recurse : $previter;
@@ -1491,6 +1492,7 @@ sub SelectRelevantFromSpecs
     while ((($gsnowserver > 0) && ($iter > 3) && ($exs <= $toread) && ($_=<SNOWREADER>))
 	   || (!(($gsnowserver > 0) && ($iter > 3)) && ($_=<SOUT>)))
     {
+	watch(WSNOW, ('sn: ', $_));
 	## empty line after the last example was fully read - exit the loop
 	last LINE if(($gsnowserver > 0) && ($iter > 3) && ($exs == $toread) && (/^\s*$/));
 
