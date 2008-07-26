@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.154 $
+## $Revision: 1.155 $
 
 
 =head1 NAME
@@ -1716,7 +1716,7 @@ sub Learn
 	    ## do initial training with alltrain_$iter
 	    `bin/snow -train -I $filestem.alltrain_$iter -F $filestem.net_$next_iter  -B :0-$gtargetsnr`;
 
-	    watch(WSNOW, ('starting snow as server with net ', $filestem.net_$next_iter, "\n"));
+	    watch(WSNOW, ('starting snow as server with net ', "$filestem.net_$next_iter", "\n"));
 	    ## start snow "server"; bogus gets written only on testing
 	    $gsnowpid = open2(*SNOWREADER,*SNOWWRITER,"bin/snow -test  -i+ -I /dev/stdin -c- -o allboth -F $filestem.net_$next_iter -B :0-$gtargetsnr");
 	    watch(WSNOW, ('snow started as server with pid ', $gsnowpid, "\n"));
