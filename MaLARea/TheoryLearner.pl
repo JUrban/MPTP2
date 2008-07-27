@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.159 $
+## $Revision: 1.160 $
 
 
 =head1 NAME
@@ -1633,7 +1633,7 @@ sub SelectRelevantFromSpecs
 	close(SPEC);
 	if ($greuseeval > 0)
 	{
-	    if ($newly_proved == -1)
+	    if (NoTesting($iter,$threshold,$newly_proved) > 0)
 	    {
 		`mv $prevevalfile.gz $evalfile.gz`;
 	    }
