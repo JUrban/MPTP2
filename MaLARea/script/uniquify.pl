@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.2 $
+## $Revision: 1.3 $
 
 =head1 NAME
 
@@ -159,7 +159,7 @@ sub Rename
 {
     foreach my $nm (keys %gref2fla)
     {
-	my @restarr = keys %${$gref2fla{$nm}};
+	my @restarr = keys %{$gref2fla{$nm}};
 	if($#restarr > 0)
 	{
 	    foreach my $rest (@restarr)
@@ -194,7 +194,7 @@ sub Merge
 {
     foreach my $rest (keys %gfla2ref)
     {
-	my @nmarr = keys %${$gfla2ref{$rest}};
+	my @nmarr = keys %{$gfla2ref{$rest}};
 	if($#nmarr > 0)
 	{
 	    my $newname = $nmarr[0];
@@ -205,7 +205,7 @@ sub Merge
 		push ( @{$gfla2ref1{$rest}}, @files);
 		if(!($nm eq $newname))
 		{
-		    push( @{$gref2fla1{$newname}}, @{$gref2fla1{$nm}->[1]});
+		    push( @{$gref2fla1{$newname}}, @{$gref2fla1{$nm}});
 		    delete $gref2fla1{$nm};
 		    foreach my $file (@files)
 		    {
@@ -278,7 +278,7 @@ sub Main
     open(FR,">$gflarenm") or die "$gflarenm not writable";
     foreach my $file (sort keys %gfla2orig)
     {
-	foreach my $name (sort keys %${$gfla2orig{$file}})
+	foreach my $name (sort keys %{$gfla2orig{$file}})
 	{
 	    print FR ($file, ' ', $name, ' ', ${$gfla2orig{$file}}{$name}, "\n");
 	}
@@ -287,7 +287,7 @@ sub Main
     foreach my $file (sort keys %gltbprobnames)
     {
 	open(NEW, ">$gprobdir/$file") or die "$gprobdir/$file not writable";
-	foreach my $name (sort keys %${$gfile2ref{$file}})
+	foreach my $name (sort keys %{$gfile2ref{$file}})
 	{
 	    print NEW ('fof(',$name,',axiom,',${$gfile2ref{$file}}{$name},"\n");
 	}
