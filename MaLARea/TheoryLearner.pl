@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.160 $
+## $Revision: 1.161 $
 
 
 =head1 NAME
@@ -51,6 +51,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --boostweight=<arg>,     -w<arg>
    --refsbgcheat=<arg>,     -r<arg>
    --alwaysmizrefs=<arg>,   -m<arg>
+   --tptpproofs=<arg>
    --help,                  -h
    --man
 
@@ -371,6 +372,14 @@ If 2, references containing Mizar local constants are always
 included. These references are recognized by grepping
 for "\bc[0-9]+" in the formula symbols.
 
+=item B<<< --tptpproofs >>>
+
+If > 0, try to get the TPTP format of all found proofs. This
+is now done by rerunning EP on the set of needed references found
+by other provers. This is mainly used for CASC LTB*, where the
+condition is a TPTP proof with adequate FOF->CNF documentation.
+The default is 0.
+
 =item B<<< --help, -h >>>
 
 Print a brief help message and exit.
@@ -479,7 +488,7 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $giterpolicy,  $ggeneralize,    $glimittargets,
     $gmaceemul,    $gincrmodels,    $giterlimit,
     $guniquify,    $gcountersatcheck, $gproblemsfile,
-    $gsnowserver,  $glearnpolicy);
+    $gsnowserver,  $glearnpolicy,   $gtptpproofs);
 
 my ($help, $man);
 my $gtargetsnr = 1233;
@@ -524,6 +533,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'boostweight|w=i'    => \$gboostweight,
 	   'refsbgcheat|r=i'    => \$grefsbgcheat,
 	   'alwaysmizrefs|m=i'    => \$galwaysmizrefs,
+	   'tptpproofs'             => \$gtptpproofs,
 	   'help|h'          => \$help,
 	   'man'             => \$man)
     or pod2usage(2);
@@ -568,6 +578,7 @@ $grefsbgcheat = 0 unless(defined($grefsbgcheat));
 $gsimilarity = 1 unless(defined($gsimilarity));
 $ggeneralize = 0 unless(defined($ggeneralize));
 $galwaysmizrefs = 0 unless(defined($galwaysmizrefs));
+$gtptpproofs = 0 unless(defined($gtptpproofs));
 $gcommonfile = "" unless(defined($gcommonfile));
 $gproblemsfile = "" unless(defined($gproblemsfile));
 $guniquify = 0 unless(defined($guniquify));
@@ -2314,6 +2325,11 @@ sub RunProblems
 		    exists $grefnr{$ref} or die "Unknown reference $ref in $file.outdfg1: $ref";
 		}
 		$proved_by{$conj} = [@refs];
+		if($gtptpproofs > 0)
+		{
+		    my $regexp = '"^fof( *\(' . join('\|',@refs) . '\) *,"';
+		    `grep $regexp $file | bin/eproof -tAuto -xAuto --tstp-format - > $file.out1`;
+		}
 	    }
 	    elsif ($spass_status=~m/Completion found/)
 	    {
