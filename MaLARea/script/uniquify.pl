@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.1 $
+## $Revision: 1.2 $
 
 =head1 NAME
 
@@ -8,9 +8,9 @@ uniquify.pl (prepare LTB problems for malarea)
 
 =head1 SYNOPSIS
 
-uniquify.pl [options] ltbfileinput malareaprobdir problemrenamingfile formularenamingfile
+script/uniquify.pl [options] ltbfileinput malareaprobdir problemrenamingfile formularenamingfile
 
-./uniquify.pl /home/urban/ltbtest1 /tmp/mal1/probdir1 pr1 fr1
+script/uniquify.pl /home/urban/ltbtest1 /tmp/mal1/probdir1 pr1 fr1
 
  Options:
    --forgetlimit=<arg>,     -f<arg>
@@ -93,7 +93,7 @@ GetOptions('forgetlimit|f=i'    => \$gforgetlimit,
 pod2usage(1) if($help);
 pod2usage(-exitstatus => 0, -verbose => 2) if($man);
 
-pod2usage(2) if ($#ARGV != 2);
+pod2usage(2) if ($#ARGV != 3);
 
 my $gltbfile   = shift(@ARGV);
 my $gprobdir   = shift(@ARGV);
@@ -129,7 +129,7 @@ sub ReadLTB
 	{
 	    my ($pname, $sname) = ($1,$2);
 	    die "$pname not readable!" unless(-e $pname);
-	    my ($volume,$directories,$file) = splitpath( $pname );
+	    my ($volume,$directories,$file) = File::Spec->splitpath( $pname );
 	    my $tptpname = MkTptpName($file);
 	    die "Non-unique TPTP-fied basenames not allowed: $file, $tptpname, $pname, $gltbprobnames{$file}->[0]"
 		if(exists $gltbprobnames{$tptpname});
@@ -295,3 +295,6 @@ sub Main
 	close(NEW);
     }
 }
+
+Main();
+
