@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.161 $
+## $Revision: 1.162 $
 
 
 =head1 NAME
@@ -2554,11 +2554,11 @@ sub NormalizeAndCreateInitialSpecs
 	my $conj = "";
 	my %h = ();
 	open(PROBLEM,">$i");
-	open(PROBLEM1,">$gtmpdir$i.s_0");
+	open(PROBLEM1,">$gtmpdir$i.s_0") if($gdofull > 0);
 	foreach $_ (@lines2)
 	{
 	    print PROBLEM $_;
-	    print PROBLEM1 $_;
+	    print PROBLEM1 $_ if($gdofull > 0);
 	    $alllines2{$_} = ();
 	    if(m/^ *fof\( *([^, ]+) *, *([^, ]+) *,(.*)/)
 	    {
@@ -2577,7 +2577,7 @@ sub NormalizeAndCreateInitialSpecs
 	}
 	print INISPECS "spec($conj,[" . join(",", keys %h) . "]).\n";
 	close(PROBLEM);
-	close(PROBLEM1);
+	close(PROBLEM1) if($gdofull > 0);
     }
     close(INISPECS);
     open(ALLFLAS, ">$filestem.allflas");
