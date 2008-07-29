@@ -13,11 +13,11 @@ die "expecting the malarea install dir as first arg, and the ltb input as second
 
 my $tmpdir = "/tmp/mal_$$";
 
-if (!mkdir($tmpdir,0777))
-{
-    print("ERROR: Cannot make temp dir $tmpdir\n");
-    die("\n");
-}
+# if (!mkdir($tmpdir,0777))
+# {
+#     print("ERROR: Cannot make temp dir $tmpdir\n");
+#     die("\n");
+# }
 
 my $maldir = shift(@ARGV);
 my $ltbinput = shift(@ARGV);
