@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.164 $
+## $Revision: 1.165 $
 
 
 =head1 NAME
@@ -2475,7 +2475,7 @@ sub SetupProblemsFromProblemsFile
 	    if(m/^\s*(\S+)\s+(\S+)\s*(\S+)\s*$/)
 	    {
 		my ($file, $pname, $sname) = ($1,$2, $3);
-		die "$pname not readable!" unless(-e $file);
+		die "$pname not readable!" unless(-e $file_prefix . $file);
 		$gltbnames{$file} = [$pname, $sname];
 	    }
 	}
