@@ -15,5 +15,11 @@ Requirements:
 
 This is a complex beast, strange things can happen - please report them.
 
+LICENCE:
+
+The TheoryLearner.pl and the scripts are GPL, the files in the bin/ directory 
+are distributed under whatever licence they allow (usually GPL, don't know
+for TPTP tools, SNoW has a special licence).
+
 Josef Urban
 
