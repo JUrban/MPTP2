@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.3 $
+## $Revision: 1.4 $
 
 =head1 NAME
 
@@ -14,6 +14,7 @@ script/uniquify.pl /home/urban/ltbtest1 /tmp/mal1/probdir1 pr1 fr1
 
  Options:
    --forgetlimit=<arg>,     -f<arg>
+   --duplprint=<arg>,       -d<arg>
    --merge=<arg>,           -m<arg>
    --unique=<arg>,          -u<arg>
    --help,                  -h
@@ -29,6 +30,13 @@ Limits the problems to those that have less formulas than this limit.
 This is useful if some parts of malarea cannot cope (e.g. tptp_to_ladr
 takes ages on the CSR002+4.ax, which has 540294 formulas and 372664 symbols).
 Default is 0 - no limiting.
+
+=item B<<< --duplprint=<arg>, -d<arg> >>>
+
+If > 0, prints all the duplications to stdout. Useful e.g. for
+finding duplications in the whole MPTP, when run just on
+the thms.allasax file. Use the htmlize.pl script afterwards
+to link the results. Default is 0.
 
 =item B<<< --merge=<arg>, -m<arg> >>>
 
@@ -76,7 +84,8 @@ use IPC::Open2;
 use File::Spec;
 
 
-my ($gforgetlimit,  $gmerge,    $gunique);
+my ($gforgetlimit,  $gmerge,    $gunique,
+    $gduplprint);
 
 
 my ($help, $man);
@@ -84,6 +93,7 @@ my ($help, $man);
 Getopt::Long::Configure ("bundling");
 
 GetOptions('forgetlimit|f=i'    => \$gforgetlimit,
+	   'duplprint|d=i'    => \$gduplprint,
 	   'merge|m=i'    => \$gmerge,
 	   'unique|u=i'    => \$gunique,
 	   'help|h'          => \$help,
@@ -102,6 +112,7 @@ my $gflarenm   = shift(@ARGV);
 
 
 $gforgetlimit = 100000000 unless(defined($gforgetlimit));
+$gduplprint = 0 unless(defined($gduplprint));
 $gmerge = 1 unless(defined($gmerge));
 $gunique = 1 unless(defined($gunique));
 
@@ -198,6 +209,7 @@ sub Merge
 	if($#nmarr > 0)
 	{
 	    my $newname = $nmarr[0];
+	    print (join(',',@nmarr),"\n") if ($gduplprint > 0);
 	    $gfla2ref1{$rest} = [$newname];
 	    foreach my $nm (@nmarr)
 	    {
