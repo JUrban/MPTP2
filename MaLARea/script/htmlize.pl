@@ -67,6 +67,7 @@ print $query->start_html();
 
 while($_=<>)
 {
+    chop;
     my @refs = split(/\,/,$_);
     foreach my $ref (@refs)
     {
