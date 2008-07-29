@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.163 $
+## $Revision: 1.164 $
 
 
 =head1 NAME
@@ -51,7 +51,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --boostweight=<arg>,     -w<arg>
    --refsbgcheat=<arg>,     -r<arg>
    --alwaysmizrefs=<arg>,   -m<arg>
-   --tptpproofs=<arg>
+   --tptpproofs=<arg>,      -z<arg>
    --help,                  -h
    --man
 
@@ -368,7 +368,7 @@ If 2, references containing Mizar local constants are always
 included. These references are recognized by grepping
 for "\bc[0-9]+" in the formula symbols.
 
-=item B<<< --tptpproofs >>>
+=item B<<< --tptpproofs, -z<arg> >>>
 
 If > 0, try to get the TPTP format of all found proofs. This
 is now done by rerunning EP on the set of needed references found
@@ -529,7 +529,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'boostweight|w=i'    => \$gboostweight,
 	   'refsbgcheat|r=i'    => \$grefsbgcheat,
 	   'alwaysmizrefs|m=i'    => \$galwaysmizrefs,
-	   'tptpproofs'             => \$gtptpproofs,
+	   'tptpproofs|z=i'             => \$gtptpproofs,
 	   'help|h'          => \$help,
 	   'man'             => \$man)
     or pod2usage(2);
