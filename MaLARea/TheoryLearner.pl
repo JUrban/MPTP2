@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.162 $
+## $Revision: 1.163 $
 
 
 =head1 NAME
@@ -89,11 +89,7 @@ The name mappings are remembered, i.e., a mapping of problem names is kept,
 and for each problem, the original names of its formulas are kept.
 This can be used to observe the CASC solution format (see also --problemsfile).
 The default is 0 (experimental so far).
-The renaming algo is: downcase problem basenames, replace nonalphanumeric
-characters in them with '_', die if conflict detected. In each problem rename
-the conjecture to the problem's name.
-
-
+See uniquify.pl in the script directory for implementation.
 
 =item B<<< --fileprefix=<arg>, -e<arg> >>>
 
@@ -2291,6 +2287,11 @@ sub RunProblems
 		    exists $grefnr{$ref} or die "Unknown reference $ref in $file: $_";
 		    push( @{$proved_by{$conj}}, $ref);
 		}
+		if($gproblemsfile ne "")
+		{
+		    my $solution = $gltbnames{$conj}->[1];
+		    `cp $file.out1 $solution`;
+		}
 	    }
 	}
 
@@ -2329,6 +2330,11 @@ sub RunProblems
 		{
 		    my $regexp = '"^fof( *\(' . join('\|',@refs) . '\) *,"';
 		    `grep $regexp $file | bin/eproof -tAuto -xAuto --tstp-format - > $file.out1`;
+		    if($gproblemsfile ne "")
+		    {
+			my $solution = $gltbnames{$conj}->[1];
+			`cp $file.out1 $solution`;
+		    }
 		}
 	    }
 	    elsif ($spass_status=~m/Completion found/)
@@ -2362,6 +2368,11 @@ sub RunProblems
 		    my $ref = $1;
 		    exists $grefnr{$ref} or die "Unknown reference $ref in $file.vout: $_";
 		    push( @{$proved_by{$conj}}, $ref);
+		}
+		if($gproblemsfile ne "")
+		{
+		    my $solution = $gltbnames{$conj}->[1];
+		    `cp $file.vout $solution`;
 		}
 	    }
 	    else
@@ -2445,28 +2456,49 @@ sub GenerateProblemsFromCommonFile
 
 # Given a $problems_file, and $file_prefix
 # interpreted as a directory name, copy the files from $problems_file
-# into $file_prefix, and make note of the relationship in gltbnames
+# into $file_prefix, and make note of the relationship in gltbnames;
+# If additionally $guniquify > 0, the uniquify.pl script is called to do
+# the job, and its result problem and formula mappings are parsed into
+# %gltbnames .
 sub SetupProblemsFromProblemsFile
 {
     my ($file_prefix, $problems_file) = @_;
     die "Remove $file_prefix manually first!" if(-e $file_prefix);
     mkdir($file_prefix);
-    open(PF,$problems_file) or die "$problems_file not readable";
-    my %gltbnames = ();
-    while($_=<PF>)
+    %gltbnames = ();
+    if($guniquify > 0)
     {
-	if(m/^\s*(\S+)\s+(\S+)\s*$/)
+	`script/uniquify.pl  -f200000 $problems_file $file_prefix "$filestem.pmap" "$filestem.fmap"`;
+	open(PF,"$filestem.pmap") or die "$filestem.pmap not readable";
+	while($_=<PF>)
 	{
-	    my ($pname, $sname) = ($1,$2);
-	    die "$pname not readable!" unless(-e $pname);
-	    my ($volume,$directories,$file) = splitpath( $pname );
-	    die "Non-unique basenames not allowed: $file, $pname, $gltbnames{$file}->[0]"
-		if(exists $gltbnames{$file});
-	    `cp $pname $file_prefix`;
-	    $gltbnames{$file} = [$pname, $sname];
+	    if(m/^\s*(\S+)\s+(\S+)\s*(\S+)\s*$/)
+	    {
+		my ($file, $pname, $sname) = ($1,$2, $3);
+		die "$pname not readable!" unless(-e $file);
+		$gltbnames{$file} = [$pname, $sname];
+	    }
 	}
+	close(PF);
     }
-    close(PF);
+    else
+    {
+	open(PF,$problems_file) or die "$problems_file not readable";
+	while($_=<PF>)
+	{
+	    if(m/^\s*(\S+)\s+(\S+)\s*$/)
+	    {
+		my ($pname, $sname) = ($1,$2);
+		die "$pname not readable!" unless(-e $pname);
+		my ($volume,$directories,$file) = splitpath( $pname );
+		die "Non-unique basenames not allowed: $file, $pname, $gltbnames{$file}->[0]"
+		    if(exists $gltbnames{$file});
+		`cp $pname $file_prefix`;
+		$gltbnames{$file} = [$pname, $sname];
+	    }
+	}
+	close(PF);
+    }
 }
 
 
