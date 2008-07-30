@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.4 $
+## $Revision: 1.5 $
 
 =head1 NAME
 
@@ -245,6 +245,7 @@ sub ParseFileFlas
     return 0 if($#lines > $gforgetlimit);  ## forget about this one
     foreach $_ (@lines)
     {
+	$_ = FixQuoted($_) if(m/^ *fof\(.*['"].*/);
 	if(m/^ *fof\( *([^, ]+) *, *([^, ]+) *,(.*)/)
 	{
 
@@ -265,7 +266,44 @@ sub ParseFileFlas
     return 1;
 }
 
-
+## replace single/double quoted strings with something sane for malarea
+sub FixQuoted
+{
+    my ($fof) = @_;
+    $fof =~ s/[\\][']/qqq01/g;
+    $fof =~ s/[\\]["]/qqq02/g;
+    if($fof=~ m/^[^"]*['].*/)   ## the first quoting is single, kill it first
+    {
+	my @parts = split(/\'/,$fof);
+	my $i;
+	for ($i = 1; $i < $#parts; $i=$i+2)
+	{
+	    $parts[$i] =~ s/[^_a-zA-Z0-9]/'_qqq' . ord($&)/ge;
+	}
+	$fof = join('qqq01', @parts);
+    }
+    if($fof=~ m/^[^']*["].*/)   ## the first/remaining quoting is double, kill it now
+    {
+	my @parts = split(/\"/,$fof);
+	my $i;
+	for ($i = 1; $i < $#parts; $i=$i+2)
+	{
+	    $parts[$i] =~ s/[^_a-zA-Z0-9]/'_qqq' . ord($&)/ge;
+	}
+	$fof = join('qqq02', @parts);
+    }
+    if($fof=~ m/^[^"]*['].*/)   ## finally kill the possible nonfirst single quoting
+    {
+	my @parts = split(/\'/,$fof);
+	my $i;
+	for ($i = 1; $i < $#parts; $i=$i+2)
+	{
+	    $parts[$i] =~ s/[^_a-zA-Z0-9]/'_qqq' . ord($&)/ge;
+	}
+	$fof = join('qqq01', @parts);
+    }
+    return $fof;
+}
 
 sub Main
 {
