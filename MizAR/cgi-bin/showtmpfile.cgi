@@ -28,6 +28,7 @@ my $query	  = new CGI;
 my $input_file	  = $query->param('file');
 my $input_tmp     = $query->param('tmp');
 my $input_refresh  = $query->param('refresh');
+my $content_type = $query->param('content-type');
 my $File0 = "$TemporaryDirectory/matp_" . $input_tmp . "/" . $input_file;
 
 my $print_refresh = 0;
