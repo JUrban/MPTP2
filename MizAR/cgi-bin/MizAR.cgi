@@ -12,6 +12,7 @@ use HTTP::Request::Common;
 use LWP::Simple;
 
 my $MyUrl = 'http://octopi.mizar.org/~mptp';
+my $PalmTreeUrl = $MyUrl . "/PalmTree.jpg";
 my $Xsl4MizarDir = "/home/mptp/public_html/xsl4mizar";
 my $Mizfiles = "/home/mptp/public_html/mml";
 my $utilspl =  "/home/mptp/public_html/cgi-bin/bin/utils.pl";
@@ -31,6 +32,8 @@ my $miz2html = "$Xsl4MizarDir/miz.xsl";
 my $mizpl = "$Xsl4MizarDir/mizpl.xsl";
 my $doatproof = 0;
 my $atproof = '@' . 'proof';
+my $idv_img = "<img SRC=\"$PalmTreeUrl\" alt=\"Show IDV proof tree\" title=\"Show IDV proof tree\">";
+
 
 my $query	  = new CGI;
 my $ProblemSource = $query->param('ProblemSource');
@@ -59,7 +62,8 @@ my $ProblemFileErr2 = $ProblemFileOrig . ".err2";
 my $MizOutput = $ProblemFileOrig . ".mizoutput";
 my $ExpOutput = $ProblemFileOrig . ".expoutput";
 my $ProblemFileBex = $ProblemFileOrig . ".bex";
-my $lbytmpdir = $PidNr . '\&ATP=refs\&HTML=1';
+my $lbytmpdir = $PidNr;
+my $lbycgiparams = '\&ATP=refs\&HTML=1';
 my $lbytptpcgi= $MyUrl . '/cgi-bin/showby.cgi';
 
 my $SnowDataDir =     $Mizfiles . "/mptp/snowdata";
@@ -243,7 +247,7 @@ sub StartSNoW
 
     system("nohup $advisor -p $sport -a $aport -o $SnowSymOffset $SnowFileStem > $AdvisorOutput 2>&1 &");
 
-    $lbytmpdir = $lbytmpdir . '\&ap=' . $aport;
+    $lbycgiparams = $lbycgiparams . '\&ap=' . $aport;
     return ($aport, $sport);
 }
 
@@ -306,7 +310,7 @@ unless($text_mode)
 
     system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml 2>$ProblemFileXml.errabs > $ProblemFileXml.abs");
 
-    system("time $xsltproc --param by_titles 1 --param const_links 1 --param ajax_by 1 --param linkbytoself 1 --param linkby 3 --param lbytptpcgi \\\'$lbytptpcgi\\\' --param lbytmpdir \\\'$lbytmpdir\\\' --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
+    system("time $xsltproc --param by_titles 1 --param const_links 1 --param ajax_by 1 --param linkbytoself 1 --param linkby 3 --param lbytptpcgi \\\'$lbytptpcgi\\\' --param lbytmpdir \\\'$lbytmpdir\\\' --param lbycgiparams \\\'$lbycgiparams\\\' --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
 
 
     system("time $xsltproc $mizpl $ProblemFileXml.abs  > $ProblemFileXml2 2>$ProblemFileXml.errpl");
