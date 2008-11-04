@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-## $Revision: 1.165 $
+## $Revision: 1.166 $
 
 
 =head1 NAME
@@ -1249,6 +1249,46 @@ sub LoadResults
 # DumpResults();
 # exit;
 
+
+# Include all allowed Mizar refs into $spec
+# and delete them from $reserve. All refs with local consts are possibly
+# added too if $galwaysmizrefs == 2.
+# Modifies $spec and $reserve.
+sub AddMizarRefs
+{
+    my ($spec, $reserve, $all_refs) = @_;
+    my $ref1;
+    my %mizrefs = ();
+    my %specrefs = ();
+    @specrefs{ @$spec } = ();
+    foreach $ref1 (@$all_refs)
+    {
+	if(!(exists $specrefs{$ref1})
+	   &&
+	   ((($galwaysmizrefs == 1) && ($ref1 =~ m/^[tldes][0-9]+_/)
+	     && (!($ref1 =~ m/^t[0-9]+_(numerals|boole|subset|arithm|real)$/)))
+	    ||
+	    (($galwaysmizrefs == 2) && (exists $glocal_consts_refs{$ref1}))))
+	{
+	    push(@$spec, $ref1);
+	    $mizrefs{$ref1} = ();
+	}
+    }
+
+    my @newreserve = ();
+    foreach $ref1 (@$reserve)
+    {
+	if(!(exists $mizrefs{$ref1}))
+	{
+	    push(@newreserve, $ref1);
+	}
+    }
+    @$reserve = @newreserve;
+}
+
+
+# Processes one specification suggested by SNoW, and possibly prints
+# the task using PrintPruned.
 # First field in $spec1 is assumed to be the conjecture here.
 # This is done only for unproved entries in %gresults; %gresults
 # gets updated with entries with 'Unknown' SZSStatus, and -1 timelimit;
@@ -1269,36 +1309,7 @@ sub HandleSpec
 
     # include all Mizar refs into @spec if we are told so,
     # and delete them from @reserve
-    if ($galwaysmizrefs > 0)
-    {
-	my $ref1;
-	my %mizrefs = ();
-	my %specrefs = ();
-	@specrefs{ @spec } = ();
-	foreach $ref1 (@all_refs)
-	{
-	    if(!(exists $specrefs{$ref1})
-	       &&
-	       ((($galwaysmizrefs == 1) && ($ref1 =~ m/^[tldes][0-9]+_/)
-		 && (!($ref1 =~ m/^t[0-9]+_(numerals|boole|subset|arithm|real)$/)))
-		||
-		(($galwaysmizrefs == 2) && (exists $glocal_consts_refs{$ref1}))))
-	    {
-		push(@spec, $ref1);
-		$mizrefs{$ref1} = ();
-	    }
-	}
-
-	my @newreserve = ();
-	foreach $ref1 (@reserve)
-	{
-	    if(!(exists $mizrefs{$ref1}))
-	    {
-		push(@newreserve, $ref1);
-	    }
-	}
-	@reserve = @newreserve;
-    }
+    AddMizarRefs(\@spec, \@reserve, \@all_refs) if ($galwaysmizrefs > 0);
 
     ## first do srassification - that might avoid addition of more relevant axioms just to
     ## kill countersatisfiability (because the countersatisfiability gets killed by srass);
@@ -1433,8 +1444,11 @@ sub PrintPruned
     close(PRUNED);
 }
 
-# writes a new spec_$iter file, created by testing the to_prove_$iter file
-# on net_$iter net; the .eval file is no longer written - it goes up to Gigabytes for 
+# Run SNoW in testing mode on .test_$iter1 and .net_$iter, limiting
+# the results to $wantednr; if possible, re-use previous SNoW evaluation.
+# Process the results calling HandleSpec.
+# Also writes a new spec_$iter file, and cheks test_$iter1 against the to_prove_$iter file.
+# The .eval file is no longer written - it goes up to Gigabytes for 
 # all of MML
 # $newly_proved tells if we have to re-evaluate, or can re-use previous evaluation.
 # Note that @spec always contains its conjecture.
@@ -1478,6 +1492,8 @@ sub SelectRelevantFromSpecs
     my $toread = scalar(@to_prove);  ## only used for snowserver
     ## experimental comm through server;
     ## we rely on conjecture being the last number in each testing example
+    ## This does not work well because of pipe buffering issues - would have
+    ## to be reimplemented using sockets.
     if(($gsnowserver > 0) && ($iter > 3))
     {
 
@@ -1500,6 +1516,9 @@ sub SelectRelevantFromSpecs
     my $previter1 = ($grecadvice > 0) ? $previter . "_" . $recurse : $previter;
     my $evalfile = ($greuseeval > 0) ? "$filestem.eval_$iter1" : "/dev/null";
     my $prevevalfile = "$filestem.eval_$previter1";
+
+    ## run SNoW in testing mode on .test_$iter1 and .net_$iter, limiting
+    ## the results to $wantednr; if possible, re-use previous SNoW evaluation
     if(!(($gsnowserver > 0) && ($iter > 3)))
     {
 	my $snow_pid = (($greuseeval > 0) &&
@@ -1509,6 +1528,7 @@ sub SelectRelevantFromSpecs
 #	or die("Cannot start snow: $iter1");
     }
 
+    ## process the the evaluations
     my $skipdata = 0;   ## skips training and bogus evals if > 0
     my $exs = 0;
  LINE:
