@@ -27,6 +27,7 @@ my $atproof = '@' . 'proof';
 my $query	  = new CGI;
 my $input_file	  = $query->param('file');
 my $input_tmp     = $query->param('tmp');
+my $input_raw     = $query->param('raw');
 my $input_refresh  = $query->param('refresh');
 my $content_type = $query->param('content-type');
 my $File0 = "$TemporaryDirectory/matp_" . $input_tmp . "/" . $input_file;
@@ -47,18 +48,18 @@ if (defined($input_refresh))
 if ($print_refresh == 1) { print $query->header(-Refresh=>'2'); }
 else { print $query->header(); }
 
-print $query->start_html("File Output");
+print $query->start_html("File Output") unless defined($input_raw);
 
 if (-e $File0) 
 {
     open(F,$File0);
 
 # print $File1;
-    print "<pre>";
+    print "<pre>" unless defined($input_raw);
 #    open(F,$File1);
     { local $/; $_= <F>; print $_; }
-    print "<pre/>";
+    print "<pre/>" unless defined($input_raw);
     close(F);
 }
 
-print $query->end_html;
+print $query->end_html unless defined($input_raw);
