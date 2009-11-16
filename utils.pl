@@ -20,13 +20,14 @@
 %% set this to the location of Prolog files created from MML
 %% ('pl' directory in the distro).
 %mml_dir("/home/urban/miztmp/distro/pl/").
-mml_dir("/home/urban/mptp/pl/").
+%mml_dir("/home/urban/mptp/pl/").
+mml_dir("/home/urban/rsrch/MPTP2/pl/").
 %mml_dir("/big/urban/miztmp/mml3/tmp/").
 mml_dir_atom(A):- mml_dir(S), string_to_atom(S,A).
 
 %% version of MML needed for requirements (encoding of numbers)
-mml_version([4,48,930]).
-%mml_version([4,100,1011]).
+%mml_version([4,48,930]).
+mml_version([4,100,1011]).
 %% switch to fail for debug
 optimize_fraenkel. % :- fail.
 
@@ -65,8 +66,9 @@ opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme insta
 	       opt_ALLOWED_REF_INFO,    %% .allowed_local file with accessible references is printed
 	       opt_PROVED_BY_INFO,      %% .proved_by0 file with orig refs (no bg) printed
 	       opt_DBG_LEVS_POS,        %% print a debugging info for levels and positions
-	       opt_NO_FRAENKEL_CONST_GEN %% do not generalize local consts when abstracting fraenkels
+	       opt_NO_FRAENKEL_CONST_GEN, %% do not generalize local consts when abstracting fraenkels
 	                                 %% (useful for fast translation, when consts are not loaded)
+	       opt_LEARN_EDGE            %% print edges for learning
 	      ]).
 
 %%%%%%%%%%%%%%%%%%%% End of options %%%%%%%%%%%%%%%%%%%%
@@ -178,6 +180,9 @@ d2l([],[]).
 d2l(X,Y):- X =.. Z, d2ls(Z,Y).
 d2ls([],[]).
 d2ls([H|T],[H1|T1]):- d2l(H,H1), d2ls(T,T1).
+
+term2list(X,X):- (atomic(X);var(X)),!.
+term2list(X,[H|T1]):- X =.. [H|T], maplist(term2list,T,T1).
 
 declare_mptp_predicates:-
  abolish(fof/4),
@@ -2316,8 +2321,9 @@ get_snow_symnr(Ref,Nr):- flag(snow_symnr,N,N+1), Nr is N+1,
 %% now prints in the article order, and also respects
 %% the order of defs and theorems in the article -
 %% needed for incremental learning
-%% ##TEST: :- mk_snow_input_for_learning(Snow1).
-mk_snow_input_for_learning(File):-
+%% ##TEST: :- mk_snow_input_for_learning(snow1,[]).
+%% ##TEST: :- mk_snow_input_for_learning(snow3,[opt_LEARN_EDGE, opt_LEARN_SYMS_SMALL]).
+mk_snow_input_for_learning(File,Options):-
 	declare_mptp_predicates,
 	load_theorems,
 	install_index,
@@ -2326,8 +2332,14 @@ mk_snow_input_for_learning(File):-
 	abolish(snow_refnr/2),
 	dynamic(snow_symnr/2),
 	dynamic(snow_refnr/2),
-	flag(snow_refnr,_,0),
-	flag(snow_symnr,_,100000),
+	(
+	 member(opt_LEARN_SYMS_SMALL, Options) ->
+	 flag(snow_refnr,_,100000),	 
+	 flag(snow_symnr,_,0)
+	;
+	 flag(snow_refnr,_,0),
+	 flag(snow_symnr,_,100000)
+	),
 	logic_syms(LogicSyms),
 	concat_atom([File,'.train'], TrainFile),
 	concat_atom([File,'.refnr'], RefFile),
@@ -2347,15 +2359,30 @@ mk_snow_input_for_learning(File):-
 	    findall(Ref,(member(Ref,Refs),atom_chars(Ref,[C|_]),
 			 member(C,[t,d])), Refs1)
 	  ),
+	 (
+	  member(opt_LEARN_EDGE,Options) ->	  
+	  sort_transform_top(Fla,Fla1),
+	  numbervars(Fla1,0,_),
+	  term2list(Fla1,LL1),
+	  flatten(LL1,LL2),
+	  length(LL2,Length1),
+	  write(Length1),
+	  write(';'),
+	  print_as_numbered_tree(Fla1),
+	  maplist(get_snow_refnr,[Name|Refs1],RefNrs),
+	  concat_atom(RefNrs,',',ToPrint),
+	  write(ToPrint), write(':'), nl
+	 ;
 	  collect_symbols_top(Fla, AllSyms),
 	  subtract(AllSyms,LogicSyms,Syms),
-	  Syms = [_|_],
+	  Syms = [_|_],		 
 	  maplist(get_snow_symnr,Syms,SymNrs),
 	  maplist(get_snow_refnr,[Name|Refs1],RefNrs),
 	  append(SymNrs,RefNrs,AllNrs),
 	  concat_atom(AllNrs,',',ToPrint),
-	  write(ToPrint), write(':'), nl,
-	  fail
+	  write(ToPrint), write(':'), nl
+	 ),
+	 fail
 	;
 	  told
 	),
@@ -2365,6 +2392,37 @@ mk_snow_input_for_learning(File):-
 	tell(RefFile),
 	listing(snow_refnr),
 	told.
+
+
+
+
+%% print_as_numbered_tree(+Term)
+%%
+%% prints term edges in the format 11:23,45:3,56:78
+%% numbering the vertices uniquely
+print_as_numbered_tree(Term) :- p2t(Term),!.
+
+p2t(X):- (atomic(X);var(X);is_numvar(X)),!.
+p2t(X):-
+	X =.. [H|T],
+	get_snow_symnr(H,HNr),
+	print_edges_to(HNr,T),
+	checklist(p2t, T).
+
+%% print_edges_to(+From,+ToTerms)
+print_edges_to(_,[]).
+print_edges_to(From,[H|T]):-
+	write(From),
+	write(':'),
+	(
+	 (atomic(H);is_numvar(H)) -> H1 = H
+	;
+	 H=.. [H1|_]
+	),
+	get_snow_symnr(H1,HNr),
+	write(HNr),
+	write(','),
+	print_edges_to(From,T).
 
 %% translate numerical spec into Refs and assert them
 %% not used any more, implementing the translation in perl
