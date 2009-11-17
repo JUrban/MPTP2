@@ -68,7 +68,8 @@ opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme insta
 	       opt_DBG_LEVS_POS,        %% print a debugging info for levels and positions
 	       opt_NO_FRAENKEL_CONST_GEN, %% do not generalize local consts when abstracting fraenkels
 	                                 %% (useful for fast translation, when consts are not loaded)
-	       opt_LEARN_EDGE            %% print edges for learning
+	       opt_LEARN_EDGE,           %% print fromula as labeled graph edges for learning
+	       opt_LEARN_SYMS_SMALL      %% symbols are numbered starting from 0 instead of references
 	      ]).
 
 %%%%%%%%%%%%%%%%%%%% End of options %%%%%%%%%%%%%%%%%%%%
@@ -2322,6 +2323,9 @@ get_snow_symnr(Ref,Nr):- flag(snow_symnr,N,N+1), Nr is N+1,
 %% the order of defs and theorems in the article -
 %% needed for incremental learning
 %% ##TEST: :- mk_snow_input_for_learning(snow1,[]).
+%%
+%% With the following options the formula is printed as a graph, and with symbol
+%% numbering starting at 0 (instead of reference numbering):
 %% ##TEST: :- mk_snow_input_for_learning(snow3,[opt_LEARN_EDGE, opt_LEARN_SYMS_SMALL]).
 mk_snow_input_for_learning(File,Options):-
 	declare_mptp_predicates,
