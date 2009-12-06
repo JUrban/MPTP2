@@ -2304,6 +2304,41 @@ mk_proved_by_for_malarea(File):-
 	  told
 	).
 
+%%%%%%%%%%%%%%%%%%% Get the used_by info %%%%%%%%%%%%%%%%%%%%
+create_used_by(_Options):-
+	declare_mptp_predicates,
+	load_theorems,
+	install_index,
+	all_articles(Articles),
+	abolish(used_by/2),
+	dynamic(used_by/2),
+	(
+	 member(A,[tarski|Articles]),
+	 fof(Name,Kind,_,file(A,Name),Info),
+	 Kind = theorem,
+	 Info = [mptp_info(_,[],theorem,_,_), inference(_,_,Refs) |_],
+	 findall(Ref,(member(Ref,Refs),atom_chars(Ref,[C|_]),
+		     member(C,[t,d]), assert(used_by(Ref,Name))), _),
+	 fail
+	;
+	 true
+	).
+
+% should be preceded by create_used_by
+print_used_by(File, _Options):-
+	all_articles(Articles),
+	tell(File),
+	(
+	 member(A,[tarski|Articles]),
+	 fof(Name,_,_,file(A,Name),_),
+	 findall(Ref, used_by(Name, Ref), Refs),
+	 concat_atom(Refs,',',ToPrint),
+	 write(Name), write(':'), write(ToPrint), nl,
+	 fail
+	;
+	 told
+	).
+
 
 %%%%%%%%%%%%%%%%%%%% Create training data for SNoW %%%%%%%%%%%%%%%%%%%%
 
