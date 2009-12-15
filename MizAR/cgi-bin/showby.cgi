@@ -17,7 +17,8 @@ sub szs_RESOUT      ()  { 'ResourceOut' }
 sub szs_GAVEUP      ()  { 'GaveUp' }   # system exited before the time limit for unknown reason
 
 
-my $MyUrl = 'http://octopi.mizar.org/~mptp';
+# my $MyUrl = 'http://octopi.mizar.org/~mptp';
+my $MyUrl = 'http://mws.cs.ru.nl/~mptp';
 my $PalmTreeUrl = $MyUrl . "/PalmTree.jpg";
 my $TemporaryDirectory = "/tmp";
 my $TemporaryProblemDirectory = "$TemporaryDirectory/matp_$$";

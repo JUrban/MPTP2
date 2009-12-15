@@ -11,7 +11,8 @@ use IPC::Open2;
 use HTTP::Request::Common;
 use LWP::Simple;
 
-my $MyUrl = 'http://octopi.mizar.org/~mptp';
+# my $MyUrl = 'http://octopi.mizar.org/~mptp';
+my $MyUrl = 'http://mws.cs.ru.nl/~mptp';
 my $PalmTreeUrl = $MyUrl . "/PalmTree.jpg";
 my $Xsl4MizarDir = "/home/mptp/public_html/xsl4mizar";
 my $Mizfiles = "/home/mptp/public_html/mml";
