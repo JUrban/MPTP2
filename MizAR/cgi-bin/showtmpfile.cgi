@@ -29,6 +29,7 @@ my $input_file	  = $query->param('file');
 my $input_tmp     = $query->param('tmp');
 my $input_raw     = $query->param('raw');
 my $input_refresh  = $query->param('refresh');
+my $input_pos  = $query->param('pos');
 my $content_type = $query->param('content-type');
 my $File0 = "$TemporaryDirectory/matp_" . $input_tmp . "/" . $input_file;
 
@@ -57,7 +58,15 @@ if (-e $File0)
 # print $File1;
     print "<pre>" unless defined($input_raw);
 #    open(F,$File1);
-    { local $/; $_= <F>; print $_; }
+if (defined($input_pos))
+{
+    my $pos1 = $input_pos - 5;
+    my $lnr = 0;
+    while($_=<F>) {if($lnr++ > $pos1) {print $_;}}
+}
+
+
+    else { local $/; $_= <F>; print $_; }
     print "<pre/>" unless defined($input_raw);
     close(F);
 }
