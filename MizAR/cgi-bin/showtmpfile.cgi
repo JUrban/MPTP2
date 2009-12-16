@@ -60,7 +60,7 @@ if (-e $File0)
 #    open(F,$File1);
 if (defined($input_pos))
 {
-    my $pos1 = $input_pos - 5;
+    my $pos1 = $input_pos - 3;
     my $lnr = 0;
     while($_=<F>) {if($lnr++ > $pos1) {print $_;}}
 }
