@@ -163,6 +163,16 @@ sub SetupArticleFiles
 	while (defined($UploadLine = <$UploadFileHandle>)) { print PFH $UploadLine; };
 	close($UploadFileHandle);
     }
+    elsif ($ProblemSource eq "URL") 
+    {
+	$FormulaURL = $CGI->param('FormulaURL');
+	if (!defined($FormulaURL)) 
+	{
+	    die("ERROR: No URL supplied\n");
+	}
+	getstore($FormulaURL,$ProblemFileOrig) or
+	    die("ERROR: Could not fetch from $FormulaURL");
+    }
     elsif (!($input_article eq ""))
     {
 #----Convert \r (DOS EOLN) to \n (UNIX EOLN)
