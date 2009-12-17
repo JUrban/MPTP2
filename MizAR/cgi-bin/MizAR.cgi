@@ -165,7 +165,7 @@ sub SetupArticleFiles
     }
     elsif ($ProblemSource eq "URL") 
     {
-	$FormulaURL = $CGI->param('FormulaURL');
+	my $FormulaURL = $CGI->param('FormulaURL');
 	if (!defined($FormulaURL)) 
 	{
 	    die("ERROR: No URL supplied\n");
