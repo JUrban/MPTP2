@@ -234,7 +234,8 @@ sub Accommodate
 sub MakePieces
 {
     my ($nrpieces,$plinesnr, $tppos) = @_;
-    return MakePiecesSimple($nrpieces,$plinesnr, $tppos);
+#    return MakePiecesSimple($nrpieces,$plinesnr, $tppos);
+    return MakePiecesByPSize($nrpieces,$plinesnr, $tppos);
 }
 
 ## just divide from beginning to end, disregarding proof size
@@ -257,6 +258,43 @@ sub MakePiecesSimple
     }
     return \@res;
 }
+
+## divide trying to get equal proof sizes, greedy algo
+sub MakePiecesByPSize
+{
+    my ($nrpieces,$plinesnr, $tppos) = @_;
+    my @tpp = @$tppos;
+
+    ## array of pieces with positions
+    my @pieces = ();
+    foreach my $nr (0 .. $nrpieces-1) { push(@pieces,[]); }
+
+    ## array of total proof sizes of pieces with their positions in @pieces,
+    ## always sorted form the least proof size
+    my @sizes = ();
+    foreach my $nr (0 .. $nrpieces-1) { push(@sizes,[0,$nr]); }
+
+    ## sort descending by the number of proof lines
+    foreach my $tp (sort { $b->[4] <=> $a->[4] } (@tpp))
+    {
+	my $tpsize = $tp->[4];
+	my $piece = $pieces[$sizes[0]->[1]];  # the smallest piece
+	push(@$piece, $tp);
+	$sizes[0]->[0] += $tpsize;
+	@sizes = sort { $a->[0] <=> $b->[0] } @sizes;
+    }
+
+    ## now sort positions in each piece by  bl
+    foreach my $piece (@pieces) 
+    { 
+	@$piece = sort { $a->[0] <=> $b->[0]  } @$piece;
+    }
+
+    return \@pieces;
+}
+
+
+
 
 ## verify one chunk in a speciual subdirectory
 ## $piece is supposed to be sorted, $tpppos too
