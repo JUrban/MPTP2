@@ -135,6 +135,7 @@ the Free Software Foundation; either version 2 of the License, or
 
 
 use strict;
+use Cwd;
 use Pod::Usage;
 use Getopt::Long;
 use XML::LibXML;
@@ -170,6 +171,9 @@ pod2usage(-exitstatus => 0, -verbose => 2) if($man);
 pod2usage(2) if ($#ARGV != 0);
 
 my $gfilestem   = shift(@ARGV);
+if($gfilestem =~ m/(.*)[.]miz$/) { $gfilestem = $1;}
+
+my $gtopdir = getcwd();
 
 $gparallelize = 1 unless(defined($gparallelize));
 $gerrorsonly = 0 unless(defined($gerrorsonly));
@@ -187,9 +191,12 @@ unless(defined($gmakeenv))
     $gmakeenv = (-e "$gmizfiles/bin/makeenv") ? "$gmizfiles/bin/makeenv" : "makeenv";
 }
 
+my $gaddfmsg = (-e "$gmizfiles/bin/addfmsg") ? "$gmizfiles/bin/addfmsg" : "addfmsg";
+my $gerrflag = (-e "$gmizfiles/bin/errflag") ? "$gmizfiles/bin/errflag" : "errflag";
+
 $gtmpdir = "" unless(defined($gtmpdir));
 
-my $gquietflag = ($gquiet == 1) ? ' -q ' : '';
+my $gquietflag = $gquiet ? ' -q ' : '';
 my $gaflag = ($ganalyze == 1) ? ' -a ' : '';
 
 $ENV{"MIZFILES"}= $gmizfiles;
@@ -224,8 +231,8 @@ sub Accommodate
     }
     elsif($gerrorsonly == 0) 
     { 
-	system("errflag $filestem");
-	system("addfmsg $filestem $gmizfiles/mizar");
+	system("$gerrflag $filestem");
+	system("$gaddfmsg $filestem $gmizfiles/mizar");
     }
 }
 
@@ -284,13 +291,18 @@ sub MakePiecesByPSize
 	@sizes = sort { $a->[0] <=> $b->[0] } @sizes;
     }
 
-    ## now sort positions in each piece by  bl
+    my @res = ();
+    ## now sort positions in each piece by bl, remove empty pieces
     foreach my $piece (@pieces) 
     { 
-	@$piece = sort { $a->[0] <=> $b->[0]  } @$piece;
+	if(scalar(@$piece) > 0)
+	{
+	    @$piece = sort { $a->[0] <=> $b->[0]  } @$piece;
+	    push(@res, $piece);
+	}
     }
 
-    return \@pieces;
+    return \@res;
 }
 
 
@@ -321,7 +333,7 @@ sub SetupEnvFiles
    {
        my $f = $filestem . $ext;
        unlink("$mydir/$f");
-       `ln -s ../$f $mydir/$f`;
+       `ln -s $gtopdir/$f $mydir/$f`;
    }
 }
 
@@ -458,8 +470,8 @@ sub Verify
 
     if($gerrorsonly == 0) 
     { 
-	system("errflag $filestem");
-	system("addfmsg $filestem $gmizfiles/mizar");
+	system("$gerrflag $filestem");
+	system("$gaddfmsg $filestem $gmizfiles/mizar");
     }
 }
 
