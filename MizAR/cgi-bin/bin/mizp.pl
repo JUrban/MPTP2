@@ -48,7 +48,8 @@ By default the full checking takes place.
 
 =item B<<< --htmlize=<arg>, -l<arg> >>>
 
-If greater than 0, produce also html.
+If greater than 0, produce also html, however only the value of 2
+is compatible with parallelization.
 If 1, does only the basic html-ization using miz.xsl.
 If 2, uses addabsrefs.xsl first, and then runs mix.xsl.
 In both cases, we use ajax proofs and parallelize.
@@ -386,15 +387,15 @@ sub MakePiecesByPSize
 
 ## all the ajax proofs go usually into $gtopdir/proofs - to be in one place
 
-my $miz2html_params = "--param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$gmizhtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param ajax_proofs 1 ";
+my $miz2html_params = "--param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$gmizhtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 ";
 
 sub Htmlize
 {
-    my ($myfstem, $htmlize, $ajax_proof_dir) = @_;
+    my ($myfstem, $htmlize, $ajax_proofs, $ajax_proof_dir) = @_;
     if($htmlize == 2)
     {
 	system("xsltproc $addabsrefs $myfstem.xml 2> $myfstem.xml.errabs > $myfstem.xml.abs");
-	system("xsltproc $miz2html_params --param proof_links 1 -param ajax_proof_dir \\\'$ajax_proof_dir\\\' $miz2html $myfstem.xml.abs 2>$myfstem.xml.errhtml > $myfstem.html");
+	system("xsltproc $miz2html_params --param proof_links 1 --param ajax_proofs $ajax_proofs -param ajax_proof_dir \\\'$ajax_proof_dir\\\' $miz2html $myfstem.xml.abs 2>$myfstem.xml.errhtml > $myfstem.html");
     }
     elsif($htmlize == 1)
     {
@@ -402,6 +403,61 @@ sub Htmlize
     }    
 }
 
+# file-based merging of ajax proofs,
+# assumes ajax_proofs==2 
+sub MergeHtmlProofs
+{
+    my ($myhtml, $resulthtml, $ajax_proof_dir) = @_;
+    #DEBUG print join(',',($myhtml, $resulthtml, $ajax_proof_dir));
+    if(open(IN,$myhtml) && open(OUT,">$resulthtml"))
+    {
+	while($_=<IN>)
+	{
+	    if(m/(.*)<span +filebasedproofinsert=\"([0-9_]+)\"><\/span><span class=\"kw\">\@proof .. end;<\/span>(.*)/)
+	    {
+		my ($pre,$proofnr,$post) = ($1, $2, $3);
+		if(open(AP,"$ajax_proof_dir/$proofnr"))
+		{
+		    my @all_lines = <AP> ; close(AP);
+		    shift @all_lines; # remove the header
+		    # $post =~ s/^<br>//;
+		    print OUT "$pre";
+		    print OUT ('<div>', "\n",
+			       '<a class="txt" onclick="hs2(this)" href="javascript:()" title="', 
+			       $proofnr,
+			       '"><span class="kw">proof </span></a>');
+		    
+		    print OUT @all_lines;
+		    print OUT '<span class="kw">end;</span></div>';
+		    print OUT "$post\n";
+		}
+		else {print "$ajax_proof_dir/$proofnr failed";}
+	    }
+	    elsif(m/(.*)<span filebasedproofinsert=\"([0-9_]+)\"><\/span>(.*)/)
+	    {
+		my ($pre,$proofnr,$post) = ($1, $2, $3);
+		if(open(AP,"$ajax_proof_dir/$proofnr"))
+		{
+		    my @all_lines = <AP> ; close(AP);
+		    shift @all_lines; # remove the header
+		    print OUT "$pre";
+		    print OUT @all_lines;
+		    print OUT "$post\n";
+		}
+	    }
+	    else
+	    {
+		print OUT $_;
+	    }
+	}
+    }
+}
+
+sub ChunkDirName 
+{
+    my ($filestem, $chunk) = @_;
+    return $gtmpdir . $filestem . "__" . $chunk;
+}
 
 ## verify one chunk in a speciual subdirectory
 ## $piece is supposed to be sorted, $tpppos too
@@ -410,13 +466,14 @@ sub VerifyProofChunk
     my ($filestem, $chunk, $piece, $tppos, $htmlize) = @_;
 #    my @tpp = @$tppos;
 #    my @piece = @$piece;
-    my $mydir = $gtmpdir . $filestem . "__" . $chunk;
+    my $mydir = ChunkDirName($filestem, $chunk);
     my $myfstem = "$mydir/$filestem";
     mkdir($mydir);
     SetupEnvFiles($filestem, $mydir);
     CreateAtSignFile($filestem, $mydir, $chunk, $piece, $tppos);
     system("$gverifier $gquietflag $gaflag $myfstem");
-    Htmlize($myfstem, $htmlize, "proofs");
+    Htmlize($myfstem, $htmlize, 2, "proofs");
+#    MergeHtmlProofs("$myfstem.html", "$filestem.html.$chunk", "proofs/$filestem");
 }
 
 # extensions of the environmental files
@@ -504,7 +561,7 @@ sub MergeErrors
     my %errors = ();
     foreach my $chunk (1 .. $piecesnr)
     {
-	if(open(ERR, $gtmpdir . $filestem . "__" . $chunk . '/' . $filestem . '.err'))
+	if(open(ERR, ChunkDirName($filestem, $chunk) . '/' . $filestem . '.err'))
 	{
 	    while($_=<ERR>) { $errors{$_} = (); };
 	    close(ERR);
@@ -588,17 +645,18 @@ sub Verify
 
 	    foreach (@childs) { waitpid($_, 0);}
 	    MergeErrors($filestem, scalar(@$ppieces));
+	    MergeHtmlProofs(ChunkDirName($filestem,1) . "/$filestem.html", "$filestem.html", "proofs/$filestem");
 	}
 	else
 	{
 	    system("$gverifier $gquietflag $gaflag $filestem");
-	    Htmlize($filestem, $ghtmlize, "proofs");
+	    Htmlize($filestem, $ghtmlize, 0, "proofs");
 	}
     }
     else
     {
 	system("$gverifier $gquietflag $gaflag $filestem");
-	Htmlize($filestem, $ghtmlize, "proofs");
+	Htmlize($filestem, $ghtmlize, 0, "proofs");
     }
 
     if($gerrorsonly == 0) 
@@ -609,7 +667,7 @@ sub Verify
 }
 
 open(MIZ,$miz) or die "$miz not readable";
-while($_=<MIZ>) { push(@glines, $_); };
+@glines =<MIZ>;
 close(MIZ);
 
 Accommodate($gfilestem);
