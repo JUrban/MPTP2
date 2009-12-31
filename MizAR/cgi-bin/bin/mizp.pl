@@ -11,10 +11,12 @@ mizp.pl -j16 ~/a
  Options:
    --parallelize=<arg>,     -j<arg>
    --errorsonly=<arg>,      -e<arg>
-   --analyze=<arg>,         -a<arg>
+   --analyze,               -a
    --htmlize=<arg>,         -l<arg>
    --tptpize=<arg>,         -t<arg>
    --mizfiles=<arg>,        -m<arg>
+   --mizhtml=<arg>,         -H<arg>
+   --xsldir=<arg>,          -x<arg>
    --verifier=<arg>,        -v<arg>
    --makeenv=<arg>,         -n<arg>
    --quiet,                 -q
@@ -38,15 +40,18 @@ This is useful for Emacs or remote processing.
 Default is 0 - works like the mizf script, putting 
 errors directly into the .miz file.
 
-=item B<<< --analyze=<arg>, -a<arg> >>>
+=item B<<< --analyze, -a >>>
 
-When 1, only run analyzer (producing XML), ommit calling the Mizar checker.
+Only run analyzer (producing XML), ommit calling the Mizar checker.
 This can be useful when only producing HTML or TPTP-izing.
-Default is 0 - which means full checking takes place.
+By default the full checking takes place.
 
 =item B<<< --htmlize=<arg>, -l<arg> >>>
 
 If greater than 0, produce also html.
+If 1, does only the basic html-ization using miz.xsl.
+If 2, uses addabsrefs.xsl first, and then runs mix.xsl.
+In both cases, we use ajax proofs and parallelize.
 The default is 0 - don't produce.
 
 =item B<<< --tptpize=<arg>, -t<arg> >>>
@@ -60,6 +65,19 @@ If 2, an ATP is called to also try to solve them.
 Sets the $MIZFILES environmental variable for Mizar processing.
 The default is its value in the current environment.
 
+=item B<<< --mizhtml=<arg>, -B<H><arg> >>>
+
+The url to which the htmlization links. Only relevant if
+htmlize > 0. If 0 (default), it links to the appropriate version
+at mizar.uwb.edu.pl at http://mizar.uwb.edu.pl/version/ .
+If 1, it links to mizfiles/html . Otherwise it is treated
+as the url prefix itself.
+
+=item B<<< --xsldir=<arg>, -x<arg> >>>
+
+The directory with stylesheets for html-zing and tptp-zing.
+The default is mizfiles/xml .
+
 =item B<<< --verifier=<arg>, -v<arg> >>>
 
 Sets the verifier for Mizar processing.
@@ -71,6 +89,11 @@ exist, then just "verifier" (relying on $PATH).
 Sets the accommodator for Mizar processing.
 The default is $MIZFILES/bin/makeenv, and if that does not
 exist, then just "makeenv" (relying on $PATH).
+
+=item B<<< --tmpdir=<arg>, -B<T><arg> >>>
+
+Directory (slash-ended) for temporary problem and result files.
+Defaults to "", which means no usage of any special directory.
 
 =item B<<< --quiet, -q >>>
 
@@ -144,7 +167,8 @@ use XML::LibXML;
 
 my ($gparallelize, $gerrorsonly,    $ganalyze,
     $ghtmlize,     $gtptpize,       $gmizfiles,
-    $gverifier,    $gmakeenv,       $gtmpdir);
+    $gverifier,    $gmakeenv,       $gtmpdir,
+    $gxsldir,      $gmizhtml);
 
 my ($gquiet, $help, $man);
 
@@ -153,10 +177,12 @@ Getopt::Long::Configure ("bundling");
 
 GetOptions('parallelize|j=i'    => \$gparallelize,
 	   'errorsonly|e=i'    => \$gerrorsonly,
-	   'analyze|a=i'    => \$ganalyze,
+	   'analyze|a'    => \$ganalyze,
 	   'htmlize|l=i'    => \$ghtmlize,
 	   'tptpize|t=i'    => \$gtptpize,
 	   'mizfiles|m=s'    => \$gmizfiles,
+	   'mizhtml|H=s'    => \$gmizhtml,
+	   'xsldir|x=s'    => \$gxsldir,
 	   'verifier|v=s'    => \$gverifier,
 	   'makeenv|n=s'    => \$gmakeenv,
 	   'tmpdir|T=s'      => \$gtmpdir,
@@ -177,10 +203,63 @@ my $gtopdir = getcwd();
 
 $gparallelize = 1 unless(defined($gparallelize));
 $gerrorsonly = 0 unless(defined($gerrorsonly));
-$ganalyze = 0 unless(defined($ganalyze));
 $ghtmlize = 0 unless(defined($ghtmlize));
 $gtptpize = 0 unless(defined($gtptpize));
 $gmizfiles = $ENV{"MIZFILES"} unless(defined($gmizfiles));
+$gmizhtml = "0" unless(defined($gmizhtml));
+$gxsldir = $gmizfiles unless(defined($gxsldir));
+
+# the stylesheets - might not exist, test with -e before using
+my $addabsrefs = "$gxsldir/addabsrefs.xsl";
+my $miz2html = (-e "$gxsldir/miz.xsl") ? "$gxsldir/miz.xsl" : "$gxsldir/miz.xml";
+my $mizpl = "$gxsldir/mizpl.xsl";
+
+
+my $gmizar_url = 'http://mizar.uwb.edu.pl';
+
+my $gmml_anr;
+my $gmml_vnr;
+my $gmml_version;
+my $gmizar_rnr;
+my $gmizar_v1nr;
+my $gmizar_v2nr;
+my $gmizar_version;
+my $ghtml_version;
+
+sub ParseMmlIni
+{
+    open(INI, "$gmizfiles/mml.ini") or die "mml.ini does not exist";
+    while($_=<INI>) 
+    {
+	if(m/MizarReleaseNbr *= *(\d+)/) { $gmizar_rnr = $1;}
+	if(m/MizarVersionNbr *= *(\d+)/) { $gmizar_v1nr = $1;}
+	if(m/MizarVariantNbr *= *(\d+)/) { $gmizar_v2nr = $1;}
+	if(m/NumberOfArticles *= *(\d+)/) { $gmml_anr = $1;}
+	if(m/MMLVersion *= *([0-9.]+)/) { $gmml_vnr = $1;}
+    }	
+    close(INI);
+
+    (defined($gmizar_rnr) && defined($gmizar_v1nr) 
+     && defined($gmizar_v2nr) && defined($gmml_anr)
+     && defined($gmml_vnr)) or die "mml.ini incomplete";
+
+    $gmizar_version = join('.',($gmizar_rnr, $gmizar_v1nr, $gmizar_v2nr));
+    $gmml_version = $gmml_vnr . '.' . $gmml_anr;
+    $ghtml_version = $gmizar_version . '_' . $gmml_version;
+}
+
+ParseMmlIni();
+
+if(($gmizhtml eq "0") && ($ghtmlize > 0))
+{    
+    $gmizhtml = "$gmizar_url/version/$ghtml_version/html/";
+}
+elsif($gmizhtml eq "1")
+{
+    $gmizhtml = "$gmizfiles/html/";
+}
+
+
 unless(defined($gverifier))
 {
     $gverifier = (-e "$gmizfiles/bin/verifier") ? "$gmizfiles/bin/verifier" : "verifier";
@@ -197,7 +276,7 @@ my $gerrflag = (-e "$gmizfiles/bin/errflag") ? "$gmizfiles/bin/errflag" : "errfl
 $gtmpdir = "" unless(defined($gtmpdir));
 
 my $gquietflag = $gquiet ? ' -q ' : '';
-my $gaflag = ($ganalyze == 1) ? ' -a ' : '';
+my $gaflag = $ganalyze ? ' -a ' : '';
 
 $ENV{"MIZFILES"}= $gmizfiles;
 
@@ -305,21 +384,39 @@ sub MakePiecesByPSize
     return \@res;
 }
 
+## all the ajax proofs go usually into $gtopdir/proofs - to be in one place
 
+my $miz2html_params = "--param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$gmizhtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param ajax_proofs 1 ";
+
+sub Htmlize
+{
+    my ($myfstem, $htmlize, $ajax_proof_dir) = @_;
+    if($htmlize == 2)
+    {
+	system("xsltproc $addabsrefs $myfstem.xml 2> $myfstem.xml.errabs > $myfstem.xml.abs");
+	system("xsltproc $miz2html_params --param proof_links 1 -param ajax_proof_dir \\\'$ajax_proof_dir\\\' $miz2html $myfstem.xml.abs 2>$myfstem.xml.errhtml > $myfstem.html");
+    }
+    elsif($htmlize == 1)
+    {
+	system("xsltproc $miz2html_params $miz2html $myfstem.xml 2>$myfstem.xml.errhtml > $myfstem.html");
+    }    
+}
 
 
 ## verify one chunk in a speciual subdirectory
 ## $piece is supposed to be sorted, $tpppos too
 sub VerifyProofChunk
 {
-    my ($filestem, $chunk, $piece, $tppos) = @_;
+    my ($filestem, $chunk, $piece, $tppos, $htmlize) = @_;
 #    my @tpp = @$tppos;
 #    my @piece = @$piece;
     my $mydir = $gtmpdir . $filestem . "__" . $chunk;
+    my $myfstem = "$mydir/$filestem";
     mkdir($mydir);
     SetupEnvFiles($filestem, $mydir);
     CreateAtSignFile($filestem, $mydir, $chunk, $piece, $tppos);
-    system("$gverifier $gquietflag $gaflag $mydir/$filestem");
+    system("$gverifier $gquietflag $gaflag $myfstem");
+    Htmlize($myfstem, $htmlize, "proofs");
 }
 
 # extensions of the environmental files
@@ -338,6 +435,7 @@ sub SetupEnvFiles
 }
 
 # put @proof to $tppos, except those in $piece
+# now also works for empty $piece, to be able to add @proof everywhere
 sub CreateAtSignFile
 {
     my ($filestem, $mydir, $chunk, $piece, $tppos) = @_;
@@ -346,7 +444,15 @@ sub CreateAtSignFile
     #DEBUG print "chunk:$chunk:$#piece:$#tpp:";
     my ($nexttpp, $nextcpp) = (0,0); # next top proof pos, next chunk proof pos
     my ($nexttpl,$nexttpc) = ($tpp[$nexttpp]->[0], $tpp[$nexttpp]->[1]);
-    my ($nextcpl,$nextcpc) = ($piece[$nextcpp]->[0], $piece[$nextcpp]->[1]);
+    my ($nextcpl,$nextcpc);
+    if(scalar(@$piece) == 0)
+    {
+	($nextcpl,$nextcpc) = (MAXLINENR, MAXLINENR);
+    }
+    else 
+    {
+	($nextcpl,$nextcpc)= ($piece[$nextcpp]->[0], $piece[$nextcpp]->[1]);
+    }
     open(LMIZ,">$mydir/$filestem.miz");
     foreach my $lnr (1 .. 1 + $#glines)
     {
@@ -390,6 +496,30 @@ sub CreateAtSignFile
 
     }
     close(LMIZ);
+}
+
+sub MergeErrors
+{
+    my ($filestem, $piecesnr) = @_;
+    my %errors = ();
+    foreach my $chunk (1 .. $piecesnr)
+    {
+	if(open(ERR, $gtmpdir . $filestem . "__" . $chunk . '/' . $filestem . '.err'))
+	{
+	    while($_=<ERR>) { $errors{$_} = (); };
+	    close(ERR);
+	}	
+    }
+    ## include the master error file
+    if( open(ERR, $filestem . '.err')) 
+    {
+	while($_=<ERR>) { $errors{$_} = (); };
+	close(ERR);
+    }
+
+    open(ERR, ">$filestem.err") or die "Cannot write .err file!";
+    foreach my $key (sort keys %errors) { print ERR $key;}
+    close(ERR);
 }
 
 # the XPath expression for proofs that are not inside other proof
@@ -445,7 +575,7 @@ sub Verify
 		elsif ($pid == 0) 
 		{
 		    # child
-		    VerifyProofChunk($filestem, $chunk, $ppieces->[$chunk - 1], \@tppos);
+		    VerifyProofChunk($filestem, $chunk, $ppieces->[$chunk - 1], \@tppos, $ghtmlize);
 		    #DEBUG print "$chunk\n\n";
 		    #DEBUG sleep(5);
 		    exit(0);
@@ -457,15 +587,18 @@ sub Verify
 	    }
 
 	    foreach (@childs) { waitpid($_, 0);}
+	    MergeErrors($filestem, scalar(@$ppieces));
 	}
 	else
 	{
 	    system("$gverifier $gquietflag $gaflag $filestem");
+	    Htmlize($filestem, $ghtmlize, "proofs");
 	}
     }
     else
     {
 	system("$gverifier $gquietflag $gaflag $filestem");
+	Htmlize($filestem, $ghtmlize, "proofs");
     }
 
     if($gerrorsonly == 0) 
