@@ -10,6 +10,7 @@ mizp.pl -j16 ~/a
 
  Options:
    --parallelize=<arg>,     -j<arg>
+   --ppolicy=<arg>,         -P<arg>
    --errorsonly=<arg>,      -e<arg>
    --analyze,               -a
    --htmlize=<arg>,         -l<arg>
@@ -32,6 +33,18 @@ mizp.pl -j16 ~/a
 If greater than 1, runs problems in parallel, using Makefile with
 the -j<arg> option.
 Default is 1 - no parallelization.
+
+=item B<<< --ppolicy=<arg>, -B<P><arg> >>>
+
+Sets the parallelization policy if parallelize > 0.
+1 is parallelization by using @proof for top proofs in original file 
+This parallelizes analyzer, checker, and htmlizer.
+2 is parallelization by using ErrorInf in .xml file
+This parallelizes only checker.
+3 combines 1 and 2 when parallel top proof chunks have not even distribution.
+For example, when there is only one top proof, analyzer and htmlizer are not
+parallelized, and all parallelization is done in checker.
+Default is 1.
 
 =item B<<< --errorsonly=<arg>, -e<arg> >>>
 
@@ -169,7 +182,7 @@ use XML::LibXML;
 my ($gparallelize, $gerrorsonly,    $ganalyze,
     $ghtmlize,     $gtptpize,       $gmizfiles,
     $gverifier,    $gmakeenv,       $gtmpdir,
-    $gxsldir,      $gmizhtml);
+    $gxsldir,      $gmizhtml,       $gppolicy);
 
 my ($gquiet, $help, $man);
 
@@ -177,6 +190,7 @@ my ($gquiet, $help, $man);
 Getopt::Long::Configure ("bundling");
 
 GetOptions('parallelize|j=i'    => \$gparallelize,
+	   'ppolicy|P=i'    => \$gppolicy,
 	   'errorsonly|e=i'    => \$gerrorsonly,
 	   'analyze|a'    => \$ganalyze,
 	   'htmlize|l=i'    => \$ghtmlize,
@@ -203,6 +217,7 @@ if($gfilestem =~ m/(.*)[.]miz$/) { $gfilestem = $1;}
 my $gtopdir = getcwd();
 
 $gparallelize = 1 unless(defined($gparallelize));
+$gppolicy = 1 unless(defined($gppolicy));
 $gerrorsonly = 0 unless(defined($gerrorsonly));
 $ghtmlize = 0 unless(defined($ghtmlize));
 $gtptpize = 0 unless(defined($gtptpize));
@@ -477,18 +492,77 @@ sub VerifyProofChunk
 }
 
 # extensions of the environmental files
-my @accexts = (".aco", ".atr", ".dct", ".dfs", ".eid", ".ere", ".esh", ".evl", ".frm", ".prf", ".vcl",
+my @gaccexts = (".aco", ".atr", ".dct", ".dfs", ".eid", ".ere", ".esh", ".evl", ".frm", ".prf", ".vcl",
 	       ".ano", ".cho", ".dcx", ".ecl", ".eno", ".eth", ".fil", ".nol", ".sgl");
+
+# extensions of files created/used by verifier, with exception of the .xml file 
+my @gvrfexts = ('.frx', '.idx', '.miz', '.par', '.ref');
+
+
+## checker-verify in a special subdirectory, verifying only
+## chunk-th inferences
+sub VerifyCheckerChunk
+{
+    my ($filestem, $chunk, $nrpieces, $xlines) = @_;
+    my $mydir = ChunkDirName($filestem, $chunk);
+    my $myfstem = "$mydir/$filestem";
+    mkdir($mydir);
+    LinkFiles($filestem, $mydir, \@gaccexts);
+    LinkFiles($filestem, $mydir, \@gvrfexts);
+    PrepareXmlFile($filestem, $mydir, $chunk, $nrpieces, $xlines);
+    system("$gverifier $gquietflag -c $myfstem");
+#    Htmlize($myfstem, $htmlize, 2, "proofs");
+#    MergeHtmlProofs("$myfstem.html", "$filestem.html.$chunk", "proofs/$filestem");
+}
+
 
 sub SetupEnvFiles
 {
    my ($filestem, $mydir) = @_;
-   foreach my $ext (@accexts)
+   LinkFiles($filestem, $mydir, \@gaccexts);
+}
+
+sub LinkFiles
+{
+   my ($filestem, $mydir, $exts) = @_;
+   foreach my $ext (@$exts)
    {
        my $f = $filestem . $ext;
        unlink("$mydir/$f");
        `ln -s $gtopdir/$f $mydir/$f`;
    }
+}
+
+# leave only By's congruent with $chunk, replace rest by ErrorInf 
+sub PrepareXmlFile
+{
+    my ($filestem, $mydir, $chunk, $nrpieces, $xlines) = @_;
+    my $printit = 1;
+    my $bcount = 0;
+    open(XML1,">$mydir/$filestem.xml");
+    foreach my $line (@$xlines)
+    {
+	if($line =~ m/<By .*/)
+	{
+	    $bcount++;
+	    if(($bcount % $nrpieces) == $chunk - 1)
+	    {
+		print XML1 ('<ErrorInf/>', "\n");
+		$printit = 0 unless($line =~ m/<By .*\/>/);
+	    }
+	    else { print XML1 $line; }
+	}
+	elsif($line =~ m/<\/By>/)
+	{
+	    if($printit == 0)
+	    {
+		$printit = 1;
+	    }
+	    else { print XML1 $line; }
+	}
+	else { print XML1 $line unless($printit == 0); }
+    }
+    close(XML1)
 }
 
 # put @proof to $tppos, except those in $piece
@@ -593,8 +667,8 @@ sub Verify
     my ($filestem) = @_;
     my $pxfile = $filestem . $pxext;
     ## call Mizar parser to get the tp positions
-    system("$gverifier $gquietflag -p $filestem") if($gparallelize > 1);
-    if((-e $pxfile) && ($gparallelize > 1))
+    system("$gverifier $gquietflag -p $filestem") if(($gparallelize > 1) && ($gppolicy!=2));
+    if((-e $pxfile) && ($gparallelize > 1) && ($gppolicy!=2))
     {
 	my $parser = XML::LibXML->new();
 	my $doc = $parser->parse_file($pxfile);
@@ -653,6 +727,10 @@ sub Verify
 	    Htmlize($filestem, $ghtmlize, 0, "proofs");
 	}
     }
+    elsif(($gparallelize > 1) && ($gppolicy==2) && (!$ganalyze))
+    {
+	ParallelizeChecker($filestem, $gparallelize);
+    }
     else
     {
 	system("$gverifier $gquietflag $gaflag $filestem");
@@ -665,6 +743,45 @@ sub Verify
 	system("$gaddfmsg $filestem $gmizfiles/mizar");
     }
 }
+
+sub ParallelizeChecker
+{
+    my ($filestem, $nrpieces) = @_;
+
+    system("$gverifier $gquietflag -a $filestem");
+    if(open(XML,"$filestem.xml"))
+    {
+	my @xlines = <XML>;
+	close(XML);
+    
+	## the forking code
+	my @childs = ();
+	foreach my $chunk (1 .. $nrpieces) 
+	{
+	    my $pid = fork();
+	    if ($pid) 
+	    {
+		push(@childs, $pid);  # parent
+	    } 
+	    elsif ($pid == 0) 
+	    {
+		# child
+		VerifyCheckerChunk($filestem, $chunk, $nrpieces, \@xlines);
+		#DEBUG print "$chunk\n\n";
+		#DEBUG sleep(5);
+		exit(0);
+	    } 
+	    else 
+	    {
+		die "couldn’t fork: $!\n";
+	    }
+	}
+    
+	foreach (@childs) { waitpid($_, 0);}
+	MergeErrors($filestem, $nrpieces);
+    }
+}
+
 
 open(MIZ,$miz) or die "$miz not readable";
 @glines =<MIZ>;
