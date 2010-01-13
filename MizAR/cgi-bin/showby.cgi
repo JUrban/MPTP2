@@ -311,7 +311,7 @@ if(    open(F,$File))
 					 title=>"Translate ATP proof using MML Query (experimental)"},
 					"MMLQuery (very experimental)");
 		    }
-		    print "<br>\n",'<h4>ATP Proof References</h4><br>\n';
+		    print "<br>\n",'<h4>ATP Proof References</h4><br>';
 #		    print $query->a({href=>"$MyUrl/cgi-bin/showby.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&DM=1'}, "Do more"), " ):<br>\n";
 
 		    foreach my $ref (@refs)
