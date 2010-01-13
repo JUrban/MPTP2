@@ -277,7 +277,8 @@ if(    open(F,$File))
 		    print '<?xml version="1.0"?><div>';
 		    if($advice == 1)
 		    {
-			print 'Suggested hints';
+			print '<div class="box"><center><h4>Suggested hints</h4> ';
+#			print 'Suggested hints';
 		    }
 		    else { print '<div class="box"><center><h4>ATP explanation</h4> '; }
 		    if(($spass != 1) && ($advice != 1))
@@ -301,7 +302,7 @@ if(    open(F,$File))
 				     $input_article . '&lc=' . $input_lc . '&tmp=' .
 				     $input_tmp . '&DM=1',
 				     title=>"Try 20+ ATP systems in SystemOnTPTP"},
-				    "Export problem to SystemOnTPTP");
+				    "Export problem to SystemOnTPTP") if($advice != 1);
 		    if(($spass != 1) && ($advice != 1))
 		    {
 			print ', ';
@@ -311,7 +312,7 @@ if(    open(F,$File))
 					 title=>"Translate ATP proof using MML Query (experimental)"},
 					"MMLQuery (very experimental)");
 		    }
-		    print "<br>\n",'<h4>ATP Proof References</h4>';
+		    print "<br>\n",'<h4>ATP Proof References</h4>' if($advice != 1);
 #		    print $query->a({href=>"$MyUrl/cgi-bin/showby.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&DM=1'}, "Do more"), " ):<br>\n";
 
 		    foreach my $ref (@refs)
@@ -334,7 +335,8 @@ if(    open(F,$File))
 			}
 			else {print $ref,", ";}
 		    }
-		    if($advice != 1) { print "</center><br/></div>"; }
+#		    if($advice != 1) { print "</center><br/></div>"; }
+		    print "</center><br/></div>";
 		    print "</div>";
 		}
 		else { print join(",", @refs);}
@@ -342,9 +344,9 @@ if(    open(F,$File))
 
 	    else
 	    {
-#		print '<div class="box"><center><h4>ATP Proof not found</h4> ',
-#		"status: $status", '<br/>';
-		print "ATP Proof not found (status: $status, ";
+		print '<div class="box"><center><h4>ATP Proof not found</h4> ',
+		"status: $status", '<br/>';
+#		print "ATP Proof not found (status: $status, ";
 		if(($spass != 1) && ($advice != 1))
 		{
 		    print $query->a({class=>"txt",
@@ -369,8 +371,8 @@ if(    open(F,$File))
 				     title=>"Try 20+ ATP systems in SystemOnTPTP"},
 				    "Export problem to SystemOnTPTP");
 		}
-#		print "</center><br/></div>"; 
-		print " ):<br>\n";
+		print "</center><br/></div>"; 
+#		print " ):<br>\n";
 	    }
 	}
 	else
