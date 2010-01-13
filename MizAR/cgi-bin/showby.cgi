@@ -277,7 +277,7 @@ if(    open(F,$File))
 		    print '<?xml version="1.0"?><div>';
 		    if($advice == 1)
 		    {
-			print '<h4>Suggested hints</h4>';
+			print 'Suggested hints';
 		    }
 		    else { print '<div class="box"><center><h4>ATP explanation</h4> '; }
 		    if(($spass != 1) && ($advice != 1))
