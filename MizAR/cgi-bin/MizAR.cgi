@@ -293,7 +293,7 @@ unless($text_mode)
     print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.mizoutput&tmp=$PidNr\" target=\"MizarOutput$PidNr\">Show Mizar Output</a>\n";
 #    print $AjaxProofDir;
 
-    my $errorsnr = `wc -l $ProblemFileErr`;
+    my $errorsnr = `wc -l <$ProblemFileErr`;
 
     print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.err1&tmp=$PidNr\" target=\"MizarOutput$PidNr\">($errorsnr Errors)</a>\n";
 
