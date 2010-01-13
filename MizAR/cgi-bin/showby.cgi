@@ -341,7 +341,7 @@ if(    open(F,$File))
 
 	    else
 	    {
-		print "Proof not found (status: $status, ";
+		print "ATP Proof not found (status: $status, ";
 		if(($spass != 1) && ($advice != 1))
 		{
 		    print $query->a({class=>"txt",
