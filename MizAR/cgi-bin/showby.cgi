@@ -20,6 +20,8 @@ sub szs_GAVEUP      ()  { 'GaveUp' }   # system exited before the time limit for
 # my $MyUrl = 'http://octopi.mizar.org/~mptp';
 my $MyUrl = 'http://mws.cs.ru.nl/~mptp';
 my $PalmTreeUrl = $MyUrl . "/PalmTree.jpg";
+my $TPTPLogoUrl = $MyUrl . "/TPTP.gif";
+my $TSTPLogoUrl = $MyUrl . "/TSTP.gif";
 my $TemporaryDirectory = "/tmp";
 my $TemporaryProblemDirectory = "$TemporaryDirectory/matp_$$";
 my $Xsl4MizarDir = "/home/mptp/public_html/xsl4mizar";
@@ -70,6 +72,8 @@ my ($line, $col) = $input_lc=~m/(.*)_(.*)/;
 my $col1 = $col - 4;
 
 my $idv_img = "<img SRC=\"$PalmTreeUrl\" alt=\"Show IDV proof tree\" title=\"Show IDV proof tree\">";
+my $tptp_img = "<img SRC=\"$TPTPLogoUrl\" alt=\"Show TPTP Problem\" title=\"Show TPTP Problem\">";
+my $tstp_img = "<img SRC=\"$TSTPLogoUrl\" alt=\"Show TSTP Proof\" title=\"Show TSTP Proof\">";
 
 ## provide links and titles to various MPTP references
 sub HTMLize
@@ -291,11 +295,11 @@ if(    open(F,$File))
 		    }
 		    if(($spass != 1) && ($advice != 1))
 		    {
-			print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
-					 $input_article . '&lc=' . $input_lc . '&tmp=' .
-					 $input_tmp . '&idv=2',
-					title=>"Postprocess solution in SystemOnTSTP"},
-					"Export solution to SystemOnTSTP");
+			print $query->a({href=>"$MyUrl/cgi-bin/showtmpfile.cgi?file=problems/" . 
+					     $input_article . '/' . $input_article . '__' . $input_lc . '&tmp=' .
+					     $input_tmp,
+					title=>"Show TPTP problem"},
+					$tptp_img);
 			print ', ';
 		    }
 		    print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
@@ -303,6 +307,24 @@ if(    open(F,$File))
 				     $input_tmp . '&DM=1',
 				     title=>"Try 20+ ATP systems in SystemOnTPTP"},
 				    "Export problem to SystemOnTPTP") if($advice != 1);
+		    if(($spass != 1) && ($advice != 1))
+		    {
+			print $query->a({href=>"$MyUrl/cgi-bin/showtmpfile.cgi?file=problems/" . 
+					     $input_article . '/' . $input_article . '__' . $input_lc . '&tmp=' .
+					     $input_tmp,
+					title=>"Show TSTP proof"},
+					$tstp_img);
+			print ', ';
+		    }
+		    if(($spass != 1) && ($advice != 1))
+		    {
+			print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
+					 $input_article . '&lc=' . $input_lc . '&tmp=' .
+					 $input_tmp . '&idv=2',
+					title=>"Postprocess solution in SystemOnTSTP"},
+					"Export solution to SystemOnTSTP");
+			print ', ';
+		    }
 		    if(($spass != 1) && ($advice != 1))
 		    {
 			print ', ';
