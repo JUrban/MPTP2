@@ -334,7 +334,7 @@ if(    open(F,$File))
 			}
 			else {print $ref,", ";}
 		    }
-		    if($advice != 1) { print "</center></div>"; }
+		    if($advice != 1) { print "<br></center></div>"; }
 		    print "</div>";
 		}
 		else { print join(",", @refs);}
