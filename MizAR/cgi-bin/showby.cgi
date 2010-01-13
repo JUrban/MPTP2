@@ -342,7 +342,8 @@ if(    open(F,$File))
 
 	    else
 	    {
-		print "ATP Proof not found (status: $status, ";
+		print '<div class="box"><center><h4>ATP Proof not found</h4> ',
+		"status: $status", '<br/>';
 		if(($spass != 1) && ($advice != 1))
 		{
 		    print $query->a({class=>"txt",
@@ -367,7 +368,8 @@ if(    open(F,$File))
 				     title=>"Try 20+ ATP systems in SystemOnTPTP"},
 				    "Export problem to SystemOnTPTP");
 		}
-		print " ):<br>\n";
+		print "</center><br/></div>"; 
+#		print " ):<br>\n";
 	    }
 	}
 	else
