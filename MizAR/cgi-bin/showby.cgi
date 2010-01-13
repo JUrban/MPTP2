@@ -279,7 +279,7 @@ if(    open(F,$File))
 		    {
 			print 'Suggested hints (';
 		    }
-		    else { print '<center><h4>ATP explanation</h4> <div>'; }
+		    else { print '<center><h4>ATP explanation</h4> <div class="box">'; }
 		    if(($spass != 1) && ($advice != 1))
 		    {
 			print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
