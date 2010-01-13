@@ -292,7 +292,7 @@ if(    open(F,$File))
 				     $input_article . '&lc=' . $input_lc . '&tmp=' .
 				     $input_tmp . '&DM=1',
 				     title=>"Try 20+ ATP systems in SystemOnTPTP"},
-				    "Try more");
+				    "Export problem to SystemOnTPTP");
 		    if(($spass != 1) && ($advice != 1))
 		    {
 			print ', ';
