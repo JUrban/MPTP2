@@ -288,6 +288,15 @@ if(    open(F,$File))
 					$idv_img);
 			print ', ';
 		    }
+		    if(($spass != 1) && ($advice != 1))
+		    {
+			print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
+					 $input_article . '&lc=' . $input_lc . '&tmp=' .
+					 $input_tmp . '&idv=2',
+					title=>"Postprocess solution in SystemOnTSTP"},
+					"Export solution to SystemOnTSTP");
+			print ', ';
+		    }
 		    print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
 				     $input_article . '&lc=' . $input_lc . '&tmp=' .
 				     $input_tmp . '&DM=1',
