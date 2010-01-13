@@ -298,6 +298,8 @@ if(    open(F,$File))
 			print $query->a({href=>"$MyUrl/cgi-bin/showtmpfile.cgi?file=problems/" . 
 					     $input_article . '/' . $input_article . '__' . $input_lc . '&tmp=' .
 					     $input_tmp,
+					     height=> "17",
+					     width=> "17",
 					title=>"Show TPTP problem"},
 					$tptp_img);
 			print ', ';
@@ -312,6 +314,8 @@ if(    open(F,$File))
 			print $query->a({href=>"$MyUrl/cgi-bin/showtmpfile.cgi?file=problems/" . 
 					     $input_article . '/' . $input_article . '__' . $input_lc . '&tmp=' .
 					     $input_tmp,
+					     height=> "17",
+					     width=> "17",
 					title=>"Show TSTP proof"},
 					$tstp_img);
 			print ', ';
