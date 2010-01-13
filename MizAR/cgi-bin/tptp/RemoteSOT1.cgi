@@ -47,6 +47,10 @@ if($input_idv == 1) {
     $URLParameters{"IDV"} = "-T";
     $URLParameters{"SystemOnTSTP"} = "-S";
 }
+elsif($input_idv == 2) { 
+    $ext = ".eout"; 
+    $URLParameters{"SystemOnTSTP"} = "-S";
+}
 else {     $URLParameters{"SystemOnTPTP"} = "-P"; }
 
 my $File0 = "$TemporaryDirectory/matp_" . $input_tmp . "/problems/" . $input_article . "/" . $input_article . "__" . $line . "_";
