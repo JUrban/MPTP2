@@ -304,11 +304,15 @@ if(    open(F,$File))
 					$tptp_img);
 			print ', ';
 		    }
-		    print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
-				     $input_article . '&lc=' . $input_lc . '&tmp=' .
-				     $input_tmp . '&DM=1',
-				     title=>"Try 20+ ATP systems in SystemOnTPTP"},
-				    "Export problem to SystemOnTPTP") if($advice != 1);
+		    if(($spass != 1) && ($advice != 1))
+		    {
+			print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
+					     $input_article . '&lc=' . $input_lc . '&tmp=' .
+					     $input_tmp . '&DM=1',
+					     title=>"Try 20+ ATP systems in SystemOnTPTP"},
+					"Export problem to SystemOnTPTP");
+			print ', ';
+		    }
 		    if(($spass != 1) && ($advice != 1))
 		    {
 			print $query->a({href=>"$MyUrl/cgi-bin/showtmpfile.cgi?file=problems/" . 
