@@ -159,7 +159,7 @@ sub GetRefs
 				      );
     unless ($remote)
     {
-	return ();
+	return ('DOWN');
 #	    "The server is down, sorry\n";
 #	$query->end_html unless($text_mode);
 #	exit;
