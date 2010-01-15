@@ -46,6 +46,7 @@ my $input_article	  = $query->param('Formula');
 my $input_name	  = $query->param('Name');
 my $atp_mode	  = $query->param('ATPMode');
 my $input_snow	  = $query->param('Snow');
+my $linkarproofs  = $query->param('ARProofs');
 my $aname         = lc($input_name); 
 my $aname_uc      = uc($aname);
 my $ProblemFileOrig = $TemporaryProblemDirectory . "/$aname";
@@ -94,6 +95,9 @@ my %gconstrs      =
      'sel'    , 'u',
      'struct' , 'l'
     );
+
+
+$linkarproofs = 0 unless defined($linkarproofs);
 
 sub min { my ($x,$y) = @_; ($x <= $y)? $x : $y }
 
@@ -330,7 +334,7 @@ unless($text_mode)
 
     system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml 2>$ProblemFileXml.errabs > $ProblemFileXml.abs");
 
-    system("time $xsltproc --param by_titles 1 --param const_links 1 --param ajax_by 1 --param linkbytoself 1 --param linkby 3 --param thms_tptp_links 1 --param lbytptpcgi \\\'$lbytptpcgi\\\' --param lbytmpdir \\\'$lbytmpdir\\\' --param lbycgiparams \\\'$lbycgiparams\\\' --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
+    system("time $xsltproc --param by_titles 1 --param const_links 1 --param linkarproofs $linkarproofs --param ajax_by 1 --param linkbytoself 1 --param linkby 3 --param thms_tptp_links 1 --param lbytptpcgi \\\'$lbytptpcgi\\\' --param lbytmpdir \\\'$lbytmpdir\\\' --param lbycgiparams \\\'$lbycgiparams\\\' --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
 
 
     system("time $xsltproc $mizpl $ProblemFileXml.abs  > $ProblemFileXml2 2>$ProblemFileXml.errpl");
