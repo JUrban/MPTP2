@@ -13,7 +13,7 @@ mizp.pl -j16 ~/a
    --ppolicy=<arg>,         -P<arg>
    --errorsonly=<arg>,      -e<arg>
    --analyze,               -a
-   --htmlize=<arg>,         -l<arg>
+   --htmlize=<arg>,         -M<arg>
    --tptpize=<arg>,         -t<arg>
    --mizfiles=<arg>,        -m<arg>
    --mizhtml=<arg>,         -H<arg>
@@ -59,7 +59,7 @@ Only run analyzer (producing XML), ommit calling the Mizar checker.
 This can be useful when only producing HTML or TPTP-izing.
 By default the full checking takes place.
 
-=item B<<< --htmlize=<arg>, -l<arg> >>>
+=item B<<< --htmlize=<arg>, -B<M><arg> >>>
 
 If greater than 0, produce also html, however only the value of 2
 is compatible with parallelization.
@@ -176,13 +176,14 @@ use Cwd;
 use Pod::Usage;
 use Getopt::Long;
 use XML::LibXML;
-
+use File::Spec;
 
 
 my ($gparallelize, $gerrorsonly,    $ganalyze,
     $ghtmlize,     $gtptpize,       $gmizfiles,
     $gverifier,    $gmakeenv,       $gtmpdir,
-    $gxsldir,      $gmizhtml,       $gppolicy);
+    $gxsldir,      $gmizhtml,       $gppolicy,
+    $glonglines);
 
 my ($gquiet, $help, $man);
 
@@ -193,7 +194,7 @@ GetOptions('parallelize|j=i'    => \$gparallelize,
 	   'ppolicy|P=i'    => \$gppolicy,
 	   'errorsonly|e=i'    => \$gerrorsonly,
 	   'analyze|a'    => \$ganalyze,
-	   'htmlize|l=i'    => \$ghtmlize,
+	   'htmlize|M=i'    => \$ghtmlize,
 	   'tptpize|t=i'    => \$gtptpize,
 	   'mizfiles|m=s'    => \$gmizfiles,
 	   'mizhtml|H=s'    => \$gmizhtml,
@@ -202,6 +203,7 @@ GetOptions('parallelize|j=i'    => \$gparallelize,
 	   'makeenv|n=s'    => \$gmakeenv,
 	   'tmpdir|T=s'      => \$gtmpdir,
 	   'quiet|q'          => \$gquiet,
+	   'longlines|l'      => \$glonglines,
 	   'help|h'          => \$help,
 	   'man'             => \$man)
     or pod2usage(2);
@@ -211,9 +213,10 @@ pod2usage(-exitstatus => 0, -verbose => 2) if($man);
 
 pod2usage(2) if ($#ARGV != 0);
 
-my $gfilestem   = shift(@ARGV);
+my ($gvolume,$gdirectories,$gfilestem) = File::Spec->splitpath( shift(@ARGV) );
 if($gfilestem =~ m/(.*)[.]miz$/) { $gfilestem = $1;}
 
+chdir($gvolume . $gdirectories) if(defined($gdirectories) and !($gdirectories eq ''));
 my $gtopdir = getcwd();
 
 $gparallelize = 1 unless(defined($gparallelize));
@@ -293,6 +296,7 @@ $gtmpdir = "" unless(defined($gtmpdir));
 
 my $gquietflag = $gquiet ? ' -q ' : '';
 my $gaflag = $ganalyze ? ' -a ' : '';
+my $glflag = $glonglines ? ' -l ' : '';
 
 $ENV{"MIZFILES"}= $gmizfiles;
 
@@ -484,9 +488,10 @@ sub VerifyProofChunk
     my $mydir = ChunkDirName($filestem, $chunk);
     my $myfstem = "$mydir/$filestem";
     mkdir($mydir);
+    unlink <$myfstem.*>;
     SetupEnvFiles($filestem, $mydir);
     CreateAtSignFile($filestem, $mydir, $chunk, $piece, $tppos);
-    system("$gverifier $gquietflag $gaflag $myfstem");
+    system("$gverifier $gquietflag $glflag $gaflag $myfstem");
     Htmlize($myfstem, $htmlize, 2, "proofs");
 #    MergeHtmlProofs("$myfstem.html", "$filestem.html.$chunk", "proofs/$filestem");
 }
@@ -507,10 +512,11 @@ sub VerifyCheckerChunk
     my $mydir = ChunkDirName($filestem, $chunk);
     my $myfstem = "$mydir/$filestem";
     mkdir($mydir);
+    unlink <$myfstem.*>;
     LinkFiles($filestem, $mydir, \@gaccexts);
     LinkFiles($filestem, $mydir, \@gvrfexts);
     PrepareXmlFile($filestem, $mydir, $chunk, $nrpieces, $xlines);
-    system("$gverifier $gquietflag -c $myfstem");
+    system("$gverifier $glflag $gquietflag -c $myfstem");
 #    Htmlize($myfstem, $htmlize, 2, "proofs");
 #    MergeHtmlProofs("$myfstem.html", "$filestem.html.$chunk", "proofs/$filestem");
 }
@@ -667,7 +673,7 @@ sub Verify
     my ($filestem) = @_;
     my $pxfile = $filestem . $pxext;
     ## call Mizar parser to get the tp positions
-    system("$gverifier $gquietflag -p $filestem") if(($gparallelize > 1) && ($gppolicy!=2));
+    system("$gverifier $glflag $gquietflag -p $filestem") if(($gparallelize > 1) && ($gppolicy!=2));
     if((-e $pxfile) && ($gparallelize > 1) && ($gppolicy!=2))
     {
 	my $parser = XML::LibXML->new();
@@ -723,17 +729,18 @@ sub Verify
 	}
 	else
 	{
-	    system("$gverifier $gquietflag $gaflag $filestem");
+	    system("$gverifier $glflag $gquietflag $gaflag $filestem");
 	    Htmlize($filestem, $ghtmlize, 0, "proofs");
 	}
     }
     elsif(($gparallelize > 1) && ($gppolicy==2) && (!$ganalyze))
     {
 	ParallelizeChecker($filestem, $gparallelize);
+	Htmlize($filestem, $ghtmlize, 0, "proofs");
     }
     else
     {
-	system("$gverifier $gquietflag $gaflag $filestem");
+	system("$gverifier $glflag $gquietflag $gaflag $filestem");
 	Htmlize($filestem, $ghtmlize, 0, "proofs");
     }
 
@@ -748,7 +755,7 @@ sub ParallelizeChecker
 {
     my ($filestem, $nrpieces) = @_;
 
-    system("$gverifier $gquietflag -a $filestem");
+    system("$gverifier $glflag $gquietflag -a $filestem");
     if(open(XML,"$filestem.xml"))
     {
 	my @xlines = <XML>;
