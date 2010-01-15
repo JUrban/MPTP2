@@ -20,6 +20,8 @@ sub szs_GAVEUP      ()  { 'GaveUp' }   # system exited before the time limit for
 # my $MyUrl = 'http://octopi.mizar.org/~mptp';
 my $MyUrl = 'http://mws.cs.ru.nl/~mptp';
 my $PalmTreeUrl = $MyUrl . "/PalmTree.jpg";
+my $TPTPLogoUrl = $MyUrl . "/TPTP.gif";
+my $TSTPLogoUrl = $MyUrl . "/TSTP.gif";
 my $TemporaryDirectory = "/tmp";
 my $TemporaryProblemDirectory = "$TemporaryDirectory/matp_$$";
 my $Xsl4MizarDir = "/home/mptp/public_html/xsl4mizar";
@@ -70,6 +72,8 @@ my ($line, $col) = $input_lc=~m/(.*)_(.*)/;
 my $col1 = $col - 4;
 
 my $idv_img = "<img SRC=\"$PalmTreeUrl\" alt=\"Show IDV proof tree\" title=\"Show IDV proof tree\">";
+my $tptp_img = "<img SRC=\"$TPTPLogoUrl\" alt=\"Show TPTP Problem\" title=\"Show TPTP Problem\">";
+my $tstp_img = "<img SRC=\"$TSTPLogoUrl\" alt=\"Show TSTP Proof\" title=\"Show TSTP Proof\">";
 
 ## provide links and titles to various MPTP references
 sub HTMLize
@@ -159,7 +163,7 @@ sub GetRefs
 				      );
     unless ($remote)
     {
-	return ();
+	return ('DOWN');
 #	    "The server is down, sorry\n";
 #	$query->end_html unless($text_mode);
 #	exit;
@@ -277,9 +281,10 @@ if(    open(F,$File))
 		    print '<?xml version="1.0"?><div>';
 		    if($advice == 1)
 		    {
-			print 'Suggested hints (';
+			print '<div class="box"><center><h4>Suggested hints</h4> ';
+#			print 'Suggested hints';
 		    }
-		    else { print 'ATP explanation ('; }
+		    else { print '<div class="box"><center><h4>ATP explanation</h4> '; }
 		    if(($spass != 1) && ($advice != 1))
 		    {
 			print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
@@ -288,11 +293,46 @@ if(    open(F,$File))
 					$idv_img);
 			print ', ';
 		    }
-		    print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
-				     $input_article . '&lc=' . $input_lc . '&tmp=' .
-				     $input_tmp . '&DM=1',
-				     title=>"Try 20+ ATP systems in SystemOnTPTP"},
-				    "Try more");
+		    if(($spass != 1) && ($advice != 1))
+		    {
+			print $query->a({href=>"$MyUrl/cgi-bin/showtmpfile.cgi?file=problems/" . 
+					     $input_article . '/' . $input_article . '__' . $input_lc . '&tmp=' .
+					     $input_tmp,
+					     height=> "17",
+					     width=> "17",
+					title=>"Show TPTP problem"},
+					$tptp_img);
+			print ', ';
+		    }
+		    if(($spass != 1) && ($advice != 1))
+		    {
+			print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
+					     $input_article . '&lc=' . $input_lc . '&tmp=' .
+					     $input_tmp . '&DM=1',
+					     title=>"Try 20+ ATP systems in SystemOnTPTP"},
+					"Export problem to SystemOnTPTP");
+			print ', ';
+		    }
+		    if(($spass != 1) && ($advice != 1))
+		    {
+			print $query->a({href=>"$MyUrl/cgi-bin/showtmpfile.cgi?file=problems/" . 
+					     $input_article . '/' . $input_article . '__' . $input_lc . '&tmp=' .
+					     $input_tmp,
+					     height=> "17",
+					     width=> "17",
+					title=>"Show TSTP proof"},
+					$tstp_img);
+			print ', ';
+		    }
+		    if(($spass != 1) && ($advice != 1))
+		    {
+			print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
+					 $input_article . '&lc=' . $input_lc . '&tmp=' .
+					 $input_tmp . '&idv=2',
+					title=>"Postprocess solution in SystemOnTSTP"},
+					"Export solution to SystemOnTSTP");
+			print ', ';
+		    }
 		    if(($spass != 1) && ($advice != 1))
 		    {
 			print ', ';
@@ -302,7 +342,7 @@ if(    open(F,$File))
 					 title=>"Translate ATP proof using MML Query (experimental)"},
 					"MMLQuery (very experimental)");
 		    }
-		    print " ):<br>\n";
+		    print "<br>\n",'<h4>ATP Proof References</h4>' if($advice != 1);
 #		    print $query->a({href=>"$MyUrl/cgi-bin/showby.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&DM=1'}, "Do more"), " ):<br>\n";
 
 		    foreach my $ref (@refs)
@@ -325,6 +365,8 @@ if(    open(F,$File))
 			}
 			else {print $ref,", ";}
 		    }
+#		    if($advice != 1) { print "</center><br/></div>"; }
+		    print "</center><br/></div>";
 		    print "</div>";
 		}
 		else { print join(",", @refs);}
@@ -332,7 +374,9 @@ if(    open(F,$File))
 
 	    else
 	    {
-		print "Proof not found (status: $status, ";
+		print '<div class="box"><center><h4>ATP Proof not found</h4> ',
+		"status: $status", '<br/>';
+#		print "ATP Proof not found (status: $status, ";
 		if(($spass != 1) && ($advice != 1))
 		{
 		    print $query->a({class=>"txt",
@@ -355,9 +399,10 @@ if(    open(F,$File))
 				     $input_article . '&lc=' . $input_lc .
 				     '&tmp=' . $input_tmp . '&DM=1',
 				     title=>"Try 20+ ATP systems in SystemOnTPTP"},
-				    "Try more");
+				    "Export problem to SystemOnTPTP");
 		}
-		print " ):<br>\n";
+		print "</center><br/></div>"; 
+#		print " ):<br>\n";
 	    }
 	}
 	else

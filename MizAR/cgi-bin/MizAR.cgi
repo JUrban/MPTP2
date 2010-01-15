@@ -28,6 +28,7 @@ my $exporter =     "bin/mizar/exporter";
 my $xsltproc =     "bin/xsltproc";
 my $dbenv = "bin/dbenv.pl";
 my $err2pl = "bin/err2pl.pl";
+my $err2xml = "bin/err2xml.pl";
 my $mizitemize = "bin/MizItemize.pl";
 my $addabsrefs = "$Xsl4MizarDir/addabsrefs.xsl";
 my $miz2html = "$Xsl4MizarDir/miz.xsl";
@@ -60,6 +61,7 @@ my $ProblemFileDco2 = $ProblemFileOrig . ".dco2";
 my $ProblemFileErr = $ProblemFileOrig . ".err";
 my $ProblemFileErr1 = $ProblemFileOrig . ".err1";
 my $ProblemFileErr2 = $ProblemFileOrig . ".err2";
+my $ProblemFileErrX = $ProblemFileOrig . ".errx";
 
 my $MizOutput = $ProblemFileOrig . ".mizoutput";
 my $ExpOutput = $ProblemFileOrig . ".expoutput";
@@ -286,12 +288,17 @@ unless($text_mode)
 
     system("cp $ProblemFileErr $ProblemFileErr1");
     system("$err2pl $ProblemFileErr > $ProblemFileErr2");
+    system("$err2xml $ProblemFileErr > $ProblemFileErrX");
     system("$mizitemize $ProblemFileOrig");
 
     my $InferenceNr = `egrep -c '<(Proof|By|From|Now)' $ProblemFileXml`;
 
     print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.mizoutput&tmp=$PidNr\" target=\"MizarOutput$PidNr\">Show Mizar Output</a>\n";
 #    print $AjaxProofDir;
+
+    my $errorsnr = `wc -l <$ProblemFileErr`;
+
+    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.err1&tmp=$PidNr\" target=\"MizarOutput$PidNr\">($errorsnr Errors)</a>\n";
 
     print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.ploutput&tmp=$PidNr&refresh=1\" target=\"MPTPOutput$PidNr\">Generating $InferenceNr TPTP problems (click to see progress)</a><br>\n";
 
