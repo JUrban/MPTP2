@@ -88,7 +88,7 @@ sub HTMLize
        || ($ref=~m/^dt_([klmugrv][0-9]+)_(.*)$/))
     {
 	my ($kind,$ar) = ($1,$2);
-	if($kind =~ m/^l(.*)/) { $kind = 'e' . $1; }
+	if(($ref=~m/^l.*/) && ($kind =~ m/^l(.*)/)) { $kind = 'e' . $1; }
 	if($ar eq $input_article) {$res  = '#'.  uc($kind); }
 	else {$res  = $MizHtml . $ar . '.html#' . uc($kind); }
 	$title =  uc($ar) . ":" . uc($kind);
