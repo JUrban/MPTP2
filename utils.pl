@@ -4246,6 +4246,33 @@ needed_environ(Article, AddedNonMML, Articles):-
 	union1([Constrs,Regs,Reqs,Defs,Thms,Schms],[],Articles0),
 	sort_articles_in_mml_order(Articles0, AddedNonMML, Articles).
 
+%% ##TEST: :- first100(L),print_env_deps(mml1,L).
+%% ##TEST: :- print_env_deps(mmldeps).
+%%            
+print_env_deps(File):-
+	all_articles(L),!,
+	print_env_deps(File,L).
+
+print_env_deps(File,Articles):-
+	declare_mptp_predicates,
+	load_mml,
+	install_index,
+	tell(File),
+	write('strict digraph mml {'),
+	nl,!,
+	(
+	 member(A,Articles),
+	 needed_environ(A,[],As),
+	 once(findall(d,(member(R1,As),write(R1),format(" -> "),write(A),format(";"),nl),_)),
+	 fail
+	;
+	 write('}'),
+	 nl,
+	 told
+	).
+
+
+
 %% ensure that fraenkels are abstracted in all prerequisities
 %% of Article (changes the fraenkels_loaded/1 predicate).
 %% calling install_index after this is a good idea
