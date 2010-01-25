@@ -47,6 +47,7 @@ my $input_name	  = $query->param('Name');
 my $atp_mode	  = $query->param('ATPMode');
 my $input_snow	  = $query->param('Snow');
 my $linkarproofs  = $query->param('ARProofs');
+my $generateatp  = $query->param('GenATP');
 my $aname         = lc($input_name); 
 my $aname_uc      = uc($aname);
 my $ProblemFileOrig = $TemporaryProblemDirectory . "/$aname";
@@ -98,6 +99,7 @@ my %gconstrs      =
 
 
 $linkarproofs = 0 unless defined($linkarproofs);
+$generateatp = 0 unless defined($generateatp);
 
 sub min { my ($x,$y) = @_; ($x <= $y)? $x : $y }
 
