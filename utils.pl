@@ -4253,6 +4253,9 @@ print_env_deps(File):-
 	all_articles(L),!,
 	print_env_deps(File,L).
 
+% print_env_deps(+File,+Articles)
+%
+% Print the environmental dependencies of Atricles into a File in the dot notation
 print_env_deps(File,Articles):-
 	declare_mptp_predicates,
 	load_mml,
