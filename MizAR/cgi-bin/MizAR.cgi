@@ -337,7 +337,9 @@ unless($text_mode)
 
     system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml 2>$ProblemFileXml.errabs > $ProblemFileXml.abs");
 
-    system("time $xsltproc --param by_titles 1 --param const_links 1 --param linkarproofs $linkarproofs --param ajax_by 1 --param linkbytoself 1 --param linkby 3 --param thms_tptp_links 1 --param lbytptpcgi \\\'$lbytptpcgi\\\' --param lbytmpdir \\\'$lbytmpdir\\\' --param lbycgiparams \\\'$lbycgiparams\\\' --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
+    my $genatpparams = ($generateatp==1)? " --param by_titles 1 --param linkarproofs $linkarproofs --param ajax_by 1 --param linkbytoself 1 --param linkby 3 --param thms_tptp_links 1 --param lbytptpcgi \\\'$lbytptpcgi\\\' --param lbytmpdir \\\'$lbytmpdir\\\' --param lbycgiparams \\\'$lbycgiparams\\\' " : "";
+
+    system("time $xsltproc  $genatpparams --param const_links 1  --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
 
     if($generateatp > 0) 
     {
