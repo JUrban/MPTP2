@@ -343,7 +343,7 @@ unless($text_mode)
 
     my $ajaxproofparams = ($proofsbyajax==1)? " --param ajax_proof_dir \\\'$AjaxProofDir\\\' --param ajax_proofs 1 " : " ";
 
-    system("time $xsltproc  $genatpparams $proofsbyajax --param const_links 1  --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
+    system("time $xsltproc  $genatpparams $ajaxproofparams --param const_links 1  --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
 
     if($generateatp > 0) 
     {
