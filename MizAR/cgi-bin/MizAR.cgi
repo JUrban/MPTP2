@@ -52,7 +52,7 @@ my $proofsbyajax  = $query->param('AjaxProofs');
 my $aname         = lc($input_name); 
 my $aname_uc      = uc($aname);
 my $ProblemFileOrig = $TemporaryProblemDirectory . "/$aname";
-my $AjaxProofDir = $TemporaryProblemDirectory . "/proofs"; # /" . $aname;
+my $AjaxProofDir = $TemporaryProblemDirectory . "/proofs/" . $aname;
 my $ProblemDir = $TemporaryProblemDirectory . "/problems/" . $aname;
 my $ProblemFile = $ProblemFileOrig . ".miz";
 my $ProblemFileXml = $ProblemFileOrig . ".xml";
@@ -341,7 +341,7 @@ unless($text_mode)
 
     my $genatpparams = ($generateatp==1)? " --param by_titles 1 --param linkarproofs $linkarproofs --param ajax_by 1 --param linkbytoself 1 --param linkby 3 --param thms_tptp_links 1 --param lbytptpcgi \\\'$lbytptpcgi\\\' --param lbytmpdir \\\'$lbytmpdir\\\' --param lbycgiparams \\\'$lbycgiparams\\\' " : "";
 
-    my $ajaxproofparams = ($proofsbyajax==1)? " --param ajax_proof_dir \\\'$AjaxProofDir\\\' --param ajax_proofs 1 " : " ";
+    my $ajaxproofparams = ($proofsbyajax==1)? " --param ajax_proofs 1 " : " ";
 
     system("time $xsltproc  $genatpparams $ajaxproofparams --param const_links 1  --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
 
