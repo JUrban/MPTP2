@@ -80,11 +80,14 @@ my $AdvisorOutput  =  $ProblemFileOrig . ".adv_output";
 my $SnowOutput  =     $ProblemFileOrig . ".snow_output";
 my $SnowSymOffset =   500000;
 
+$linkarproofs = 0 unless defined($linkarproofs);
+$generateatp = 0 unless defined($generateatp);
+
 my $text_mode     = $query->param('Text');
 my (%gsyms,$grefs,$ref);
 my $ghost	  = "localhost";
 my $snowport	  = -1;
-my $start_snow    = 1;
+my $start_snow    = $generateatp;
 my $advisorport	  = -1;
 my %gconstrs      =
     (
@@ -97,9 +100,6 @@ my %gconstrs      =
      'struct' , 'l'
     );
 
-
-$linkarproofs = 0 unless defined($linkarproofs);
-$generateatp = 0 unless defined($generateatp);
 
 sub min { my ($x,$y) = @_; ($x <= $y)? $x : $y }
 
