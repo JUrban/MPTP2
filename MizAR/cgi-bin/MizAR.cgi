@@ -83,7 +83,7 @@ my $SnowSymOffset =   500000;
 
 $linkarproofs = 0 unless defined($linkarproofs);
 $generateatp = 0 unless defined($generateatp);
-$proofsbyajax = 0 unless defined($proofsbyajax);
+$proofsbyajax = 0; # unless defined($proofsbyajax); comented - not wroking yet, trying to write the relative proof path
 
 my $text_mode     = $query->param('Text');
 my (%gsyms,$grefs,$ref);
