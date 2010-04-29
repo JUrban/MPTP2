@@ -7,7 +7,7 @@
 use strict;
 use CGI;
 
-my $MyUrl = 'http://octopi.mizar.org/~mptp';
+my $MyUrl = 'http://mws.cs.ru.nl/~mptp';
 my $MizHtml = $MyUrl . "/mml/html/";
 
 my $input_article = "nnnnnnnnn";
