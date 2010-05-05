@@ -1587,6 +1587,13 @@ mk_problems_from_file(File, AddOptions):-
 	close(S),!,
 	mk_problems_from_list(List, AddOptions).
 
+
+%% These two can be used for generating normal and chainy problems for
+%% all MML. The chainy version gives uses the whole theory of the
+%% current article. A super-chainy version can be done by replacing
+%% article's includes with the preceding articles in mml.lar .
+
+%% ##TEST: :- declare_mptp_predicates,load_mml,install_index,all_articles(AA),checklist(abstract_fraenkels_if, AA),mml_dir(Dir), sformat(MmlLar, '~s../mml.lar', [Dir]), mk_problems_from_articlelist(MmlLar,[[mizar_by,mizar_from,mizar_proof], [theorem, top_level_lemma]], [opt_TPTP_SHORT,opt_PROB_PRINT_FUNC(print_refs_as_tptp_includes)]).
 %% ##TEST: :- declare_mptp_predicates,load_mml,install_index,all_articles(AA),checklist(abstract_fraenkels_if, AA),mml_dir(Dir), sformat(MmlLar, '~s../mml.lar', [Dir]), mk_problems_from_articlelist(MmlLar,[[mizar_by,mizar_from,mizar_proof], [theorem, top_level_lemma]], [opt_TPTP_SHORT]).
 mk_problems_from_articlelist(File, Kinds, AddOptions):-
         open(File,read,S),
