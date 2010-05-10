@@ -1,17 +1,187 @@
-Set Theory: aCARD*,ORDINAL*, FUNCT*, RELAT*,PARTFUN*, ZF_FUND*,ZF_COLLA*,
-General Topology: TOPS_*,TSP_*,YELLOW*, BORSUK*, METRIC*, FINTOPO*,KURATO*,TEX*,TOPGEN*,URYSOHN*,ALI2,
-Real plane, Euclidian spaces: JORDAN*, JGRAPH*,GOBOARD*,EUCLID*,SPRECT*,TOPREAL*,
-Algebraic Topology: TOPALG*, 
-Linear Algebra: MATRIX*, VECTSP*,RLVECT*, 
-Algebra: GROUP*, RING*,  LMOD*, MOD*,HEYTING*,POLYNOM*,ALG*,
-Universal Algebra: UNIALG*,MS*,OSALG*,CLOSURE*,
-Lattices: WAYBEL*,LATTICE*,ROBBINS*,
-Geometry: AFF*, PENCIL*,AFPR*,AFVECT*,ANAL*,ANPROJ*,
-Arithmetic/Number theory: INT*,NAT*,REAL*, POLYEQ*, COMPLEX*, FIB_NUM*,QUATERN*,ABSVALUE,ARITHM,
-Calculus (real, complex): FCONT*, FDIFF*, INTEGR*, SINCOS*, SIN_COS*,LIMFUNC*, CF*, COMSEQ*,SEQ*,TAYLOR*,
-Functional analysis: LOPBAN*, LP_SPAC*, LPSPAC*,CSSSPAC*, BHSP*,CONVEX*,RUSUB*,
-Logic,Model theory: ZFMODEL*, FLANG*, LANG*, MODAL*, CONLAT*, CQC*,HILBERT*,SUBSTUT*, ZF_LANG*,ZF_MODEL*,ZFMODEL*,ZF_REFLE*,ZFREFLE*, ABCMIZ*,
-Computers, Algorithms: RADIX*, GROEB*, MODELC*,SCM*,SCP*,SFM*,AMI*,AOFA*,
-Probability and Measure theory: MEASURE*, PROB*,MESFUNC*,
-Graph theory, finite structures: GLIB*, FINSEQ*,FINTOPO*,GRAPH*,TREES*,AFINS*,
-Category theory: CAT*, FUNCTOR*, ALTCAT*,ISOCAT*,
+#Set Theory
+ABIAN
+BINOP_1
+BOOLE
+CARD.*
+CLASSES.*
+DOMAIN_.*
+ENUMSE.*
+EQREL_.*
+FRAENKEL.*
+FUNCOP.*
+FUNCT.*
+GRFUNC.*
+MARGREL.*
+MCART.*
+MEMBERED.*
+MULTOP.*
+ORDERS.*
+ORDINAL.*
+RELAT.*
+RELSET.*
+PARTFUN.*
+PARTIT.*
+SCHEME.*
+SCHEMS.*
+SETFAM.*
+SETWIS.*
+SUBSET.*
+SYSREL.*
+TOLER_.*
+VALUED.*
+WELLORD.*
+WELLSET.*
+XBOO.*
+ZFMISC.*
+ZF_FUND.*
+ZF_COLLA.*
+#General Topology
+TOPS_.*
+TSP_.*
+YELLOW.*
+BORSUK.*
+METRIC.*
+FINTOPO.*
+KURATO.*
+TEX.*
+TOPGEN.*
+URYSOHN.*
+ALI2
+#Real plane, Euclidian spaces
+JORDAN.*
+JGRAPH.*
+GOBOARD.*
+EUCLID.*
+RCOMP_.*
+SPRECT.*
+TOPREAL.*
+#Algebraic Topology
+TOPALG.*
+#Linear Algebra
+MATRIX.*
+VECTSP.*
+RLVECT.*
+#Algebra
+GROUP.*
+RING.*
+LMOD.*
+MOD.*
+HEYTING.*
+POLYNOM.*
+ALG.*
+#Universal Algebra
+UNIALG.*
+MS.*
+OSALG.*
+PBOOLE.*
+CLOSURE.*
+#Lattices
+WAYBEL.*
+LATTICE.*
+ROBBINS.*
+#Geometry
+AFF.*
+PENCIL.*
+AFPR.*
+AFVECT.*
+ANAL.*
+ANPROJ.*
+#Arithmetic/Number theory
+ARYTM.*
+AXIOMS.*
+BINOP_2
+INT.*
+NAT.*
+NUMBER.*
+NUMERALS
+REAL.*
+POLYEQ.*
+QUIN_.*
+RECDEF_.*
+COMPLEX.*
+FIB_NUM.*
+QUATERN.*
+ABSVALUE
+ARITHM
+POWER.*
+PREPOWER.*
+RAT_.*
+RVSUM_.*
+SERIES_.*
+SQUARE.*
+XCMPLX.*
+XREAL.*
+XXREAL.*
+#Calculus (real, complex)
+FCONT.*
+FDIFF.*
+INTEGR.*
+SINCOS.*
+SIN_COS.*
+LIMFUNC.*
+CF.*
+COMSEQ.*
+RFUNCT_*
+ROLLE.*
+SEQ.*
+TAYLOR.*
+#Functional analysis
+LOPBAN.*
+LP_SPAC.*
+LPSPAC.*
+CSSSPAC.*
+BHSP.*
+CONVEX.*
+RUSUB.*
+#Logic, Model theory
+ZFMODEL.*
+FLANG.*
+LANG.*
+MODAL.*
+CONLAT.*
+CQC.*
+HILBERT.*
+SUBSTUT.*
+ZF_LANG.*
+ZF_MODEL.*
+ZFMODEL.*
+ZF_REFLE.*
+ZFREFLE.*
+ABCMIZ.*
+#Computers, Algorithms
+RADIX.*
+GATE.*
+GROEB.*
+MODELC.*
+PRE_FF.*
+SCM.*
+SCP.*
+SFM.*
+AMI.*
+AOFA.*
+#Probability and Measure theory
+MEASURE.*
+MESFUNC.*
+PROB.*
+RPR_.*
+SUPINF.*
+#Graph theory, finite structures
+GLIB.*
+FINSET.*
+FINSEQ.*
+FINSOP_.*
+FINSUB.*
+FINTOPO.*
+GRAPH.*
+NEWTON.*
+RFINSEQ.*
+SETWIS.*
+SETWOP.*
+TREES.*
+AFINS.*
+#Category theory
+CAT.*
+FUNCTOR.*
+ALTCAT.*
+ISOCAT.*
+
