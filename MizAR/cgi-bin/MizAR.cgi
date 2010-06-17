@@ -49,6 +49,8 @@ my $input_snow	  = $query->param('Snow');
 my $linkarproofs  = $query->param('ARProofs');
 my $generateatp   = $query->param('GenATP');
 my $proofsbyajax  = $query->param('AjaxProofs');
+my $mmlversion    = $query->param('MMLVersion');
+
 my $aname         = lc($input_name); 
 my $aname_uc      = uc($aname);
 my $ProblemFileOrig = $TemporaryProblemDirectory . "/$aname";
