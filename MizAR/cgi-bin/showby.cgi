@@ -26,10 +26,11 @@ my $htmlize	  = $query->param('HTML');
 my $spass	  = $query->param('spass');
 my $advice	  = $query->param('advice');
 my $aport	  = $query->param('ap');
+my $mmlversion    = $query->param('MMLVersion');
 
 (defined $spass) or $spass = 0;
 (defined $advice) or $advice = 0;
-
+$mmlversion   = '4.100.1011' unless defined($mmlversion);
 
 # my $MyUrl = 'http://octopi.mizar.org/~mptp';
 my $MyUrl = 'http://mws.cs.ru.nl/~mptp';
@@ -39,8 +40,8 @@ my $TSTPLogoUrl = $MyUrl . "/TSTP.gif";
 my $TemporaryDirectory = "/tmp";
 my $TemporaryProblemDirectory = "$TemporaryDirectory/matp_$$";
 my $Xsl4MizarDir = "/home/mptp/public_html/xsl4mizar";
-my $Mizfiles = "/home/mptp/public_html/mml";
-my $MizHtml = $MyUrl . "/mml/html/";
+my $Mizfiles = "/home/mptp/public_html/mml$mmlversion";
+my $MizHtml = $MyUrl . "/mml$mmlversion/html/";
 my $mizf =     "bin/mizf";
 my $eproof =     "bin/eproof";
 my $vampire =     "bin/vampire9";
