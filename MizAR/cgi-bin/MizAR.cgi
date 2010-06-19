@@ -91,7 +91,7 @@ my $MizOutput = $ProblemFileOrig . ".mizoutput";
 my $ExpOutput = $ProblemFileOrig . ".expoutput";
 my $ProblemFileBex = $ProblemFileOrig . ".bex";
 my $lbytmpdir = $PidNr;
-my $lbycgiparams = '\&ATP=refs\&HTML=1';
+my $lbycgiparams = '\&ATP=refs\&HTML=1\&MMLVersion=' . $mmlversion;
 my $lbytptpcgi= $MyUrl . '/cgi-bin/showby.cgi';
 
 my $SnowDataDir =     $Mizfiles . "/mptp/snowdata";
