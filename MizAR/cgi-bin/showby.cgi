@@ -17,6 +17,20 @@ sub szs_RESOUT      ()  { 'ResourceOut' }
 sub szs_GAVEUP      ()  { 'GaveUp' }   # system exited before the time limit for unknown reason
 
 
+my $query	  = new CGI;
+my $input_article	  = $query->param('article');
+my $input_lc	  = $query->param('lc');
+my $input_tmp     = $query->param('tmp');
+my $atp	  = $query->param('ATP');
+my $htmlize	  = $query->param('HTML');
+my $spass	  = $query->param('spass');
+my $advice	  = $query->param('advice');
+my $aport	  = $query->param('ap');
+
+(defined $spass) or $spass = 0;
+(defined $advice) or $advice = 0;
+
+
 # my $MyUrl = 'http://octopi.mizar.org/~mptp';
 my $MyUrl = 'http://mws.cs.ru.nl/~mptp';
 my $PalmTreeUrl = $MyUrl . "/PalmTree.jpg";
@@ -44,21 +58,9 @@ my $atproof = '@' . 'proof';
 
 
 
-my $query	  = new CGI;
-my $input_article	  = $query->param('article');
-my $input_lc	  = $query->param('lc');
-my $input_tmp     = $query->param('tmp');
-my $atp	  = $query->param('ATP');
-my $htmlize	  = $query->param('HTML');
-my $spass	  = $query->param('spass');
-my $advice	  = $query->param('advice');
-my $aport	  = $query->param('ap');
-
 my $advhost	  = "localhost";
 my $advlimit	  = 16;
 
-(defined $spass) or $spass = 0;
-(defined $advice) or $advice = 0;
 
 my %grefsyms =();     # Ref2Sym hash for each reference array of its symbols
 my %greftrmstd =();   # Ref2Sym hash for each reference array of its stdterms (their shared-entry numbers)
