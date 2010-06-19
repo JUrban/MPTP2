@@ -4553,17 +4553,7 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	    Rest_of_info = [Inference_info|_]
 	),
 
-	%% filter if problem_list given (problem names or positions like pos(78,22))
-	(
-	  member(problem_list(PList), Rest) ->
-	  (
-	    member(P,PList) -> true
-	  ;
-	    member(pos(Line0,Col0), PList)
-	  )
-	;
-	  true
-	),
+	
 	(
 	  member(snow_spec, Rest) ->
 	  snow_spec(P, Refs0),
@@ -4581,6 +4571,19 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	    Col = Col0
 	  )
 	),
+
+	%% filter if problem_list given (problem names or positions like pos(78,22))
+	(
+	  member(problem_list(PList), Rest) ->
+	  (
+	    member(P,PList) -> true
+	  ;
+	    member(pos(Line,Col), PList)
+	  )
+	;
+	  true
+	),
+	
 	(
 	  member(opt_LINE_COL_NMS, Options) ->
 	  concat_atom([Prefix,F,'__',Line,'_',Col],Outfile)
