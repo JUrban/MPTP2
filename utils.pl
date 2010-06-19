@@ -1554,16 +1554,29 @@ mk_sub_problems_from_list(List):-
 			    [opt_REM_SCH_CONSTS,opt_MK_TPTP_INF,opt_LEVEL_REF_INFO]),fail.
 
 %% Create problems whose names are in the list.
-%% Names should have the form xboole_1__t40_xboole_1 (i.e.: Article__Problem)
+%% Note that the fraenkels will not be uniformly abstracted when calling this
+%% multiple times for different articles - use mk_problems_from_articlelist for that.
+%% Names should have the form xboole_1__t40_xboole_1 (i.e.: Article__Problem),
+%% or list of article positions of the form card_1__pos(980,19)
 mk_problems_from_list(List,AddOptions):-
-%	declare_mptp_predicates,load_mml,
+	declare_mptp_predicates,load_mml,
 	findall([Article, Problem],
 		( member(Name,List), concat_atom([Article,Problem], '__', Name)),
 		Pairs), !,
 	maplist(nth1(1),Pairs,Articles),
 	sort(Articles, L),!,
 	member(A,L),
-	findall(P, member([A,P], Pairs), AList),
+	findall(P,
+		(
+		 member([A,P0], Pairs),
+		 (
+		  atom_concat(pos, _, P0) ->
+		  term_to_atom(P,P0)
+		 ;
+		  P = P0
+		 )
+		),
+		AList),
 	union([opt_REM_SCH_CONSTS,opt_MK_TPTP_INF], AddOptions, Options),
 	mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],
 			       [theorem, top_level_lemma],
@@ -4540,10 +4553,14 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	    Rest_of_info = [Inference_info|_]
 	),
 
-	%% filter if problem_list given
+	%% filter if problem_list given (problem names or positions like pos(78,22))
 	(
 	  member(problem_list(PList), Rest) ->
-	  member(P,PList)
+	  (
+	    member(P,PList) -> true
+	  ;
+	    member(pos(Line0,Col0), PList)
+	  )
 	;
 	  true
 	),
