@@ -11,16 +11,46 @@ use IPC::Open2;
 use HTTP::Request::Common;
 use LWP::Simple;
 
+
+my $query	  = new CGI;
+my $ProblemSource = $query->param('ProblemSource');
+my $VocFile       = $query->param('VocFile');
+my $VocSource       = $query->param('VocSource');
+my $input_article	  = $query->param('Formula');
+my $input_name	  = $query->param('Name');
+my $atp_mode	  = $query->param('ATPMode');
+my $input_snow	  = $query->param('Snow');
+my $linkarproofs  = $query->param('ARProofs');
+# if not defined, the htmlized article is not produced
+my $generatehtml   = $query->param('HTMLize');
+my $generateatp   = $query->param('GenATP');
+
+# if defined || 1, proofs are hidden by default and shown by ajax calls (undef by default)
+my $proofsbyajax  = $query->param('AjaxProofs');
+
+# the mml version used for processing and linking; there should be a suitable default
+my $mmlversion    = $query->param('MMLVersion');
+
+# either 'HTML' or 'TEXT'; says if output is in txt or in html
+my $query_mode       = $query->param('MODE');
+
+
+$linkarproofs = 0 unless defined($linkarproofs);
+$generateatp = 0 unless defined($generateatp);
+$generatehtml = 0 unless defined($generatehtml);
+$mmlversion   = '4.100.1011' unless defined($mmlversion);
+$proofsbyajax = 0; # unless defined($proofsbyajax); comented - not wroking yet, trying to write the relative proof path
+
 # my $MyUrl = 'http://octopi.mizar.org/~mptp';
 my $MyUrl = 'http://mws.cs.ru.nl/~mptp';
 my $PalmTreeUrl = $MyUrl . "/PalmTree.jpg";
 my $Xsl4MizarDir = "/home/mptp/public_html/xsl4mizar";
-my $Mizfiles = "/home/mptp/public_html/mml";
+my $Mizfiles = "/home/mptp/public_html/mml$mmlversion";
 my $utilspl =  "/home/mptp/public_html/cgi-bin/bin/utils.pl";
 my $TemporaryDirectory = "/tmp";
 my $TemporaryProblemDirectory = "$TemporaryDirectory/matp_$$";
 my $PidNr = $$;
-my $MizHtml = $MyUrl . "/mml/html/";
+my $MizHtml = $MyUrl . "/mml$mmlversion/html/";
 my $mizf =     "bin/mizf";
 my $snow =     "bin/snow";
 my $advisor =     "bin/advisor.pl";
@@ -38,18 +68,6 @@ my $atproof = '@' . 'proof';
 my $idv_img = "<img SRC=\"$PalmTreeUrl\" alt=\"Show IDV proof tree\" title=\"Show IDV proof tree\">";
 
 
-my $query	  = new CGI;
-my $ProblemSource = $query->param('ProblemSource');
-my $VocFile       = $query->param('VocFile');
-my $VocSource       = $query->param('VocSource');
-my $input_article	  = $query->param('Formula');
-my $input_name	  = $query->param('Name');
-my $atp_mode	  = $query->param('ATPMode');
-my $input_snow	  = $query->param('Snow');
-my $linkarproofs  = $query->param('ARProofs');
-my $generateatp   = $query->param('GenATP');
-my $proofsbyajax  = $query->param('AjaxProofs');
-my $mmlversion    = $query->param('MMLVersion');
 
 my $aname         = lc($input_name); 
 my $aname_uc      = uc($aname);
@@ -84,11 +102,6 @@ my $AdvisorOutput  =  $ProblemFileOrig . ".adv_output";
 my $SnowOutput  =     $ProblemFileOrig . ".snow_output";
 my $SnowSymOffset =   500000;
 
-$linkarproofs = 0 unless defined($linkarproofs);
-$generateatp = 0 unless defined($generateatp);
-$proofsbyajax = 0; # unless defined($proofsbyajax); comented - not wroking yet, trying to write the relative proof path
-
-my $text_mode     = $query->param('Text');
 my (%gsyms,$grefs,$ref);
 my $ghost	  = "localhost";
 my $snowport	  = -1;
@@ -285,7 +298,7 @@ sub StartSNoW
 
 
 print $query->header;
-unless($text_mode)
+unless($query_mode eq 'TEXT')
 {
     print $query->start_html($aname_uc);
 
@@ -504,7 +517,7 @@ sub GetRefs
     unless ($remote)
     {
 	print "The server is down, sorry\n";
-	$query->end_html unless($text_mode);
+	$query->end_html unless($query_mode eq 'TEXT');
 	exit;
     }
     $remote->autoflush(1);
