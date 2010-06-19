@@ -16,14 +16,14 @@ while(<F>)
 }
 while(<>)
 {
-    print "SS: $_";
     chomp;
     foreach $k (@g)
     {
 	if(m/^$k/) 
 	{
 #	    print "\t$k\n";
-	    print "\t$h{$k}\n";
+	    print "$h{$k}:";
+	    print "\t$_\n";
 	    $hh{$h{$k}}++;
 	}
     }
