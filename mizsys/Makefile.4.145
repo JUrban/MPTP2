@@ -5,7 +5,7 @@ MIZ100     = $(shell cat $(MMLLAR100))
 STANDARDMIZ     = $(shell cat $(MMLLAR))
 SHMIZ = $(shell shuffle < $(MMLLAR))
 
-XSL4MIZAR = /home/urban/gr/xsl4mizar 
+XSL4MIZAR =/home/urban/gr/xsl4mizar
 XSLTPROC = xsltproc
 XML2HTML = $(XSL4MIZAR)/miz.xsl
 ADDABS = $(XSL4MIZAR)/addabsrefs.xsl
