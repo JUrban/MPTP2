@@ -67,6 +67,7 @@ my $ProblemFileErr = $ProblemFileOrig . ".err";
 my $ProblemFileErr1 = $ProblemFileOrig . ".err1";
 my $ProblemFileErr2 = $ProblemFileOrig . ".err2";
 my $ProblemFileErrX = $ProblemFileOrig . ".errx";
+my $ProblemCgiParams = $ProblemFileOrig . ".cgiparams";
 
 my $MizOutput = $ProblemFileOrig . ".mizoutput";
 my $ExpOutput = $ProblemFileOrig . ".expoutput";
@@ -151,6 +152,13 @@ sub CreateTmpDirs
 
 #DEBUG print("----$TemporaryProblemDirectory----$!---\n");
 
+}
+
+sub LogCGIParams
+{
+    open (CGIPARAMS,'>',$ProblemCgiParams) || die;
+    $query->save(\*CGIPARAMS);
+    close CGIPARAMS;
 }
 
 # Print input article into $ProblemFile;
@@ -287,6 +295,7 @@ unless($text_mode)
     CreateTmpDir("$AjaxProofDir/$aname");
     CreateTmpDir($ProblemDir);
 
+    LogCGIParams();
     SetupArticleFiles();
 
     # this has to precede creation of html, so that $aport
