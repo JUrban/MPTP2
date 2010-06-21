@@ -56,7 +56,7 @@ my $snow =     "bin/snow";
 my $advisor =     "bin/advisor.pl";
 my $exporter =     "bin/mizar/exporter";
 my $xsltproc =     "bin/xsltproc";
-my $dbenv = "bin/dbenv.pl";
+my $dbenv2 = "bin/dbenv2.pl";
 my $mk_derived = "bin/mk_derived.pl";
 my $err2pl = "bin/err2pl.pl";
 my $err2xml = "bin/err2xml.pl";
@@ -64,6 +64,7 @@ my $mizitemize = "bin/MizItemize.pl";
 my $addabsrefs = "$Xsl4MizarDir/addabsrefs.xsl";
 my $miz2html = "$Xsl4MizarDir/miz.xsl";
 my $mizpl = "$Xsl4MizarDir/mizpl.xsl";
+my $evl2pl = "$Xsl4MizarDir/evl2pl.xsl";
 my $doatproof = 0;
 my $atproof = '@' . 'proof';
 my $idv_img = "<img SRC=\"$PalmTreeUrl\" alt=\"Show IDV proof tree\" title=\"Show IDV proof tree\">";
@@ -79,9 +80,6 @@ my $ProblemFile = $ProblemFileOrig . ".miz";
 my $ProblemFileXml = $ProblemFileOrig . ".xml";
 my $ProblemFileXml2 = $ProblemFileOrig . ".xml2";
 my $ProblemFileHtml = $ProblemFileOrig . ".html";
-my $ProblemFileDco = $ProblemFileOrig . ".dco";
-my $ProblemFileDco1 = $ProblemFileOrig . ".dco1";
-my $ProblemFileDco2 = $ProblemFileOrig . ".dco2";
 my $ProblemFileErr = $ProblemFileOrig . ".err";
 my $ProblemFileErr1 = $ProblemFileOrig . ".err1";
 my $ProblemFileErr2 = $ProblemFileOrig . ".err2";
@@ -89,7 +87,6 @@ my $ProblemFileErrX = $ProblemFileOrig . ".errx";
 my $ProblemCgiParams = $ProblemFileOrig . ".cgiparams";
 
 my $MizOutput = $ProblemFileOrig . ".mizoutput";
-my $ExpOutput = $ProblemFileOrig . ".expoutput";
 my $ProblemFileBex = $ProblemFileOrig . ".bex";
 my $lbytmpdir = $PidNr;
 my $lbycgiparams = '\&ATP=refs\&HTML=1\&MMLVersion=' . $mmlversion;
@@ -359,9 +356,6 @@ unless($query_mode eq 'TEXT')
 
 # ###TODO: note that const_links=2 does not work correctly yet    
 
-
-
-
     system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml 2>$ProblemFileXml.errabs > $ProblemFileXml.abs");
 
     my $genatpparams = ($generateatp==1)? " --param by_titles 1 --param linkarproofs $linkarproofs --param ajax_by 1 --param linkbytoself 1 --param linkby 3 --param thms_tptp_links 1 --param lbytptpcgi \\\'$lbytptpcgi\\\' --param lbytmpdir \\\'$lbytmpdir\\\' --param lbycgiparams \\\'$lbycgiparams\\\' " : "";
@@ -383,10 +377,8 @@ unless($query_mode eq 'TEXT')
 #    system("time $xsltproc $mizpl $ProblemFileXml.abs > $ProblemFileXml2 2>$ProblemFileXml.errpl");
 
 	system("$mk_derived $ProblemFileOrig 2> $ProblemFileOrig.derived_err");
-	system("$dbenv $ProblemFileOrig > $ProblemFileOrig.evl2");
-	system("$exporter -q $ProblemFile 2>&1 > $ExpOutput");
-	system("time $xsltproc --param aname \\\'$aname_uc\\\' --param explainbyfrom 1 $addabsrefs $ProblemFileDco > $ProblemFileDco1  2>$ProblemFileDco.err");
-	system("time $xsltproc --param mml 1 $mizpl $ProblemFileDco1 > $ProblemFileDco2 2>$ProblemFileDco.err2");
+	system("$xsltproc $evl2pl $ProblemFileOrig.evl   > $ProblemFileOrig.evl1");
+	system("$dbenv2 $ProblemFileOrig > $ProblemFileOrig.evl2");
 
 	my $Tmp1 = $TemporaryProblemDirectory . '/';
 # swipl -G50M -s utils.pl -g "mptp2tptp('$1',[opt_NO_FRAENKEL_CONST_GEN],user),halt." |& grep "^fof"
