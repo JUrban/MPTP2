@@ -18,6 +18,7 @@ MIZPL = $(XSL4MIZAR)/mizpl.xsl
 EVL2PL = $(XSL4MIZAR)/evl2pl.xsl
 MKXMLHEAD = $(XSL4MIZAR)/mkxmlhead.pl
 DBENV2 = $(MPTP2)/dbenv2.pl
+MK_DERIVED = $(MPTP2)/mk_derived.pl
 
 %.acc: %.miz
 	$(ACCOM) $* > $*.acc 
@@ -25,11 +26,12 @@ DBENV2 = $(MPTP2)/dbenv2.pl
 %.exp: %.acc
 	$(EXPORTER) -q   $* >$*.exp  
 
-%.dco1: %.dco
-	$(XSLTPROC)  --param aname \'$(shell echo $*|tr 'a-z' 'A-Z')\' $(ADDABS) $*.dco > $*.dco1;
+# no longer needed - dco2 and others made from  xml2
+#%.dco1: %.dco
+#	$(XSLTPROC)  --param aname \'$(shell echo $*|tr 'a-z' 'A-Z')\' $(ADDABS) $*.dco > $*.dco1;
 
-%.dco2: %.dco1
-	$(XSLTPROC) --param mml 1 $(MIZPL)  $*.dco1 > $*.dco2
+#%.dco2: %.dco1
+#	$(XSLTPROC) --param mml 1 $(MIZPL)  $*.dco1 > $*.dco2
 
 %.xml: %.acc
 	$(VERIFIER.BFEX) -q   $*  
@@ -45,6 +47,9 @@ DBENV2 = $(MPTP2)/dbenv2.pl
 
 %.xml2: %.xml1
 	$(XSLTPROC) $(MIZPL)  $*.xml1 > $*.xml2
+
+%.dco2: %.xml2
+	$(MK_DERIVED) $*
 
 %.html: %.xml1
 	$(XSLTPROC) --param linking \'s\' --param proof_links \'1\' $(XML2HTML)  $*.xml1 > $*.html 
@@ -80,8 +85,9 @@ allxml1: $(addsuffix .xml1, $(SHMIZ))
 allxml2: $(addsuffix .xml2, $(SHMIZ))
 allbex1: $(addsuffix .bex1, $(STANDARDMIZ))
 allexp: $(addsuffix .exp, $(STANDARDMIZ))
-alldco1: $(addsuffix 1, $(shell ls *.dco))
-alldco2: $(addsuffix 2, $(shell ls *.dco))
+#alldco1: $(addsuffix 1, $(shell ls *.dco))
+#alldco2: $(addsuffix 2, $(shell ls *.dco))
+alldco2: $(addsuffix .dco2, $(STANDARDMIZ))
 allhdr: $(addsuffix .hdr, $(STANDARDMIZ))
 allevl1: $(addsuffix .evl1, $(SHMIZ))
 allevl2: $(addsuffix .evl2, $(SHMIZ))
