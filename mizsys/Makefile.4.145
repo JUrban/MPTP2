@@ -6,6 +6,7 @@ STANDARDMIZ     = $(shell cat $(MMLLAR))
 SHMIZ = $(shell shuffle < $(MMLLAR))
 
 XSL4MIZAR =/home/urban/gr/xsl4mizar
+MPTP2 =/home/urban/gr/MPTP2
 XSLTPROC = xsltproc
 XML2HTML = $(XSL4MIZAR)/miz.xsl
 ADDABS = $(XSL4MIZAR)/addabsrefs.xsl
@@ -14,7 +15,9 @@ VERIFIER = $(MFILES)/bin/verifier
 EXPORTER = $(MFILES)/bin/exporter
 VERIFIER.BFEX = $(MFILES)/bin/verifier.bfex
 MIZPL = $(XSL4MIZAR)/mizpl.xsl
+EVL2PL = $(XSL4MIZAR)/evl2pl.xsl
 MKXMLHEAD = $(XSL4MIZAR)/mkxmlhead.pl
+DBENV2 = $(MPTP2)/dbenv2.pl
 
 %.acc: %.miz
 	$(ACCOM) $* > $*.acc 
@@ -49,6 +52,12 @@ MKXMLHEAD = $(XSL4MIZAR)/mkxmlhead.pl
 %.hdr: %.miz
 	$(MKXMLHEAD) $*.miz > $*.hdr
 
+%.evl1: %.acc
+	$(XSLTPROC) $(EVL2PL) $*.evl > $*.evl1
+
+%.evl2: %.evl1
+	$(DBENV2) $* > $*.evl2
+
 %.htmla1: %.xml1 %.hdr
 	$(XSLTPROC) --param mk_header 1 --param linking \'s\' --param mizhtml \'\' --param ajax_proofs \'1\' --param titles \'1\' --param colored \'1\' --param proof_links \'1\' $(XML2HTML)  $*.xml1 > $*.htmla1 
 
@@ -74,3 +83,5 @@ allexp: $(addsuffix .exp, $(STANDARDMIZ))
 alldco1: $(addsuffix 1, $(shell ls *.dco))
 alldco2: $(addsuffix 2, $(shell ls *.dco))
 allhdr: $(addsuffix .hdr, $(STANDARDMIZ))
+allevl1: $(addsuffix .evl1, $(SHMIZ))
+allevl2: $(addsuffix .evl2, $(SHMIZ))
