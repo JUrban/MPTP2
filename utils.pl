@@ -4424,6 +4424,7 @@ load_proper_article(Article,Options,PostLoadFiles):-
 	%% remove the ovelapping mml parts first
 	retractall(fof(_,_,_,file(Article,_),_)),
 	retractall(fraenkels_loaded(Article)),
+	%% ###TODO: this willbe no longer needed as the dco is in xml
 	sublist(exists_file,[DCO],ToLoad1),
 	load_files(ToLoad1,[silent(true)]),
 	consult(File),
