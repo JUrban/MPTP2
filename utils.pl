@@ -321,6 +321,8 @@ mptp_attr_sym(X):- atom_chars(X,[v|_]).
 mptp_mode_sym(X):- atom_chars(X,[F|_]),member(F,[m,l]).
 mptp_attr_or_mode_sym(X):- atom_chars(X,[F|_]),member(F,[v,m,l]).
 mptp_req_name(X):- atom_chars(X,[r,q|_]).
+mptp_fraenkel_sym(X):- atom_chars(X,[a|_]).
+mptp_choice_sym(X):- atom_chars(X,[o|_]).
 %% collect ground counts into buk/3, stack failure otherwise
 %% then print and run perl -e 'while(<>) { /.([0-9]+), (.*)./; $h{$2}+=$1;} foreach $k (sort {$h{$b} <=> $h{$a}} (keys %h)) {print "$h{$k}:$k\n";}'
 %% on the result
@@ -3808,11 +3810,21 @@ inst_univ_fof([fof(R,R1,(! [_|Vs] : Out),R3,R4),[Cnst/Var|T]], Res):- !,
 
 inst_univ_fof(_,_):- throw(inst_univ_fof).
 
-%% create the fof for a given pair [NewSym, Def], and assert
+%% assert_fraenkel_def(+File,[+NewSym, +Def], -NewName)
+%%
+%% create the fof for a given pair [NewSym, Def], and assert.
+%% Now handles also choice terms - with different naming.
 assert_fraenkel_def(File,[NewSym, Def], NewName):-
-	concat_atom(['fraenkel_', NewSym], NewName),
-	Res= fof(NewName, definition, Def, file(File,NewSym),
-		 [mptp_info(0,[],fraenkel,position(0,0),[])]),
+	(mptp_fraenkel_sym(NewSym) ->
+	 concat_atom(['fraenkel_', NewSym], NewName),
+	 Res= fof(NewName, definition, Def, file(File,NewSym),
+		  [mptp_info(0,[],fraenkel,position(0,0),[])])
+	;
+	 ensure(mptp_choice_sym(NewSym), assert_fraenkel_def(File,[NewSym,Def])),
+	 concat_atom(['dt_', NewSym], NewName),
+	 Res= fof(NewName, axiom, Def, file(File,NewSym),
+		  [mptp_info(0,[],o,position(0,0),[ctype])])
+	),
 	assert(Res),!.
 
 print_clause_id(Id):- clause(X,_,Id), print(X), nl, !.
