@@ -296,43 +296,43 @@ sub StartSNoW
 
 
 print $query->header;
-unless($query_mode eq 'TEXT')
-{
-    print $query->start_html($aname_uc);
+print $query->start_html($aname_uc) unless($query_mode eq 'TEXT');
 
-    CheckArticleName($aname);
 
-    CreateTmpDirs($TemporaryProblemDirectory);
-    CreateTmpDir("$AjaxProofDir/$aname");
-    CreateTmpDir($ProblemDir);
 
-    LogCGIParams();
-    SetupArticleFiles();
+CheckArticleName($aname);
+
+CreateTmpDirs($TemporaryProblemDirectory);
+CreateTmpDir("$AjaxProofDir/$aname");
+CreateTmpDir($ProblemDir);
+
+LogCGIParams();
+SetupArticleFiles();
 
     # this has to precede creation of html, so that $aport
     # was set in the by-calls
-    if($start_snow > 0) { ($advisorport, $snowport) = StartSNoW(); }
+if($start_snow > 0) { ($advisorport, $snowport) = StartSNoW(); }
 
-    $ENV{"MIZFILES"}= $Mizfiles;
-    system("$mizf $ProblemFile 2>&1 > $MizOutput");
+$ENV{"MIZFILES"}= $Mizfiles;
+system("$mizf $ProblemFile 2>&1 > $MizOutput");
 
-    system("cp $ProblemFileErr $ProblemFileErr1");
-    system("$err2pl $ProblemFileErr > $ProblemFileErr2");
-    system("$err2xml $ProblemFileErr > $ProblemFileErrX");
-    system("$mizitemize $ProblemFileOrig");
+system("cp $ProblemFileErr $ProblemFileErr1");
+system("$err2pl $ProblemFileErr > $ProblemFileErr2");
+system("$err2xml $ProblemFileErr > $ProblemFileErrX");
+system("$mizitemize $ProblemFileOrig");
 
-    my $InferenceNr = `egrep -c '<(Proof|By|From|Now)' $ProblemFileXml`;
+my $InferenceNr = `egrep -c '<(Proof|By|From|Now)' $ProblemFileXml`;
+my $errorsnr = `wc -l <$ProblemFileErr`;
 
-    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.mizoutput&tmp=$PidNr\" target=\"MizarOutput$PidNr\">Show Mizar Output</a>\n";
+unless($query_mode eq 'TEXT')
+{
+    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.mizoutput&tmp=$PidNr\" target=\"MizarOutput$PidNr\">Show Mizar Output</a>\n";  
 #    print $AjaxProofDir;
-
-    my $errorsnr = `wc -l <$ProblemFileErr`;
 
     print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.err1&tmp=$PidNr\" target=\"MizarOutput$PidNr\">($errorsnr Errors)</a>\n";
 
-    if($generateatp > 0) {
-	print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.ploutput&tmp=$PidNr&refresh=1\" target=\"MPTPOutput$PidNr\">Generating $InferenceNr TPTP problems (click to see progress)</a><br>\n";
-    }
+    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.ploutput&tmp=$PidNr&refresh=1\" target=\"MPTPOutput$PidNr\">Generating $InferenceNr TPTP problems (click to see progress)</a><br>\n" if($generateatp > 0);
+    
 #    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.xml.abs&tmp=$PidNr&content-type=text%2Fplain\" target=\"XMLOutput$PidNr\">Show XML Output</a>\n";
 
 
@@ -346,49 +346,42 @@ unless($query_mode eq 'TEXT')
     }
     close(PFH);
     print ('</pre>', "\n");
+}
 
-
-
-    SortByExplanations($ProblemFileBex);
+SortByExplanations($ProblemFileBex);
 
 
 #    system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml > $ProblemFileXml.abs 2>$ProblemFileXml.errabs");
 
 # ###TODO: note that const_links=2 does not work correctly yet    
 
-    system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml 2>$ProblemFileXml.errabs > $ProblemFileXml.abs");
+system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml 2>$ProblemFileXml.errabs > $ProblemFileXml.abs");
 
+unless($query_mode eq 'TEXT')
+{
     my $genatpparams = ($generateatp==1)? " --param by_titles 1 --param linkarproofs $linkarproofs --param ajax_by 1 --param linkbytoself 1 --param linkby 3 --param thms_tptp_links 1 --param lbytptpcgi \\\'$lbytptpcgi\\\' --param lbytmpdir \\\'$lbytmpdir\\\' --param lbycgiparams \\\'$lbycgiparams\\\' " : "";
 
     my $ajaxproofparams = ($proofsbyajax==1)? " -param lbytmpdir \\\'$lbytmpdir\\\'  --param ajax_proofs 3 " : " ";
 
     system("time $xsltproc  $genatpparams $ajaxproofparams --param const_links 1  --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
-
-    if($generateatp > 0) 
-    {
-	system("time $xsltproc $mizpl $ProblemFileXml.abs  > $ProblemFileXml2 2>$ProblemFileXml.errpl");
+}
+ 
+if($generateatp > 0) 
+{
+    system("time $xsltproc $mizpl $ProblemFileXml.abs  > $ProblemFileXml2 2>$ProblemFileXml.errpl");
     
 
 # ajax proofs are probably not wanted for the first stab
 #    system("time $xsltproc --param default_target \\\'_self\\\' --param ajax_proof_dir \\\'$AjaxProofDir\\\' --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\' --param ajax_proofs 1 --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs > $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
 
+    system("$mk_derived $ProblemFileOrig 2> $ProblemFileOrig.derived_err");
+    system("$xsltproc $evl2pl $ProblemFileOrig.evl   > $ProblemFileOrig.evl1");
+    system("$dbenv2 $ProblemFileOrig > $ProblemFileOrig.evl2");
 
-## this is a hack to pass the refs ATP param
-#    system("time $xsltproc $mizpl $ProblemFileXml.abs > $ProblemFileXml2 2>$ProblemFileXml.errpl");
-
-	system("$mk_derived $ProblemFileOrig 2> $ProblemFileOrig.derived_err");
-	system("$xsltproc $evl2pl $ProblemFileOrig.evl   > $ProblemFileOrig.evl1");
-	system("$dbenv2 $ProblemFileOrig > $ProblemFileOrig.evl2");
-
-	my $Tmp1 = $TemporaryProblemDirectory . '/';
+    my $Tmp1 = $TemporaryProblemDirectory . '/';
 # swipl -G50M -s utils.pl -g "mptp2tptp('$1',[opt_NO_FRAENKEL_CONST_GEN],user),halt." |& grep "^fof"
-	system("cd $TemporaryProblemDirectory; swipl -G50M -s $utilspl -g \"(A=$aname,D=\'$Tmp1\',declare_mptp_predicates,time(load_mml_for_article(A, D, [A])),time(install_index),time(mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma, sublemma]],[opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_ADDED_NON_MML([A]),opt_NON_MML_DIR(D),opt_LINE_COL_NMS,opt_PRINT_PROB_PROGRESS,opt_ALLOWED_REF_INFO,opt_PROVED_BY_INFO])),halt).\" > $aname.ploutput 2>&1");
-    }
-
-#    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.ploutput&tmp=$PidNr\" target=\"MPTPOutput$PidNr\">Show MPTP Output</a><br>\n";
-
-
-
+    system("cd $TemporaryProblemDirectory; swipl -G50M -s $utilspl -g \"(A=$aname,D=\'$Tmp1\',declare_mptp_predicates,time(load_mml_for_article(A, D, [A])),time(install_index),time(mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma, sublemma]],[opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_ADDED_NON_MML([A]),opt_NON_MML_DIR(D),opt_LINE_COL_NMS,opt_PRINT_PROB_PROGRESS,opt_ALLOWED_REF_INFO,opt_PROVED_BY_INFO])),halt).\" > $aname.ploutput 2>&1");
+}
 
 # A=m_drxj,D='/tmp/matp_704/',load_mml_for_article(A, D, [A]),install_index,mk_article_problems(A,[[mizar_by],[theorem, top_level_lemma, sublemma]],[opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_ADDED_NON_MML([A]),opt_NON_MML_DIR(D),opt_LINE_COL_NMS]).
 
