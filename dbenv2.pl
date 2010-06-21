@@ -1,9 +1,9 @@
 #!/usr/bin/perl -w
 
-# Environment massaging script for MPTP
+# Environment massaging script for MPTP, for xml-based evl files
 
 # SYNOPSIS: 
-# for i in tarski `cat mml.lar`; do echo $i;
+# for i in tarski `cat mml.lar`; do echo $i; xsltproc evl2pl.xsl $i.evl >$evl1;
 # perl -F dbenv2.pl $i > $i.evl2;
 # done
 
