@@ -635,11 +635,28 @@ real_context(InVars, BigC, RealC):-
 % lists of Fraenkel symbols starting with their arity, e.g.:
 % [[0|FrSymsOfArity_0],[2|FrSymsOfArity_2],[1|FrSymsOfArity_1]],
 
+
+%% new_fr_sym(+File, +Arity, +FrInfo, -NewFrInfo, -NewSym)
+%%
+%% Note that the fraenkel and choice symbols are now treated together,
+%% even though fraenkels start with 'a' and choices with 'o'. So the
+%% numbering is contiguous across both now.
 new_fr_sym(File, Arity, FrInfo, NewFrInfo, NewSym):-
+	% find the sublist of symbols with Arity
 	( select([Arity|FrSyms], FrInfo, TmpInfo);
 	    ( FrSyms = [], TmpInfo = FrInfo )),
 	length(FrSyms, Nr),
 	concat_atom([a,Arity,Nr,File], '_', NewSym),
+	% update the sublist of symbols with Arity
+	select([Arity,NewSym|FrSyms], NewFrInfo, TmpInfo), ! .
+
+new_the_sym(File, Arity, FrInfo, NewFrInfo, NewSym):-
+        % find the sublist of symbols with Arity
+	( select([Arity|FrSyms], FrInfo, TmpInfo);
+	    ( FrSyms = [], TmpInfo = FrInfo )),
+	length(FrSyms, Nr),
+	concat_atom([o,Arity,Nr,File], '_', NewSym),
+	% update the sublist of symbols with Arity
 	select([Arity,NewSym|FrSyms], NewFrInfo, TmpInfo), ! .
 
 %% now also allows re-creating the def from a cached symbol name,
@@ -658,6 +675,27 @@ mk_fraenkel_def(File, Var, Context, all(Svars1,Trm1,Frm1),
 	ExFla = ( ? Svars1 : ( ( X = Trm1 ) & Frm1)),
 	Def = ( ! [(X : $true)|Context] : ( InPred <=> ExFla ) ),
 	Var = FrTrm.
+
+%% version for choiceterms (keeping the name of predicate for simplicity)
+%% now also allows re-creating the def from a cached symbol name,
+%% if NewSym is not a variable
+mk_fraenkel_def(File, Var, Context, the(Type1),
+		FrInfo, NewFrInfo, NewSym, Def) :-
+	split_svars(Vars, _, Context),
+	length(Vars, Arity),
+	(var(NewSym) ->
+	    new_the_sym(File, Arity, FrInfo, NewFrInfo, NewSym)
+	;
+	    NewFrInfo = FrInfo
+	),
+	ChoiceTrm =.. [NewSym|Vars],
+	SrtFla = sort(ChoiceTrm, Type1),
+	(Arity = 0 ->
+	 Def = SrtFla
+	;
+	 Def = ( ! Context: SrtFla )
+	),
+	Var = ChoiceTrm.
 
 %% mk_fraenkel_defs_top(+File, +Infos, -NewFrSyms, -NewDefs)
 %%
@@ -717,12 +755,13 @@ mk_fraenkel_defs(_, [], GrCopiesIn, GrCopiesIn, FrSyms, _, FrSyms, []).
 mk_fraenkel_defs(File, [[V,C,_,GrC]|T], GrCopiesIn, GrCopiesOut, FrSyms, CachedGround, NewFrSyms, Defs):-
 	member([FoundSym,GrC], GrCopiesIn), !,
 	split_svars(Vars, _, C),
+	% this is where the variable gets instantiated to the fraenkel functor applied to context
 	V =.. [FoundSym|Vars],
 	mk_fraenkel_defs(File, T, GrCopiesIn, GrCopiesOut, FrSyms, CachedGround, NewFrSyms, Defs).
 
 %% if cached, create the def and put the GroundCopy into normal GrCopies,
 %% so that the def is not created again (it will get caught by the previous clause).
-%% FrSyms are unchenged, because they contain CachedSym already
+%% FrSyms are unchanged, because they contain CachedSym already
 mk_fraenkel_defs(File, [[V,C,Trm,GrC]|T], GrCopiesIn, GrCopiesOut, FrSyms, CachedGround, 
 		 NewFrSyms, [[CachedSym,D]|Defs]):-
 	member([CachedSym,GrC], CachedGround), !,
@@ -3781,13 +3820,14 @@ print_nl(X):- print(X), nl, !.
 
 %% abstract_fraenkels(+Article, +Options, -NewFrSyms, -NewFlaNames)
 %%
-%% Create definitions for all fraenkel terms in Article,
+%% Create definitions for all fraenkel and choice terms in Article,
 %% in which the possible local consts are generalized-out;
 %% assert these definitions as new fofs, erase the original clauses
 %% with fraenkel terms and assert instead of them their versions
 %% with fraenkel terms replaced by the new fraenkel functors.
 %% Schemes containing fraenkels are saved for possible instantiations
 %% in sch_orig_copy/2 .
+%% For choice terms, only the type fla is created, there is no definition.
 abstract_fraenkels(Article, Options, NewFrSyms, NewFlaNames):-
 	findall(Id,(fof_file(Article,Id),
 		    clause(fof(_,_,Fla,file(_,_),_),_,Id),
@@ -3802,7 +3842,7 @@ abstract_fraenkels(Article, Options, NewFrSyms, NewFlaNames):-
 		  assert(sch_orig_copy(SchRef, SchFla))
 		),
 		_),
-	%% collect fraenkel infos and put variables into fraenkel flas
+	%% collect fraenkel and choice infos and put variables into fraenkel and choice flas
 	findall([[fof(R,R1,Out,R3,R4),Subst],Info],
 		(member(Id,Ids), clause(fof(R,R1,R2,R3,R4),_,Id),
 		    (
