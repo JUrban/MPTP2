@@ -57,6 +57,7 @@ my $advisor =     "bin/advisor.pl";
 my $exporter =     "bin/mizar/exporter";
 my $xsltproc =     "bin/xsltproc";
 my $dbenv = "bin/dbenv.pl";
+my $mk_derived = "bin/mk_derived.pl";
 my $err2pl = "bin/err2pl.pl";
 my $err2xml = "bin/err2xml.pl";
 my $mizitemize = "bin/MizItemize.pl";
@@ -380,22 +381,9 @@ unless($query_mode eq 'TEXT')
 
 ## this is a hack to pass the refs ATP param
 #    system("time $xsltproc $mizpl $ProblemFileXml.abs > $ProblemFileXml2 2>$ProblemFileXml.errpl");
-	my ($Dcl, $The, $Sch, $Lem, $Evl) = ($ProblemFileOrig . '.dcl2', $ProblemFileOrig . '.the2', 
-					 $ProblemFileOrig . '.sch2', $ProblemFileOrig . '.lem2', $ProblemFileOrig . '.evl2'); 
-## create the derived files
-	open(DCL, ">$Dcl"); open(THE, ">$The"); open(SCH, ">$Sch"); open(LEM, ">$Lem");
-	open(XML2, $ProblemFileXml2);
-	while($_=<XML2>)
-	{
-	    if(m/^fof.[dt][0-9]/) { print THE $_; }
-	    elsif(m/^fof.(([fcr]c)|(ie))[0-9]/) { print DCL $_; }
-	    elsif(m/^fof.[s][0-9]/) { print SCH $_; }
-	    elsif(m/^fof.[l][0-9]/) { print LEM $_; }
-	}
-	close(DCL); close(THE); close(SCH); close(LEM);
-	close(XML2);
 
-	system("$dbenv $ProblemFileOrig > $Evl");
+	system("$mk_derived $ProblemFileOrig 2> $ProblemFileOrig.derived_err");
+	system("$dbenv $ProblemFileOrig > $ProblemFileOrig.evl2");
 	system("$exporter -q $ProblemFile 2>&1 > $ExpOutput");
 	system("time $xsltproc --param aname \\\'$aname_uc\\\' --param explainbyfrom 1 $addabsrefs $ProblemFileDco > $ProblemFileDco1  2>$ProblemFileDco.err");
 	system("time $xsltproc --param mml 1 $mizpl $ProblemFileDco1 > $ProblemFileDco2 2>$ProblemFileDco.err2");
