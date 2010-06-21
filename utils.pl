@@ -500,6 +500,8 @@ sort_transform(X1,X2):-
 %% put them into the formulas by unifying them with the placeholder variables.
 %% GroundCopy is kept for exact comparisons envolving context
 
+
+%% context has to be updated by the current variable before descent to the rest of variables
 all_collect_qlist([],[],C,C,[]).
 all_collect_qlist([(X:S)|T],[(X:S1)|T1],Context,NewContext,Info):-
 	all_collect(S,S1,Context,Info_s),
@@ -515,6 +517,7 @@ split_svars(Vars,Sorts,Svars):- zip_s(':', Vars, Sorts, Svars).
 %%
 %% Replace fraenkels in In by variables in Out, putting the needed
 %% info (for creating fraenkel defs) in Infos.
+%% Now also treats choice terms together with freankels.
 all_collect_top(In,Out,Info):- all_collect(In,Out,[],Info),!.
 
 
@@ -526,7 +529,10 @@ all_collect_top(In,Out,Info):- all_collect(In,Out,[],Info),!.
 %% Then we find optimal 'skolem' definitions corresponding to the fraenkels,
 %% instantiate such functors for each frankel with its context, and
 %% put them into the formulas by unifying them with the placeholder variables.
-%% GroundCopy is kept for exact comparisons envolving context
+%% GroundCopy is kept for exact comparisons envolving context.
+%% In a similar way the choice terms (the) are treated: replaced by placeholders,
+%% and collected with contexts to a list:
+%% -Info=[[NewVar,Context,the(Type1),GroundCopy]|RestI]
 
 %% end of traversal
 all_collect(X,X,_,[]):- atomic(X); var(X).
@@ -551,6 +557,17 @@ all_collect(all(Svars,Trm,Frm),NewVar,Context,
 	all_collect_qlist(Svars,Svars1,Context,NewContext,Info),
 	all_collect_l([Trm,Frm],[Trm1,Frm1],NewContext,Info_l),
 	append(Info,Info_l,Info_r).
+
+% unlike above, there is no qlist  here
+all_collect(the(Type),NewVar,Context,
+	    [[NewVar,RContext,the(Type1),GroundCopy]|Info_r]):-
+	(optimize_fraenkel ->
+	    (free_variables(the(Type), FreeVars),
+		real_context(FreeVars, Context, RContext));
+	    RContext = Context),
+	copy_term([RContext,the(Type)],GroundCopy),
+	numbervars(GroundCopy,0,_),
+	all_collect(Type,Type1,Context,Info_r).
 
 % this can only be used if contexts of arguments are independent!
 all_collect(X1,X2,Context,Info):-
