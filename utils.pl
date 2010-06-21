@@ -3843,7 +3843,7 @@ print_nl(X):- print(X), nl, !.
 abstract_fraenkels(Article, Options, NewFrSyms, NewFlaNames):-
 	findall(Id,(fof_file(Article,Id),
 		    clause(fof(_,_,Fla,file(_,_),_),_,Id),
-		    check_if_symbol(Fla, all)),Ids), !,
+		    once(check_if_symbol(Fla, all);check_if_symbol(Fla, the))),Ids), !,
 	%% keep original form of schemes with fraenkel in sch_orig_copy/2 -
 	%% needed for correct scheme instantiation
 	findall([SchRef, SchFla],
