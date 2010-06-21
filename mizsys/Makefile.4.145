@@ -48,6 +48,7 @@ MK_DERIVED = $(MPTP2)/mk_derived.pl
 %.xml2: %.xml1
 	$(XSLTPROC) $(MIZPL)  $*.xml1 > $*.xml2
 
+# this produces also dcl2,lem2,sch2 and the2
 %.dco2: %.xml2
 	$(MK_DERIVED) $*
 
