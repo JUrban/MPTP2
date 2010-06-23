@@ -292,7 +292,7 @@ if(    open(F,$File))
 		    push( @refs, $ref);
 		}
 		close(EP);
-		print join(",",@refs);
+		print ("refs: ", join(",",@refs));
 
  		my $status_line = `grep -m1 'SZS status' $File.eout1`;
 
