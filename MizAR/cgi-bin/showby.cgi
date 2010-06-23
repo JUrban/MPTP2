@@ -294,7 +294,8 @@ if(    open(F,$File))
 		close(EP);
 		print ("refs: ", join(",",@refs));
 
- 		my $status_line = `grep -m1 'SZS status' $File.eout1`;
+		# Vampire can print multiple SZS lines (for each strategy); get the last one
+ 		my $status_line = `grep 'SZS status' $File.eout1 |tail -n1`;
 
 		if ($status_line=~m/.*SZS status[ :]*([a-zA-Z0-9_-]+)/)
 		{
