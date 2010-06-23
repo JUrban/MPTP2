@@ -45,16 +45,14 @@ my $Xsl4MizarDir = "/home/mptp/public_html/xsl4mizar";
 my $Mizfiles = "/home/mptp/public_html/mml$mmlversion";
 my $Bindir = "bin$mmlversion";
 my $MizHtml = $MyUrl . "/mml$mmlversion/html/";
-my $mizf =     "$Bindir/mizf";
-my $eproof =     "$Bindir/eproof";
-my $runwtlimit = "$Bindir/runwtlimit";
-my $vampire =     "$Bindir/vampire_rel2";
-my $SPASS =     "$Bindir/SPASST";
-my $getsymbols =     "$Bindir/GetSymbols";
+my $eproof =     "eproof";
+my $runwtlimit = "runwtlimit";
+my $vampire =     "vampire_rel2";
+my $SPASS =     "SPASST";
+my $getsymbols =     "GetSymbols";
 my $cpulimit=5;
-my $xsltproc =     "$Bindir/xsltproc";
-my $dbenv = "$Bindir/dbenv.pl";
-my $utilspl =  "/home/mptp/public_html/cgi-bin/$Bindir/utils.pl";
+my $xsltproc =     "xsltproc";
+my $dbenv = "dbenv.pl";
 my $addabsrefs = "$Xsl4MizarDir/addabsrefs.xsl";
 my $miz2html = "$Xsl4MizarDir/miz.xsl";
 my $mizpl = "$Xsl4MizarDir/mizpl.xsl";
@@ -244,7 +242,7 @@ if(    open(F,$File))
 ##--- Run Advisor
 	    elsif($advice == 1)
 	    {
-		my $conj_syms_line = `grep conjecture $File | $Bindir/GetSymbols --`;
+		my $conj_syms_line = `grep conjecture $File | GetSymbols --`;
 		my $conj_syms = ExtractSymbols($conj_syms_line);
 		@refs = GetRefs($conj_syms, $advlimit);
 		$status = szs_THEOREM;
@@ -282,8 +280,8 @@ if(    open(F,$File))
 	    else
 	    {
 		print `pwd`;
-		print "$runwtlimit $cpulimit $Bindir/vampire_rel2 -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t 10 -m 1234  -input_file $File | tee $File.eout1 | grep '\bfile('|";
-		my $eproof_pid = open(EP,"$runwtlimit $cpulimit $Bindir/vampire_rel2 -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t 10 -m 1234  -input_file $File | tee $File.eout1 | grep '\bfile('|") or die("bad vampire input file $File"); 
+		print "$runwtlimit $cpulimit $vampire_rel2 -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t 10 -m 1234  -input_file $File | tee $File.eout1 | grep '\bfile('|";
+		my $eproof_pid = open(EP,"$runwtlimit $cpulimit $vampire_rel2 -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t 10 -m 1234  -input_file $File | tee $File.eout1 | grep '\bfile('|") or die("bad vampire input file $File"); 
 
 
 ##--- read the needed axioms for proof
@@ -416,7 +414,7 @@ if(    open(F,$File))
 		if(($spass != 1) && ($advice != 1))
 		{
 		    print $query->a({class=>"txt",
-				     onclick=>"makeRequest(this,\'$MyUrl/cgi-bin/showby.cgi?article=" .
+				     onclick=>"makeRequest(this,\'$MyUrl/cgi-bin/$Bindir/showby.cgi?article=" .
 				     $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp .
 				     '&ap=' . $aport . '&ATP=refs&HTML=1&advice=1\')',
 				     href=>'javascript:()',
@@ -424,7 +422,7 @@ if(    open(F,$File))
 				    'Suggest hints, ');
 		    print    '<span> </span>';
 		    print $query->a({class=>"txt",
-				     onclick=>"makeRequest(this,\'$MyUrl/cgi-bin/showby.cgi?article=" .
+				     onclick=>"makeRequest(this,\'$MyUrl/cgi-bin/$Bindir/showby.cgi?article=" .
 				     $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp .
 				     '&ap=' . $aport . '&ATP=refs&HTML=1&spass=1\')',
 				     href=>'javascript:()',
