@@ -358,7 +358,13 @@ SortByExplanations($ProblemFileBex);
 
 system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml 2>$ProblemFileXml.errabs > $ProblemFileXml.abs");
 
-unless($query_mode eq 'TEXT')
+if($query_mode eq 'TEXT')
+{
+    open(F,$ProblemFileErr);
+    local $/; $_= <F>; print $_;
+    close(F);
+}
+else
 {
     my $genatpparams = ($generateatp==1)? " --param by_titles 1 --param linkarproofs $linkarproofs --param ajax_by 1 --param linkbytoself 1 --param linkby 3 --param thms_tptp_links 1 --param lbytptpcgi \\\'$lbytptpcgi\\\' --param lbytmpdir \\\'$lbytmpdir\\\' --param lbycgiparams \\\'$lbycgiparams\\\' " : "";
 
