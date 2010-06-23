@@ -282,7 +282,7 @@ if(    open(F,$File))
 	    else
 	    {
 		print `pwd`;
-		print "$runwtlimit $cpulimit $Bindir/vampire_rel2 -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t 10 -m 1234  -input_file $File | tee $File.eout1 | grep '\bfile('|") or die("bad vampire input file $File";
+		print "$runwtlimit $cpulimit $Bindir/vampire_rel2 -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t 10 -m 1234  -input_file $File | tee $File.eout1 | grep '\bfile('|";
 		my $eproof_pid = open(EP,"$runwtlimit $cpulimit $Bindir/vampire_rel2 -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t 10 -m 1234  -input_file $File | tee $File.eout1 | grep '\bfile('|") or die("bad vampire input file $File"); 
 
 
