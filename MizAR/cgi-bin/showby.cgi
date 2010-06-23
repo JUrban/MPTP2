@@ -41,16 +41,18 @@ my $TemporaryDirectory = "/tmp";
 my $TemporaryProblemDirectory = "$TemporaryDirectory/matp_$$";
 my $Xsl4MizarDir = "/home/mptp/public_html/xsl4mizar";
 my $Mizfiles = "/home/mptp/public_html/mml$mmlversion";
+my $Bindir = "bin$mmlversion";
 my $MizHtml = $MyUrl . "/mml$mmlversion/html/";
-my $mizf =     "bin/mizf";
-my $eproof =     "bin/eproof";
-my $vampire =     "bin/vampire9";
-my $SPASS =     "bin/SPASST";
-my $getsymbols =     "bin/GetSymbols";
+my $mizf =     "$Bindir/mizf";
+my $eproof =     "$Bindir/eproof";
+my $runwtlimit = "$Bindir/runwtlimit";
+my $vampire =     "$Bindir/vampire_rel2";
+my $SPASS =     "$Bindir/SPASST";
+my $getsymbols =     "$Bindir/GetSymbols";
 my $cpulimit=5;
-my $xsltproc =     "bin/xsltproc";
-my $dbenv = "bin/dbenv.pl";
-my $utilspl =  "/home/mptp/public_html/cgi-bin/bin/utils.pl";
+my $xsltproc =     "$Bindir/xsltproc";
+my $dbenv = "$Bindir/dbenv.pl";
+my $utilspl =  "/home/mptp/public_html/cgi-bin/$Bindir/utils.pl";
 my $addabsrefs = "$Xsl4MizarDir/addabsrefs.xsl";
 my $miz2html = "$Xsl4MizarDir/miz.xsl";
 my $mizpl = "$Xsl4MizarDir/mizpl.xsl";
@@ -240,7 +242,7 @@ if(    open(F,$File))
 ##--- Run Advisor
 	    elsif($advice == 1)
 	    {
-		my $conj_syms_line = `grep conjecture $File | bin/GetSymbols --`;
+		my $conj_syms_line = `grep conjecture $File | $Bindir/GetSymbols --`;
 		my $conj_syms = ExtractSymbols($conj_syms_line);
 		@refs = GetRefs($conj_syms, $advlimit);
 		$status = szs_THEOREM;
