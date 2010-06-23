@@ -30,6 +30,7 @@ my $aport	  = $query->param('ap');
 my $mmlversion    = $query->param('MMLVersion');
 
 (defined $spass) or $spass = 0;
+(defined $eprover) or $eprover = 0;
 (defined $advice) or $advice = 0;
 $mmlversion   = '4.100.1011' unless defined($mmlversion);
 
@@ -280,7 +281,7 @@ if(    open(F,$File))
 	    }
 	    else
 	    {
-		my $eproof_pid = open(EP,"$Bindir/runwtlimit $cpulimit $Bindir/vampire_rel2 -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t 10 -m 1234  -input_file $File | tee $File.eout1 | grep '\bfile('|") or die("bad vampire input file $File"); 
+		my $eproof_pid = open(EP,"$runwtlimit $cpulimit $Bindir/vampire_rel2 -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t 10 -m 1234  -input_file $File | tee $File.eout1 | grep '\bfile('|") or die("bad vampire input file $File"); 
 
 
 ##--- read the needed axioms for proof
