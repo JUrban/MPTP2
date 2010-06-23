@@ -279,8 +279,8 @@ if(    open(F,$File))
 	    }
 	    else
 	    {
-		print `pwd`;
-		print "$runwtlimit $cpulimit $vampire -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t 10 -m 1234  -input_file $File | tee $File.eout1 | grep '\bfile('|";
+		##DEBUG print `pwd`;
+		##DEBUG print "$runwtlimit $cpulimit $vampire -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t 10 -m 1234  -input_file $File | tee $File.eout1 | grep '\bfile('|";
 		my $eproof_pid = open(EP,"$runwtlimit $cpulimit $vampire\ -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t 10 -m 1234  -input_file $File | tee $File.eout1 | grep '\\bfile('|") or die("bad vampire input file $File"); 
 
 
@@ -292,7 +292,7 @@ if(    open(F,$File))
 		    push( @refs, $ref);
 		}
 		close(EP);
-		print ("refs: ", join(",",@refs));
+		##DEBUG print ("refs: ", join(",",@refs));
 
 		# Vampire can print multiple SZS lines (for each strategy); get the last one
  		my $status_line = `grep 'SZS status' $File.eout1 |tail -n1`;
