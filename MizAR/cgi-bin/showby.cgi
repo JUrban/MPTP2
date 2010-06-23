@@ -287,7 +287,7 @@ if(    open(F,$File))
 ##--- read the needed axioms for proof
  		while ($_=<EP>)
  		{
-		    m/.*file\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $File: $_";
+		    m/.*\bfile\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $File: $_";
 		    my $ref = $1;
 		    push( @refs, $ref);
 		}
