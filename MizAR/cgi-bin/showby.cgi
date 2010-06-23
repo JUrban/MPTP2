@@ -24,6 +24,7 @@ my $input_tmp     = $query->param('tmp');
 my $atp	  = $query->param('ATP');
 my $htmlize	  = $query->param('HTML');
 my $spass	  = $query->param('spass');
+my $eprover	  = $query->param('eprover');
 my $advice	  = $query->param('advice');
 my $aport	  = $query->param('ap');
 my $mmlversion    = $query->param('MMLVersion');
@@ -250,7 +251,7 @@ if(    open(F,$File))
 
 
 ##--- This is the default - EP
-	    else
+	    elseif($eprover == 1)
 	    {
 		my $eproof_pid = open(EP,"$eproof --print-statistics -xAuto -tAuto --cpu-limit=$cpulimit --memory-limit=Auto --tstp-in --tstp-out $File| tee $File.eout1 | grep -v '^#' | tee $File.eout | grep ',file('|") or die("bad eproof input file $File");
 		#	    $proved_by{$conj} = [];
@@ -274,6 +275,33 @@ if(    open(F,$File))
 		else
 		{
 		    print "Bad E status line: $status_line, please complain";
+		}
+ 		if (!($status eq szs_THEOREM)) { @refs = () }
+	    }
+	    else
+	    {
+		my $eproof_pid = open(EP,"$Bindir/runwtlimit $cpulimit $Bindir/vampire_rel2 -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t 10 -m 1234  -input_file $File | tee $File.eout1 | grep '\bfile('|") or die("bad vampire input file $File"); 
+
+
+##--- read the needed axioms for proof
+ 		while ($_=<EP>)
+ 		{
+		    m/.*\bfile\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $File: $_";
+		    my $ref = $1;
+		    push( @refs, $ref);
+		}
+		close(EP);
+
+
+ 		my $status_line = `grep -m1 'SZS status' $File.eout1`;
+
+		if ($status_line=~m/.*SZS status[ :]*([a-zA-Z0-9_-]+)/)
+		{
+		    $status = $1;
+		}
+		else
+		{
+		    print "Bad vampire status line: $status_line, please complain";
 		}
  		if (!($status eq szs_THEOREM)) { @refs = () }
 	    }
