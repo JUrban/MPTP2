@@ -251,7 +251,7 @@ if(    open(F,$File))
 
 
 ##--- This is the default - EP
-	    elseif($eprover == 1)
+	    elsif($eprover == 1)
 	    {
 		my $eproof_pid = open(EP,"$eproof --print-statistics -xAuto -tAuto --cpu-limit=$cpulimit --memory-limit=Auto --tstp-in --tstp-out $File| tee $File.eout1 | grep -v '^#' | tee $File.eout | grep ',file('|") or die("bad eproof input file $File");
 		#	    $proved_by{$conj} = [];
