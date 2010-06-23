@@ -281,13 +281,13 @@ if(    open(F,$File))
 	    {
 		print `pwd`;
 		print "$runwtlimit $cpulimit $vampire -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t 10 -m 1234  -input_file $File | tee $File.eout1 | grep '\bfile('|";
-		my $eproof_pid = open(EP,"$runwtlimit $cpulimit $vampire\ -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t 10 -m 1234  -input_file $File | tee $File.eout1 | grep '\bfile('|") or die("bad vampire input file $File"); 
+		my $eproof_pid = open(EP,"$runwtlimit $cpulimit $vampire\ -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t 10 -m 1234  -input_file $File | tee $File.eout1 | grep 'file('|") or die("bad vampire input file $File"); 
 
 
 ##--- read the needed axioms for proof
  		while ($_=<EP>)
  		{
-		    m/.*\bfile\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $File: $_";
+		    m/.*file\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $File: $_";
 		    my $ref = $1;
 		    push( @refs, $ref);
 		}
