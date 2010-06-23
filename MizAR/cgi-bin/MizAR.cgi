@@ -399,7 +399,7 @@ if($generateatp > 0)
 #    print "<pre/>";
 #    print $query->end_html;
 #    close(F);
-}
+
 
 # if((length($input_article) < 1)
 #    or ($input_limit < 1)
