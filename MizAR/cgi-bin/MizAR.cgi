@@ -411,6 +411,7 @@ if($generateatp > 0)
 	{
 	    if(m/^(\d+) +\d+ +[4] *$/) { push(@provepositions,$1); }
 	}
+	close(ERR);
     }
 
 }
