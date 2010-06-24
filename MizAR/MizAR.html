@@ -68,10 +68,13 @@
 	      <TD> <INPUT TYPE="CHECKBOX" NAME="ARProofs" VALUE="1">Allow ATP calls for hard problems<BR></TD>
             </tr>
 	    <tr>
-	      <TD> <INPUT TYPE="RADIO" NAME="ProveUnsolved" VALUE="All">Solve all Mizar-unsolved<BR></TD>
+	      <TD> <INPUT TYPE="RADIO" NAME="ProveUnsolved" VALUE="1">Call ATP onload on all Mizar-unsolved<BR></TD>
             </tr>
 	    <tr>
-	      <TD> <INPUT TYPE="RADIO" NAME="ProveUnsolved" VALUE="Positions">Mizar-unsolved positions to solve with ATP<BR>
+	      <TD> <INPUT TYPE="RADIO" NAME="ProveUnsolved" VALUE="0" CHECKED>Do not call ATP onload on Mizar-unsolved<BR></TD>
+            </tr>
+	    <tr>
+	      <TD> <INPUT TYPE="RADIO" NAME="ProveUnsolved" VALUE="Positions">Mizar-unsolved positions to call ATP onload (list of line numbers like: 23,456,789)<BR>
 		<input type="text" name="Positions" tabindex="4"  size="80" /><TR VALIGN=TOP>
 	      </TD>
             </tr>
