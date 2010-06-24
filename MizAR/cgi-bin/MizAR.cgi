@@ -24,6 +24,9 @@ my $linkarproofs  = $query->param('ARProofs');
 # if not defined, the htmlized article is not produced, only article with errors is shown
 my $generatehtml   = $query->param('HTMLize');
 my $generateatp   = $query->param('GenATP');
+# immediatelly try to prove all unsolved (*4), using all of MML
+my $proveunsolved   = $query->param('ProveUnsolved');
+my $provepositions  = $query->param('Positions');
 
 # if defined || 1, proofs are hidden by default and shown by ajax calls (undef by default)
 my $proofsbyajax  = $query->param('AjaxProofs');
@@ -38,8 +41,16 @@ my $query_mode       = $query->param('MODE');
 $linkarproofs = 0 unless defined($linkarproofs);
 $generateatp = 0 unless defined($generateatp);
 $generatehtml = 0 unless defined($generatehtml);
+$proveunsolved = "None" unless defined($proveunsolved);
+
 $mmlversion   = '4.100.1011' unless defined($mmlversion);
 $proofsbyajax = 0; # unless defined($proofsbyajax); comented - not wroking yet, trying to write the relative proof path
+
+my @provepositions = ();
+if (($proveunsolved eq "Positions") && (defined($provepositions)))
+{
+    @provepositions = split(/\, */, $provepositions);
+}
 
 # my $MyUrl = 'http://octopi.mizar.org/~mptp';
 my $MyUrl = 'http://mws.cs.ru.nl/~mptp';
@@ -391,7 +402,7 @@ if($generateatp > 0)
 
     my $Tmp1 = $TemporaryProblemDirectory . '/';
 # swipl -G50M -s utils.pl -g "mptp2tptp('$1',[opt_NO_FRAENKEL_CONST_GEN],user),halt." |& grep "^fof"
-    system("cd $TemporaryProblemDirectory; swipl -G50M -s $utilspl -g \"(A=$aname,D=\'$Tmp1\',declare_mptp_predicates,time(load_mml_for_article(A, D, [A])),time(install_index),time(mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma, sublemma]],[opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_ADDED_NON_MML([A]),opt_NON_MML_DIR(D),opt_LINE_COL_NMS,opt_PRINT_PROB_PROGRESS,opt_ALLOWED_REF_INFO,opt_PROVED_BY_INFO])),halt).\" > $aname.ploutput 2>&1");
+    system("cd $TemporaryProblemDirectory; swipl -G50M -s $utilspl -g \"(A=$aname,D=\'$Tmp1\',declare_mptp_predicates,time(load_mml_for_article(A, D, [A])),time(install_index),time(mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma, sublemma]],[opt_ARTICLE_AS_TPTP_AXS,opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_ADDED_NON_MML([A]),opt_NON_MML_DIR(D),opt_LINE_COL_NMS,opt_PRINT_PROB_PROGRESS,opt_ALLOWED_REF_INFO,opt_PROVED_BY_INFO])),halt).\" > $aname.ploutput 2>&1");
 }
 
 # A=m_drxj,D='/tmp/matp_704/',load_mml_for_article(A, D, [A]),install_index,mk_article_problems(A,[[mizar_by],[theorem, top_level_lemma, sublemma]],[opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_ADDED_NON_MML([A]),opt_NON_MML_DIR(D),opt_LINE_COL_NMS]).
