@@ -21,7 +21,7 @@ my $input_name	  = $query->param('Name');
 my $atp_mode	  = $query->param('ATPMode');
 my $input_snow	  = $query->param('Snow');
 my $linkarproofs  = $query->param('ARProofs');
-# if not defined, the htmlized article is not produced
+# if not defined, the htmlized article is not produced, only article with errors is shown
 my $generatehtml   = $query->param('HTMLize');
 my $generateatp   = $query->param('GenATP');
 
@@ -343,7 +343,11 @@ unless($query_mode eq 'TEXT')
     print ('<pre>', "\n");
     while( my $aline = <PFH>)
     {
-	print ('<div id="', ++$lnr, '" style="display:none">', $aline, '</div>');
+	if($generatehtml==1)
+	{
+	    print ('<div id="', ++$lnr, '" style="display:none">', $aline, '</div>');
+	}
+	else { print $aline; }
     }
     close(PFH);
     print ('</pre>', "\n");
@@ -370,7 +374,7 @@ else
 
     my $ajaxproofparams = ($proofsbyajax==1)? " -param lbytmpdir \\\'$lbytmpdir\\\'  --param ajax_proofs 3 " : " ";
 
-    system("time $xsltproc  $genatpparams $ajaxproofparams --param const_links 1  --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
+    system("time $xsltproc  $genatpparams $ajaxproofparams --param const_links 1  --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml") if($generatehtml==1); 
 }
  
 if($generateatp > 0) 
