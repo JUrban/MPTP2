@@ -56,6 +56,7 @@ opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme insta
 	       opt_LOAD_MIZ_ERRORS,     %% import err2 file with Mizar's errors
 	       opt_PROB_PRINT_FUNC,	%% unary functor passing a special printing func
 	       opt_PRINT_PROB_PROGRESS, %% print processed problems to stdout
+	       opt_ARTICLE_AS_TPTP_AXS, %% print the whole article as tptp axioms
 	       opt_PP_SMALLER_INCLUDES, %% unary functor passing a list of possible includes,
 	                                %% used with print_refs_as_tptp_includes
 	       opt_TPTPFIX_ND_ROLE,	%% make the role acceptable to GDV
@@ -4516,6 +4517,11 @@ mk_article_problems(Article,Kinds,Options):-
 	prepare_for_article(Article,Options,Dir,PostLoadFiles),
 	%% create the table of local-to-global names if absolute_locals
 	(absolute_locals -> absolutize_locals(Article); true),
+	(member(opt_ARTICLE_AS_TPTP_AXS,Options) ->
+	 article2tptp_include(Dir,Article)
+	;
+	 true
+	),
 
 	%% now take care of possible subproblem_list option -
 	%% create a problem_list from all local mizar_proof references which have the inference slot;
