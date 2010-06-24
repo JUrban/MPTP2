@@ -360,7 +360,7 @@ SortByExplanations($ProblemFileBex);
 
 # ###TODO: note that const_links=2 does not work correctly yet    
 
-system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml 2>$ProblemFileXml.errabs > $ProblemFileXml.abs") if(($generatehtml==1) || if($generateatp==1));
+system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml 2>$ProblemFileXml.errabs > $ProblemFileXml.abs") if(($generatehtml==1) || ($generateatp==1));
 
 if($query_mode eq 'TEXT')
 {
