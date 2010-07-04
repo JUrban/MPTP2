@@ -18,6 +18,7 @@ my $VocFile       = $query->param('VocFile');
 my $VocSource       = $query->param('VocSource');
 my $input_article	  = $query->param('Formula');
 my $input_name	  = $query->param('Name');
+my $aname         = lc($input_name); 
 my $atp_mode	  = $query->param('ATPMode');
 my $input_snow	  = $query->param('Snow');
 my $linkarproofs  = $query->param('ARProofs');
@@ -46,10 +47,26 @@ $proveunsolved = "None" unless defined($proveunsolved);
 $mmlversion   = '4.100.1011' unless defined($mmlversion);
 $proofsbyajax = 0; # unless defined($proofsbyajax); comented - not wroking yet, trying to write the relative proof path
 
+sub my_warning
+{
+    print $_;
+}
+
 my @provepositions = ();
+my $ATPProblemList = "";
+
 if (($proveunsolved eq "Positions") && (defined($provepositions)))
 {
-    @provepositions = split(/\, */, $provepositions);
+    my @provepositions1 = split(/\, */, $provepositions);
+    foreach my $pos (@provepositions1)
+    {
+	if ($pos =~ m/(\d+):(\d+)/)
+	{
+	    push(@provepositions, "'" . $aname . "__pos(" . $1 . ',' . $2 . ")'" );
+	}
+	else { my_warning("Position $pos does not have required format line:column, ignored"); }
+    }
+    $ATPProblemList = ',problem_list([' . join(',', @provepositions) . '])';
 }
 
 # my $MyUrl = 'http://octopi.mizar.org/~mptp';
@@ -83,7 +100,6 @@ my $idv_img = "<img SRC=\"$PalmTreeUrl\" alt=\"Show IDV proof tree\" title=\"Sho
 
 
 
-my $aname         = lc($input_name); 
 my $aname_uc      = uc($aname);
 my $ProblemFileOrig = $TemporaryProblemDirectory . "/$aname";
 my $AjaxProofDir = $TemporaryProblemDirectory . "/proofs"; #/" . $aname;
@@ -400,19 +416,22 @@ if($generateatp > 0)
     system("$xsltproc $evl2pl $ProblemFileOrig.evl   > $ProblemFileOrig.evl1");
     system("$dbenv2 $ProblemFileOrig > $ProblemFileOrig.evl2");
 
-    my $Tmp1 = $TemporaryProblemDirectory . '/';
-# swipl -G50M -s utils.pl -g "mptp2tptp('$1',[opt_NO_FRAENKEL_CONST_GEN],user),halt." |& grep "^fof"
-    system("cd $TemporaryProblemDirectory; swipl -G50M -s $utilspl -g \"(A=$aname,D=\'$Tmp1\',declare_mptp_predicates,time(load_mml_for_article(A, D, [A])),time(install_index),time(mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma, sublemma]],[opt_LOAD_MIZ_ERRORS,opt_ARTICLE_AS_TPTP_AXS,opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_ADDED_NON_MML([A]),opt_NON_MML_DIR(D),opt_LINE_COL_NMS,opt_PRINT_PROB_PROGRESS,opt_ALLOWED_REF_INFO,opt_PROVED_BY_INFO])),halt).\" > $aname.ploutput 2>&1");
-
     if($provepositions eq 'All')
     {
 	open(ERR,$ProblemFileErr);
 	while (<ERR>)
 	{
-	    if(m/^(\d+) +\d+ +[4] *$/) { push(@provepositions,$1); }
+	    if(m/^(\d+) +(\d+) +[14] *$/) { push(@provepositions, "'" . $aname . "__pos(" . $1 . ',' . $2 . ")'" ); }
 	}
 	close(ERR);
+	$ATPProblemList = ',problem_list([' . join(',', @provepositions) . '])';
     }
+
+    my $Tmp1 = $TemporaryProblemDirectory . '/';
+# swipl -G50M -s utils.pl -g "mptp2tptp('$1',[opt_NO_FRAENKEL_CONST_GEN],user),halt." |& grep "^fof"
+    system("cd $TemporaryProblemDirectory; swipl -G50M -s $utilspl -g \"(A=$aname,D=\'$Tmp1\',declare_mptp_predicates,time(load_mml_for_article(A, D, [A])),time(install_index),time(mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma, sublemma] $ATPProblemList],[opt_LOAD_MIZ_ERRORS,opt_ARTICLE_AS_TPTP_AXS,opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_ADDED_NON_MML([A]),opt_NON_MML_DIR(D),opt_LINE_COL_NMS,opt_PRINT_PROB_PROGRESS,opt_ALLOWED_REF_INFO,opt_PROVED_BY_INFO])),halt).\" > $aname.ploutput 2>&1");
+
+    
 
 }
 
