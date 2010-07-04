@@ -83,7 +83,7 @@ if (($proveunsolved eq "Positions") && (defined($provepositions)))
     {
 	if ($pos =~ m/(\d+):(\d+)/)
 	{
-	    push(@provepositions, "'" . $aname . "__pos(" . $1 . ',' . $2 . ")'" );
+	    push(@provepositions, "pos(" . $1 . ',' . $2 . ")" );
 	}
 	else { my_warning("Position $pos does not have required format line:column, ignored"); }
     }
@@ -378,7 +378,7 @@ if($proveunsolved eq 'All')
     open(ERR,$ProblemFileErr);
     while (<ERR>)
     {
-	if(m/^(\d+) +(\d+) +[14] *$/) { push(@provepositions, "'" . $aname . "__pos(" . $1 . ',' . $2 . ")'" ); }
+	if(m/^(\d+) +(\d+) +[14] *$/) { push(@provepositions, "pos(" . $1 . ',' . $2 . ")" ); }
     }
     close(ERR);
     $ATPProblemList = ',problem_list([' . join(',', @provepositions) . '])';
@@ -485,7 +485,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 	    my $status = szs_UNKNOWN;
 	    
 	    ###TODO: this is mostly stolen from showby.cgi, refactor!
-	    my ($line, $col) = $pos =~ m/.*__pos\((\d+),(\d+)\).*/;
+	    my ($line, $col) = $pos =~ m/.*pos\((\d+),(\d+)\).*/;
 	    my $col1 = $col - 4;
 
 	    my $File0 = $ProblemDir . "/" . $aname . "__" . $line . "_";
