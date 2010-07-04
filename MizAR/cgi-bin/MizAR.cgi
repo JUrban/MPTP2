@@ -19,13 +19,23 @@ my $VocSource       = $query->param('VocSource');
 my $input_article	  = $query->param('Formula');
 my $input_name	  = $query->param('Name');
 my $aname         = lc($input_name); 
+# not sure what this is for
 my $atp_mode	  = $query->param('ATPMode');
+# not used yet
 my $input_snow	  = $query->param('Snow');
+# atp calls for hard problems, implies html and mptp
 my $linkarproofs  = $query->param('ARProofs');
-# if not defined, the htmlized article is not produced, only article with errors is shown
+# if not defined, the htmlized article is not produced, 
+# further behavior depends on query_mode:
+# if HTML, article with errors is shown in browser, and atp problems/solutions may still be generated
+# if TEXT, either only errors are sent back, or also atp solutions/results, or possibly hints, 
+# or possibly problem-solving semi-persistent line might be set up
 my $generatehtml   = $query->param('HTMLize');
+# generate ATP re-proving problems for all article positions; 
+# possibly link by-s when $generatehtml, and theorems when $linkarproofs 
 my $generateatp   = $query->param('GenATP');
-# immediatelly try to prove all unsolved (*4), using all of MML
+# immediatelly try to prove all Mizar-unsolved (*4) positions, using all of MML (and either SInE or SNoW for selection)
+# note that the generated problems differ from the re-proving problems
 my $proveunsolved   = $query->param('ProveUnsolved');
 my $provepositions  = $query->param('Positions');
 
@@ -36,6 +46,7 @@ my $proofsbyajax  = $query->param('AjaxProofs');
 my $mmlversion    = $query->param('MMLVersion');
 
 # either 'HTML' or 'TEXT'; says if output is in txt or in html
+# 'TEXT' switches of $generatehtml
 my $query_mode       = $query->param('MODE');
 
 
@@ -53,6 +64,8 @@ sub my_warning
 }
 
 my @provepositions = ();
+
+# the problem_list string passed to prolog
 my $ATPProblemList = "";
 
 if (($proveunsolved eq "Positions") && (defined($provepositions)))
@@ -352,6 +365,24 @@ system("$mizitemize $ProblemFileOrig");
 my $InferenceNr = `egrep -c '<(Proof|By|From|Now)' $ProblemFileXml`;
 my $errorsnr = `wc -l <$ProblemFileErr`;
 
+if($proveunsolved eq 'All')
+{
+    open(ERR,$ProblemFileErr);
+    while (<ERR>)
+    {
+	if(m/^(\d+) +(\d+) +[14] *$/) { push(@provepositions, "'" . $aname . "__pos(" . $1 . ',' . $2 . ")'" ); }
+    }
+    close(ERR);
+    $ATPProblemList = ',problem_list([' . join(',', @provepositions) . '])';
+}
+
+my $problemstosolvenr = scalar @provepositions;
+
+my $absolutize = (($generatehtml > 0) || ($generateatp > 0) || ($problemstosolvenr >0))? 1 : 0;
+
+
+
+# if query_mode is HTML, produce either html or text output for the browser
 unless($query_mode eq 'TEXT')
 {
     print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.mizoutput&tmp=$PidNr\" target=\"MizarOutput$PidNr\">Show Mizar Output</a>\n";  
@@ -359,7 +390,11 @@ unless($query_mode eq 'TEXT')
 
     print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.err1&tmp=$PidNr\" target=\"MizarOutput$PidNr\">($errorsnr Errors)</a>\n";
 
-    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.ploutput&tmp=$PidNr&refresh=1\" target=\"MPTPOutput$PidNr\">Generating $InferenceNr TPTP problems (click to see progress)</a><br>\n" if($generateatp > 0);
+    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.ploutput&tmp=$PidNr&refresh=1\" target=\"MPTPOutput$PidNr\">Generating $InferenceNr TPTP re-proving problems (click to see progress)</a><br>\n" if($generateatp > 0);
+
+    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.ploutput&tmp=$PidNr&refresh=1\" target=\"MPTPOutput$PidNr\">Preparing $problemstosolvenr Mizar-unsolved problems for ATPs (click to see progress)</a><br>\n" if($problemstosolvenr > 0);
+
+    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.ploutput&tmp=$PidNr&refresh=1\" target=\"MPTPOutput$PidNr\">ATP-solving $problemstosolvenr Mizar-unsolved problems (click to see progress)</a><br>\n" if($problemstosolvenr > 0);
     
 #    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.xml.abs&tmp=$PidNr&content-type=text%2Fplain\" target=\"XMLOutput$PidNr\">Show XML Output</a>\n";
 
@@ -387,7 +422,7 @@ SortByExplanations($ProblemFileBex);
 
 # ###TODO: note that const_links=2 does not work correctly yet    
 
-system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml 2>$ProblemFileXml.errabs > $ProblemFileXml.abs") if(($generatehtml==1) || ($generateatp==1));
+system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml 2>$ProblemFileXml.errabs > $ProblemFileXml.abs") if($absolutize==1);
 
 if($query_mode eq 'TEXT')
 {
@@ -416,16 +451,6 @@ if($generateatp > 0)
     system("$xsltproc $evl2pl $ProblemFileOrig.evl   > $ProblemFileOrig.evl1");
     system("$dbenv2 $ProblemFileOrig > $ProblemFileOrig.evl2");
 
-    if($provepositions eq 'All')
-    {
-	open(ERR,$ProblemFileErr);
-	while (<ERR>)
-	{
-	    if(m/^(\d+) +(\d+) +[14] *$/) { push(@provepositions, "'" . $aname . "__pos(" . $1 . ',' . $2 . ")'" ); }
-	}
-	close(ERR);
-	$ATPProblemList = ',problem_list([' . join(',', @provepositions) . '])';
-    }
 
     my $Tmp1 = $TemporaryProblemDirectory . '/';
 # swipl -G50M -s utils.pl -g "mptp2tptp('$1',[opt_NO_FRAENKEL_CONST_GEN],user),halt." |& grep "^fof"
