@@ -470,6 +470,9 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 
     if($problemstosolvenr > 0)
     {
+
+	my $atpout = ($query_mode eq 'HTML')? "$ProblemFileOrig.atpoutput" : '-';
+	open(my $fhout,">$atpout");
 	my $runwtlimit = "$Bindir/runwtlimit";
 	my $vampire =     "$Bindir/vampire_rel2";
 	my $cpulimit = 15;
@@ -535,7 +538,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 		    #print "Bad vampire status line: $status_line, please complain";
 		}
  		if (!($status eq szs_THEOREM)) { @refs = () }
-		else { print ($line, "_", $col, ":", join(',',@refs)); }
+		else { print $fhout ($line, "_", $col, ":", join(',',@refs), "\n"); }
 	    }
 
 	}
