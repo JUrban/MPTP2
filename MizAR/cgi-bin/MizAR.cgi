@@ -12,6 +12,14 @@ use HTTP::Request::Common;
 use LWP::Simple;
 
 
+# possible SZS statuses
+sub szs_INIT        ()  { 'Initial' } # system was not run on the problem yet
+sub szs_UNKNOWN     ()  { 'Unknown' } # used when system dies
+sub szs_THEOREM     ()  { 'Theorem' }
+sub szs_COUNTERSAT  ()  { 'CounterSatisfiable' }
+sub szs_RESOUT      ()  { 'ResourceOut' }
+sub szs_GAVEUP      ()  { 'GaveUp' }   # system exited before the time limit for unknown reason
+
 my $query	  = new CGI;
 my $ProblemSource = $query->param('ProblemSource');
 my $VocFile       = $query->param('VocFile');
@@ -99,7 +107,7 @@ my $advisor =     "$Bindir/advisor.pl";
 my $exporter =     "$Bindir/mizar/exporter";
 my $xsltproc =     "$Bindir/xsltproc";
 my $dbenv2 = "$Bindir/dbenv2.pl";
-my $mk_derived = "$Bindir/mk_derived.pl";
+my $mk_derived_mptp_files = "$Bindir/mk_derived.pl";
 my $err2pl = "$Bindir/err2pl.pl";
 my $err2xml = "$Bindir/err2xml.pl";
 my $mizitemize = "$Bindir/MizItemize.pl";
@@ -394,7 +402,7 @@ unless($query_mode eq 'TEXT')
 
     print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.ploutput&tmp=$PidNr&refresh=1\" target=\"MPTPOutput$PidNr\">Preparing $problemstosolvenr Mizar-unsolved problems for ATPs (click to see progress)</a><br>\n" if($problemstosolvenr > 0);
 
-    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.ploutput&tmp=$PidNr&refresh=1\" target=\"MPTPOutput$PidNr\">ATP-solving $problemstosolvenr Mizar-unsolved problems (click to see progress)</a><br>\n" if($problemstosolvenr > 0);
+    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.atpoutput&tmp=$PidNr&refresh=1\" target=\"MPTPOutput$PidNr\">ATP-solving $problemstosolvenr Mizar-unsolved problems (click to see progress)</a><br>\n" if($problemstosolvenr > 0);
     
 #    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.xml.abs&tmp=$PidNr&content-type=text%2Fplain\" target=\"XMLOutput$PidNr\">Show XML Output</a>\n";
 
@@ -439,15 +447,16 @@ else
     system("time $xsltproc  $genatpparams $ajaxproofparams --param const_links 1  --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml") if($generatehtml==1); 
 }
  
-if($generateatp > 0) 
+if(($generateatp > 0) || ($problemstosolvenr > 0)) 
 {
+    ### NOTE: this can be more targeted and parallelized as the html parallelization
     system("time $xsltproc $mizpl $ProblemFileXml.abs  > $ProblemFileXml2 2>$ProblemFileXml.errpl");
     
 
 # ajax proofs are probably not wanted for the first stab
 #    system("time $xsltproc --param default_target \\\'_self\\\' --param ajax_proof_dir \\\'$AjaxProofDir\\\' --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\' --param ajax_proofs 1 --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs > $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
 
-    system("$mk_derived $ProblemFileOrig 2> $ProblemFileOrig.derived_err");
+    system("$mk_derived_mptp_files $ProblemFileOrig 2> $ProblemFileOrig.derived_err");
     system("$xsltproc $evl2pl $ProblemFileOrig.evl   > $ProblemFileOrig.evl1");
     system("$dbenv2 $ProblemFileOrig > $ProblemFileOrig.evl2");
 
@@ -456,8 +465,79 @@ if($generateatp > 0)
 # swipl -G50M -s utils.pl -g "mptp2tptp('$1',[opt_NO_FRAENKEL_CONST_GEN],user),halt." |& grep "^fof"
     system("cd $TemporaryProblemDirectory; swipl -G50M -s $utilspl -g \"(A=$aname,D=\'$Tmp1\',declare_mptp_predicates,time(load_mml_for_article(A, D, [A])),time(install_index),time(mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma, sublemma] $ATPProblemList],[opt_LOAD_MIZ_ERRORS,opt_ARTICLE_AS_TPTP_AXS,opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_ADDED_NON_MML([A]),opt_NON_MML_DIR(D),opt_LINE_COL_NMS,opt_PRINT_PROB_PROGRESS,opt_ALLOWED_REF_INFO,opt_PROVED_BY_INFO])),halt).\" > $aname.ploutput 2>&1");
 
-    
+    if($problemstosolvenr > 0)
+    {
+	my $runwtlimit = "./runwtlimit";
+	my $vampire =     "./vampire_rel2";
+	my $cpulimit = 10;
+	my $vampire_params = " -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t $cpulimit -m 1234  -input_file ";
 
+	my $LocalAxs = $ProblemDir . "/" . $aname . ".ax" ;
+	my $MMLAxs = $Mizfiles . "/mptp/00allmmlax" ;
+
+	foreach my $pos (@provepositions)
+	{
+
+	    my @refs=();
+	    my $status = szs_UNKNOWN;
+	    
+	    ###TODO: this is mostly stolen from showby.cgi, refactor!
+	    my ($line, $col) = $pos =~ m/.*__pos\((\d+),(\d+)\).*/;
+	    my $col1 = $col - 4;
+
+	    my $File0 = $ProblemDir . "/" . $aname . "__" . $line . "_";
+	    my $File1 = $File0 . $col;
+	    my $File2 = $File0 . $col1;
+	    my $File= "";
+
+	    if (-e $File1) { $File = $File1; } elsif(-e $File2) { $File = $File2}
+	    if(    ( -e $File) && open(F1, $File . '.allowed_local'))
+	    {
+		my $allowed_line = <F1>;
+		close(F1);
+
+		$allowed_line =~ m/.*\[(.*)\].*/ or die "Bad allowed_local";
+		my @allowed = split(/\, */, $1);
+
+		my $regexp = '"^fof( *\(' . join('\|',@allowed) . '\) *,"';
+		`echo "include('$MMLAxs')." > $File.big`;
+		`grep $regexp $LocalAxs >> $File.big`;
+		`cat $File >> $File.big`;
+
+		##DEBUG print `pos`;
+		##DEBUG print `pwd`;
+		##DEBUG print "$runwtlimit $cpulimit $vampire -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t 10 -m 1234  -input_file $File | tee $File.eout1 | grep '\bfile('|";
+		my $eproof_pid = open(EP,"$runwtlimit $cpulimit $vampire\ $vampire_params $File.big | tee $File.eout1 | grep '\\bfile('|") or die("bad vampire input file $File.big"); 
+
+
+##--- read the needed axioms for proof
+ 		while ($_=<EP>)
+ 		{
+		    m/.*\bfile\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $File.eout1: $_";
+		    my $ref = $1;
+		    push( @refs, $ref);
+		}
+		close(EP);
+		##DEBUG print ("refs: ", join(",",@refs));
+
+		# Vampire can print multiple SZS lines (for each strategy); get the last one
+ 		my $status_line = `grep 'SZS status' $File.eout1 |tail -n1`;
+
+		if ($status_line=~m/.*SZS status[ :]*([a-zA-Z0-9_-]+)/)
+		{
+		    $status = $1;
+		}
+		else
+		{
+		    #print "Bad vampire status line: $status_line, please complain";
+		}
+ 		if (!($status eq szs_THEOREM)) { @refs = () }
+		else { print ($line, "_", $col, ":", join(',',@refs)); }
+	    }
+
+	}
+
+    }
 }
 
 # A=m_drxj,D='/tmp/matp_704/',load_mml_for_article(A, D, [A]),install_index,mk_article_problems(A,[[mizar_by],[theorem, top_level_lemma, sublemma]],[opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_ADDED_NON_MML([A]),opt_NON_MML_DIR(D),opt_LINE_COL_NMS]).
