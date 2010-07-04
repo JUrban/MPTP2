@@ -481,6 +481,17 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 	my $LocalAxs = $ProblemDir . "/" . $aname . ".ax" ;
 	my $MMLAxs = $Mizfiles . "/mptp/00allmmlax" ;
 
+	my %fla2pos = ();
+	open(XML2, $ProblemFileXml2);
+	while (<XML2>)
+	{
+	    if(m/^fof\(([^,]+),.*position\((\d+),(\d+)\)/) 
+	    {
+		$fla2pos{$1}= "$2:$3";
+	    }
+	}
+	close(XML2);
+
 	if($problemstosolvenr > 10)
 	{
 	    @provepositions = @provepositions[0..9]
@@ -526,7 +537,8 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
  		{
 		    m/.*\bfile\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $File.eout1: $_";
 		    my $ref = $1;
-		    push( @refs, $ref);
+		    my $pos = $fla2pos{$ref};
+		    push( @refs, "$ref\[$pos\]");
 		}
 		close(EP);
 		##DEBUG print ("refs: ", join(",",@refs));
