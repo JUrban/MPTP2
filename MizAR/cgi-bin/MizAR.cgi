@@ -470,9 +470,9 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 
     if($problemstosolvenr > 0)
     {
-	my $runwtlimit = "./runwtlimit";
-	my $vampire =     "./vampire_rel2";
-	my $cpulimit = 10;
+	my $runwtlimit = "$Bindir/runwtlimit";
+	my $vampire =     "$Bindir/vampire_rel2";
+	my $cpulimit = 15;
 	my $vampire_params = " -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t $cpulimit -m 1234  -input_file ";
 
 	my $LocalAxs = $ProblemDir . "/" . $aname . ".ax" ;
