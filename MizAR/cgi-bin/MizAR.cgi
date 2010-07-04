@@ -537,7 +537,8 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
  		{
 		    m/.*\bfile\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $File.eout1: $_";
 		    my $ref = $1;
-		    my $pos = $fla2pos{$ref};
+		    my $ref1 = ($ref=~ m/(.*)__.*/)? $1 : $ref;
+		    my $pos = $fla2pos{$ref1};
 		    push( @refs, "$ref\[$pos\]");
 		}
 		close(EP);
