@@ -402,7 +402,7 @@ unless($query_mode eq 'TEXT')
 
     print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.ploutput&tmp=$PidNr&refresh=1\" target=\"MPTPOutput$PidNr\">Preparing $problemstosolvenr Mizar-unsolved problems for ATPs (click to see progress)</a><br>\n" if($problemstosolvenr > 0);
 
-    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.atpoutput&tmp=$PidNr&refresh=1\" target=\"MPTPOutput$PidNr\">ATP-solving $problemstosolvenr Mizar-unsolved problems (click to see progress)</a><br>\n" if($problemstosolvenr > 0);
+    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.atpoutput&tmp=$PidNr&refresh=1\" target=\"MPTPOutput$PidNr\">ATP-solving $problemstosolvenr (10 at most) Mizar-unsolved problems (click to see progress)</a><br>\n" if($problemstosolvenr > 0);
     
 #    print "<a href=\"$MyUrl/cgi-bin/showtmpfile.cgi?file=$aname.xml.abs&tmp=$PidNr&content-type=text%2Fplain\" target=\"XMLOutput$PidNr\">Show XML Output</a>\n";
 
@@ -480,6 +480,11 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 
 	my $LocalAxs = $ProblemDir . "/" . $aname . ".ax" ;
 	my $MMLAxs = $Mizfiles . "/mptp/00allmmlax" ;
+
+	if($problemstosolvenr > 10)
+	{
+	    @provepositions = @provepositions[0..9]
+	}
 
 	foreach my $pos (@provepositions)
 	{
