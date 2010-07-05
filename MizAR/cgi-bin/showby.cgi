@@ -242,7 +242,7 @@ if(    open(F,$File))
 ##--- Run Advisor
 	    elsif($advice == 1)
 	    {
-		my $conj_syms_line = `grep conjecture $File | GetSymbols --`;
+		my $conj_syms_line = `grep conjecture $File | $getsymbols --`;
 		my $conj_syms = ExtractSymbols($conj_syms_line);
 		@refs = GetRefs($conj_syms, $advlimit);
 		$status = szs_THEOREM;
