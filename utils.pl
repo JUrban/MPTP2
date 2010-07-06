@@ -4942,7 +4942,7 @@ get_preceding_article_refs(Article, Ref, Refs):-
 		),
 		Refs1
 	       ),
-	append(Refs0, Refs1, Refs).
+	union(Refs0, Refs1, Refs).
 
 
 
