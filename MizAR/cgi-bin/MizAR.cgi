@@ -136,6 +136,7 @@ my $ProblemFileErrX = $ProblemFileOrig . ".errx";
 my $ProblemCgiParams = $ProblemFileOrig . ".cgiparams";
 
 my $MizOutput = $ProblemFileOrig . ".mizoutput";
+my $MizOutputEmacs = $ProblemFileOrig . ".mizoutputemacs";
 my $ProblemFileBex = $ProblemFileOrig . ".bex";
 my $lbytmpdir = $PidNr;
 my $lbycgiparams = '\&ATP=refs\&HTML=1\&MMLVersion=' . $mmlversion;
@@ -364,6 +365,7 @@ if($start_snow > 0) { ($advisorport, $snowport) = StartSNoW(); }
 
 $ENV{"MIZFILES"}= $Mizfiles;
 system("$mizf $ProblemFile 2>&1 > $MizOutput");
+system("grep -A100 Verifier 2>&1 > $MizOutputEmacs");
 
 system("cp $ProblemFileErr $ProblemFileErr1");
 system("$err2pl $ProblemFileErr > $ProblemFileErr2");
@@ -432,11 +434,19 @@ SortByExplanations($ProblemFileBex);
 
 system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml 2>$ProblemFileXml.errabs > $ProblemFileXml.abs") if($absolutize==1);
 
+$my $outseparator= "\n==========\n";
+
 if($query_mode eq 'TEXT')
 {
+    open(F,$MizOutputEmacs);
+    local $/; $_= <F>; print $_;
+    close(F);
+    print $outseparator;
+
     open(F,$ProblemFileErr);
     local $/; $_= <F>; print $_;
     close(F);
+    print $outseparator;
 }
 else
 {
