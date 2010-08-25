@@ -568,10 +568,11 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 		    #print "Bad vampire status line: $status_line, please complain";
 		}
  		if (!($status eq szs_THEOREM)) { @refs = () }
-		else { print $fhout ($line, "_", $col, ":", join(',',@refs), "\n", $outseparator, "Took ", time() - $starttime) , "s\n"; }
+		else { print $fhout ($line, "_", $col, ":", join(',',@refs), "\n"); }
 	    }
 
 	}
+	print $fhout ($outseparator, "Took ", time() - $starttime, "s\n");
 
     }
 }
