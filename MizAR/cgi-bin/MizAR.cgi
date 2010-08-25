@@ -365,7 +365,7 @@ if($start_snow > 0) { ($advisorport, $snowport) = StartSNoW(); }
 
 $ENV{"MIZFILES"}= $Mizfiles;
 system("$mizf $ProblemFile 2>&1 > $MizOutput");
-system("grep -A100 Verifier 2>&1 > $MizOutputEmacs");
+system("grep -A100 Verifier $MizOutput 2>&1 > $MizOutputEmacs");
 
 system("cp $ProblemFileErr $ProblemFileErr1");
 system("$err2pl $ProblemFileErr > $ProblemFileErr2");
