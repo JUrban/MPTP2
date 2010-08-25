@@ -66,6 +66,8 @@ $proveunsolved = "None" unless defined($proveunsolved);
 $mmlversion   = '4.100.1011' unless defined($mmlversion);
 $proofsbyajax = 0; # unless defined($proofsbyajax); comented - not wroking yet, trying to write the relative proof path
 
+my $starttime = time(); # for measuring the query processing time
+
 sub my_warning
 {
     print $_;
@@ -566,7 +568,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 		    #print "Bad vampire status line: $status_line, please complain";
 		}
  		if (!($status eq szs_THEOREM)) { @refs = () }
-		else { print $fhout ($line, "_", $col, ":", join(',',@refs), "\n"); }
+		else { print $fhout ($line, "_", $col, ":", join(',',@refs), "\n", $outseparator, "Took ", time() - $starttime) , "s\n"; }
 	    }
 
 	}
