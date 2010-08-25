@@ -434,7 +434,7 @@ SortByExplanations($ProblemFileBex);
 
 system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml 2>$ProblemFileXml.errabs > $ProblemFileXml.abs") if($absolutize==1);
 
-$my $outseparator= "\n==========\n";
+my $outseparator= "\n==========\n";
 
 if($query_mode eq 'TEXT')
 {
