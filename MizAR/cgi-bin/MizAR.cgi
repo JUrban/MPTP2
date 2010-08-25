@@ -440,6 +440,7 @@ my $outseparator= "\n==========\n";
 
 if($query_mode eq 'TEXT')
 {
+    print $outseparator;
     open(F,$MizOutputEmacs);
     local $/; $_= <F>; print $_;
     close(F);
