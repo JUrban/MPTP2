@@ -30,8 +30,7 @@ mizp.pl -j16 ~/a
 
 =item B<<< --parallelize=<arg>, -j<arg> >>>
 
-If greater than 1, runs problems in parallel, using Makefile with
-the -j<arg> option.
+If greater than 1, runs problems in this number of parallel jobs, using --pppolicy .
 Default is 1 - no parallelization.
 
 =item B<<< --ppolicy=<arg>, -B<P><arg> >>>
