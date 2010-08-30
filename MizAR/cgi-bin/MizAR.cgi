@@ -57,11 +57,30 @@ my $mmlversion    = $query->param('MMLVersion');
 # 'TEXT' switches of $generatehtml
 my $query_mode       = $query->param('MODE');
 
+# parallelization options
+# If greater than 1, runs problems in parallel, using mizp.pl
+# Default is 1 - no parallelization.
+my $gparallelize = $query->param('Parallelize');
+
+# Sets the parallelization policy if parallelize > 0.
+# 1 is parallelization by using @proof for top proofs in original file 
+# This parallelizes analyzer, checker, and htmlizer.
+# 2 is parallelization by using ErrorInf in .xml file
+# This parallelizes only checker.
+# 3 combines 1 and 2 when parallel top proof chunks have not even distribution.
+# For example, when there is only one top proof, analyzer and htmlizer are not
+# parallelized, and all parallelization is done in checker.
+# Default is 2.
+
+my $gppolicy = $query->param('PPolicy');
+
 
 $linkarproofs = 0 unless defined($linkarproofs);
 $generateatp = 0 unless defined($generateatp);
 $generatehtml = 0 unless defined($generatehtml);
 $proveunsolved = "None" unless defined($proveunsolved);
+$gparallelize = 1 unless defined($gparallelize);
+$gppolicy = 2 unless defined($gppolicy);
 
 $mmlversion   = '4.100.1011' unless defined($mmlversion);
 $proofsbyajax = 0; # unless defined($proofsbyajax); comented - not wroking yet, trying to write the relative proof path
@@ -104,6 +123,7 @@ my $TemporaryProblemDirectory = "$TemporaryDirectory/matp_$$";
 my $PidNr = $$;
 my $MizHtml = $MyUrl . "/mml$mmlversion/html/";
 my $mizf =     "$Bindir/mizf";
+my $mizp =     "$Bindir/mizp.pl";
 my $snow =     "$Bindir/snow";
 my $advisor =     "$Bindir/advisor.pl";
 my $exporter =     "$Bindir/mizar/exporter";
@@ -366,7 +386,15 @@ SetupArticleFiles();
 if($start_snow > 0) { ($advisorport, $snowport) = StartSNoW(); }
 
 $ENV{"MIZFILES"}= $Mizfiles;
-system("$mizf $ProblemFile 2>&1 > $MizOutput");
+if($gparallelize == 1)
+{
+    system("$mizf $ProblemFile 2>&1 > $MizOutput");
+}
+## TODO: this should be a library call rather than execution
+else
+{
+    system("$mizp -j $gparallelize -P $gppolicy $ProblemFile 2>&1 > $MizOutput");
+}
 system("grep -A100 Verifier $MizOutput 2>&1 > $MizOutputEmacs");
 
 system("cp $ProblemFileErr $ProblemFileErr1");
