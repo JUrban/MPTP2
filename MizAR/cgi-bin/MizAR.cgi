@@ -123,7 +123,7 @@ my $TemporaryProblemDirectory = "$TemporaryDirectory/matp_$$";
 my $PidNr = $$;
 my $MizHtml = $MyUrl . "/mml$mmlversion/html/";
 my $mizf =     "$Bindir/mizf";
-my $mizp =     "$Bindir/mizp.pl";
+my $mizp =     "/home/mptp/public_html/cgi-bin/$Bindir/mizp.pl";
 my $snow =     "$Bindir/snow";
 my $advisor =     "$Bindir/advisor.pl";
 my $exporter =     "$Bindir/mizar/exporter";
@@ -393,6 +393,7 @@ if($gparallelize == 1)
 ## TODO: this should be a library call rather than execution
 else
 {
+    (-x $mizp) or die "Parallelizer not executable: $mizp"; 
     system("$mizp -j $gparallelize -P $gppolicy $ProblemFile 2>&1 > $MizOutput");
 }
 system("grep -A100 Verifier $MizOutput 2>&1 > $MizOutputEmacs");
