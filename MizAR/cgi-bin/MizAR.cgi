@@ -70,7 +70,7 @@ my $gparallelize = $query->param('Parallelize');
 # 3 combines 1 and 2 when parallel top proof chunks have not even distribution.
 # For example, when there is only one top proof, analyzer and htmlizer are not
 # parallelized, and all parallelization is done in checker.
-# Default is 2.
+# Default is 1.
 
 my $gppolicy = $query->param('PPolicy');
 
@@ -80,7 +80,7 @@ $generateatp = 0 unless defined($generateatp);
 $generatehtml = 0 unless defined($generatehtml);
 $proveunsolved = "None" unless defined($proveunsolved);
 $gparallelize = 1 unless defined($gparallelize);
-$gppolicy = 2 unless defined($gppolicy);
+$gppolicy = 1 unless defined($gppolicy);
 
 $mmlversion   = '4.100.1011' unless defined($mmlversion);
 $proofsbyajax = 0; # unless defined($proofsbyajax); comented - not wroking yet, trying to write the relative proof path
