@@ -394,7 +394,7 @@ if($gparallelize == 1)
 else
 {
     (-x $mizp) or die "Parallelizer not executable: $mizp"; 
-    system("$mizp -q -l -j $gparallelize -P $gppolicy $ProblemFile 2>&1 > $MizOutput");
+    system("$mizp -q -l -j $gparallelize -P $gppolicy -x $Xsl4MizarDir $ProblemFile 2>&1 > $MizOutput");
 }
 system("grep -A100 Verifier $MizOutput 2>&1 > $MizOutputEmacs");
 
