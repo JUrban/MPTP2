@@ -47,10 +47,11 @@
               </td>
             </tr>
 	    <tr>
-	      <TD> <INPUT TYPE="RADIO" NAME="MMLVersion" VALUE="4.100.1011" >MML version 4.100.1011<BR></TD>
-            </tr>
-	    <tr>
-	      <TD> <INPUT TYPE="RADIO" NAME="MMLVersion" VALUE="4.145.1096" CHECKED>MML version 4.145.1096<BR></TD>
+	      <TD> <label>MML version:</label>
+		<SELECT NAME="MMLVersion">
+		  <OPTION VALUE="4.100.1011" >4.100.1011</OPTION>
+		  <OPTION VALUE="4.145.1096" SELECTED>4.145.1096</OPTION>
+		</SELECT><BR></TD>
             </tr>
 	    <tr>
 	      <TD> <INPUT TYPE="CHECKBOX" NAME="Verify" VALUE="1" CHECKED>Verify<BR></TD>
@@ -71,7 +72,7 @@
 	    <!--   <TD> <INPUT TYPE="CHECKBOX" NAME="AjaxProofs" VALUE="1">Proofs hidden, fetched by AJAX<BR></TD> -->
             <!-- </tr> -->
 	    <tr>
-	      <TD> <INPUT TYPE="CHECKBOX" NAME="GenATP" VALUE="1" CHECKED>Generate ATP problems<BR></TD>
+	      <TD> <INPUT TYPE="CHECKBOX" NAME="GenATP" VALUE="1" >Generate ATP problems<BR></TD>
             </tr>
 	    <tr>
 	      <TD> <INPUT TYPE="CHECKBOX" NAME="ARProofs" VALUE="1">Allow ATP calls for hard problems<BR></TD>
