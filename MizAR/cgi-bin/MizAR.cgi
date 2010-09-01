@@ -74,6 +74,9 @@ my $gparallelize = $query->param('Parallelize');
 
 my $gppolicy = $query->param('PPolicy');
 
+## (full) htmlization for parallelizer. Only used if $gparallelize>1,
+## and other conditions met below.
+my $gphtmlize = 2; 
 
 $linkarproofs = 0 unless defined($linkarproofs);
 $generateatp = 0 unless defined($generateatp);
@@ -393,8 +396,19 @@ if($gparallelize == 1)
 ## TODO: this should be a library call rather than execution
 else
 {
-    (-x $mizp) or die "Parallelizer not executable: $mizp"; 
-    system("$mizp -q -l -j $gparallelize -P $gppolicy -x $Xsl4MizarDir $ProblemFile 2>&1 > $MizOutput");
+    (-x $mizp) or die "Parallelizer not executable: $mizp";
+    if(($generateatp > 0) || ($proveunsolved eq 'All') || 
+       (($proveunsolved eq 'Positions') && (scalar(@provepositions) > 0)))
+    {
+	$gppolicy = 2; ## cannot use analyzer parallelization yet fro MPTP
+	$gphtmlize = 0; ## no sense to htmlize if not analyzer parallelization
+    }
+    elsif(($query_mode eq 'TEXT') || ($generatehtml == 0))
+    {
+	$gphtmlize = 0;
+    }
+
+    system("$mizp -q -l -j $gparallelize -P $gppolicy -M $gphtmlize -H $MizHtml -x $Xsl4MizarDir $ProblemFile 2>&1 > $MizOutput");
 }
 system("grep -A100 Verifier $MizOutput 2>&1 > $MizOutputEmacs");
 
@@ -463,7 +477,7 @@ SortByExplanations($ProblemFileBex);
 
 # ###TODO: note that const_links=2 does not work correctly yet    
 
-system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml 2>$ProblemFileXml.errabs > $ProblemFileXml.abs") if($absolutize==1);
+system("time $xsltproc --param explainbyfrom 1 $addabsrefs $ProblemFileXml 2>$ProblemFileXml.errabs > $ProblemFileXml.abs") if(($absolutize==1) && (($gparallelize==1) || ($gppolicy==2)));
 
 my $outseparator= "\n==========\n";
 
@@ -480,13 +494,22 @@ if($query_mode eq 'TEXT')
     close(F);
     print $outseparator;
 }
-else
+elsif($generatehtml==1)
 {
-    my $genatpparams = ($generateatp==1)? " --param by_titles 1 --param linkarproofs $linkarproofs --param ajax_by 1 --param linkbytoself 1 --param linkby 3 --param thms_tptp_links 1 --param lbytptpcgi \\\'$lbytptpcgi\\\' --param lbytmpdir \\\'$lbytmpdir\\\' --param lbycgiparams \\\'$lbycgiparams\\\' " : "";
+    if(($gparallelize>1) && ($gphtmlize>0))
+    {
+	open(F,$ProblemFileHtml) or print "HTMLizer failed, please complain\n";
+	local $/; $_= <F>; print $_;
+	close(F);
+    }
+    else
+    {
+	my $genatpparams = ($generateatp==1)? " --param by_titles 1 --param linkarproofs $linkarproofs --param ajax_by 1 --param linkbytoself 1 --param linkby 3 --param thms_tptp_links 1 --param lbytptpcgi \\\'$lbytptpcgi\\\' --param lbytmpdir \\\'$lbytmpdir\\\' --param lbycgiparams \\\'$lbycgiparams\\\' " : "";
 
-    my $ajaxproofparams = ($proofsbyajax==1)? " -param lbytmpdir \\\'$lbytmpdir\\\'  --param ajax_proofs 3 " : " ";
-
-    system("time $xsltproc  $genatpparams $ajaxproofparams --param const_links 1  --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml") if($generatehtml==1); 
+	my $ajaxproofparams = ($proofsbyajax==1)? " -param lbytmpdir \\\'$lbytmpdir\\\'  --param ajax_proofs 3 " : " ";
+	
+	system("time $xsltproc  $genatpparams $ajaxproofparams --param const_links 1  --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
+    }
 }
  
 if(($generateatp > 0) || ($problemstosolvenr > 0)) 
