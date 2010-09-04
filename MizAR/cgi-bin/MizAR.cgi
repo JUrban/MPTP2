@@ -513,7 +513,7 @@ elsif($generatehtml==1)
 
 	my $ajaxproofparams = ($proofsbyajax==1)? " -param lbytmpdir \\\'$lbytmpdir\\\'  --param ajax_proofs 3 " : " ";
 
-	system("$mkxmlhead -s $ProblemFile > $ProblemFile.hdr");
+	system("$mkxmlhead -s $ProblemFile > $ProblemFileOrig.hdr");
 
 	system("time $xsltproc  $genatpparams $ajaxproofparams --param mk_header 1 --param const_links 1  --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
     }
