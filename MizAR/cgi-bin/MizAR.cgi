@@ -122,8 +122,10 @@ my $Mizfiles = "/home/mptp/public_html/mml$mmlversion";
 my $Bindir = "bin$mmlversion";
 my $utilspl =  "/home/mptp/public_html/cgi-bin/$Bindir/utils.pl";
 my $TemporaryDirectory = "/tmp";
-my $TemporaryProblemDirectory = "$TemporaryDirectory/matp_$$";
-my $PidNr = $$;
+my $TemporaryProblemDirectory = mkdtemp("$TemporaryDirectory/matp_XXXXXX");
+$TemporaryProblemDirectory =~ m/^.*\/matp_(.*)/ or die "Bad tmpdir: $TemporaryProblemDirectory";
+## This is no longer pidnr - race conditions $$
+my $PidNr = $1;
 my $MizHtml = $MyUrl . "/mml$mmlversion/html/";
 my $mizf =     "$Bindir/mizf";
 my $mizp =     "/home/mptp/public_html/cgi-bin/$Bindir/mizp.pl";
@@ -221,12 +223,14 @@ sub CreateTmpDir
 }
 # Make temporary directories for files;
 # creates the ( 'proofs', 'problems', 'dict') subdirs
-# Change permissions so tptp can cleanup later if needed
+# Change permissions so MizAR can cleanup later if needed
 sub CreateTmpDirs
 {
     my ($tmproot) = @_;
 
-    CreateTmpDir($tmproot);
+#    CreateTmpDir($tmproot);
+
+    system("chmod 0777 $tmproot");
 
     foreach my $subdir ( 'proofs', 'problems', 'dict')
     {
