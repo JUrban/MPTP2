@@ -24,6 +24,8 @@ my $query	  = new CGI;
 my $ProblemSource = $query->param('ProblemSource');
 my $VocFile       = $query->param('VocFile');
 my $VocSource       = $query->param('VocSource');
+my $VocName       = $query->param('VocName');
+my $VocContent       = $query->param('VocContent');
 my $input_article	  = $query->param('Formula');
 my $input_name	  = $query->param('Name');
 my $aname         = lc($input_name); 
@@ -316,6 +318,19 @@ sub SetupArticleFiles
 	close($VocFile);
 	close(VOC)
     }
+    elsif (defined($VocSource) && ($VocSource eq 'CONTENT')
+	   && defined($VocName) &&  (length($VocName) < 13) && (lc($VocName)=~m/^[a-z][a-z0-9_.]*$/)
+	   && !($VocName eq "") && defined($VocContent))
+    {
+	$VocName = lc($VocName);
+	my $VOCFileOrig1 = "${TemporaryProblemDirectory}/dict/$VocName";
+	open(VOC, ">$VOCFileOrig1") or die "$VOCFileOrig1 not writable";
+	printf(VOC "%s",$VocContent);
+	close(VOC);
+	system("dos2unix $VOCFileOrig1");
+    }
+
+
 
     system("dos2unix $ProblemFileOrig");
     `mv $ProblemFileOrig $ProblemFile`;
