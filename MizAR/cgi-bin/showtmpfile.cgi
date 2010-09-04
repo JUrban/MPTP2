@@ -3,13 +3,11 @@
 use strict;
 use CGI;
 use IO::Socket;
-use File::Temp qw/ :mktemp  /;
 use IPC::Open2;
 use HTTP::Request::Common;
 use LWP::Simple;
 
 my $TemporaryDirectory = "/tmp";
-my $TemporaryProblemDirectory = "$TemporaryDirectory/matp_$$";
 
 my $query	  = new CGI;
 my $input_file	  = $query->param('file');
