@@ -582,15 +582,17 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 	}
 	close(XML2);
 
-	open(PROPNAMES, $ProblemFileFlaNames);
-	while (<PROPNAMES>)
+	if(open(PROPNAMES, $ProblemFileFlaNames))
 	{
-	    if(m/^propname\(([^,]+),[']([^']+)[']\)/)
+	    while (<PROPNAMES>)
 	    {
-		$fla2name{$1}= $2;
+		if(m/^propname\(([^,]+),[']([^']+)[']\)/)
+		{
+		    $fla2name{$1}= $2;
+		}
 	    }
+	    close(PROPNAMES);
 	}
-	close(PROPNAMES);
 
 	if($problemstosolvenr > 10)
 	{
