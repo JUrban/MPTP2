@@ -130,7 +130,7 @@ sub MizarizeRef
 
 	if($here==0)
 	{
-	    $res = uc($ar) . ':' . $mizkind . ' ' . $nr;
+	    $res = uc($ar) . ':' . $mizkind . ((length($mizkind)>0) ? ' ' : '') . $nr;
 	}
 	else
 	{
@@ -149,14 +149,14 @@ sub MizarizeRef
     elsif($ref=~m/^(abstractness|free|existence|redefinition|symmetry|antisymmetry|asymmetry|reflexivity|irreflexivity|connectedness|commutativity|idempotence|involutiveness|projectivity)_([klmugrv])([0-9]+)_(.*)$/)
     {
 
-	my ($prop,$kind,$nr,$ar) = ($1,$2,$3);
+	my ($prop,$kind,$nr,$ar) = ($1,$2,$3,$4);
 
 	my $mizkind = $kind2miz{$kind};
 	my $here = ($ar eq $input_article) ? 1 : 0;
 
 	if($here==0)
 	{
-	    $res = uc($ar) . ':' . $mizkind . ' ' . $nr;
+	    $res = uc($ar) . ':' . $mizkind . ((length($mizkind)>0) ? ' ' : '') . $nr;
 	}
 	else { $res = ucfirst($mizkind) . $nr; }
     }
