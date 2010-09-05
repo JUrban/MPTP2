@@ -671,7 +671,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 		{ 
 		    print $fhout ($line, "_", $col, ":", join(',',@refs), "\n"); 
 		    print $fhout ($line, "_", $col, "::", join(',',@mizrefs), "\n");
-		    print $fhout ($line, "_", $col, "::", join(',',@simprefs), "\n");
+		    print $fhout ($line, "_", $col, ":::", join(',',@simprefs), "\n");
 		}
 	    }
 
