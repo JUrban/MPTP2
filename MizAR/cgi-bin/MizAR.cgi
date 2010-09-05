@@ -630,7 +630,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 		    my $ref1 = ($ref=~ m/(.*)__.*/)? $1 : $ref;
 		    my $pos = $fla2pos{$ref1};
 		    push( @refs, "$ref\[$pos\]");
-		    push( @mizrefs, MPTPNames::MizarizeRef($ref, $aname_uc) . '[' . $pos .']');
+		    push( @mizrefs, MPTPNames::MizarizeRef($ref, $aname_uc) . ($pos ? '[' . $pos .']' : ''));
 		}
 		close(EP);
 		##DEBUG print ("refs: ", join(",",@refs));
