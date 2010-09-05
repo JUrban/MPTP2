@@ -142,13 +142,13 @@ sub MizarizeRef
 	    $res = ucfirst($mizkind) . $nr;
 	}
     }
-    elsif($ref=~m/^e([0-9]+)_(.*)__(.*)$/)
+    elsif($ref=~m/^(e([0-9]+)_(.*))__(.*)$/)
     {
-	if(defined($fla2name) && exists($fla2name->{$ref}))
+	if(defined($fla2name) && exists($fla2name->{$1}))
 	{
-	    $res = $fla2name->{$ref};
+	    $res = $fla2name->{$1};
 	}
-	else { $res = 'Proposition' . $1 . '__Block' . $2;  }
+	else { $res = 'Proposition' . $2 . '__Block' . $3;  }
     }
     elsif($ref=~m/^d[et]_c([0-9]+)_(.*)__(.*)$/)
     {
