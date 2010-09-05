@@ -130,7 +130,7 @@ sub MizarizeRef
 
 	if($here==0)
 	{
-	    $res = $ar . ':' . $mizkind . ' ' . $nr;
+	    $res = uc($ar) . ':' . $mizkind . ' ' . $nr;
 	}
 	else
 	{
@@ -138,7 +138,7 @@ sub MizarizeRef
 	    $res = ucfirst($mizkind) . $nr;
 	}
     }
-    elsif($ref=~m/^(e)([0-9]+)_(.*)__(.*)$/)
+    elsif($ref=~m/^(e[0-9]+)_(.*)__(.*)$/)
     {
 	$res = uc($1) . '__' . $2; 
     }
@@ -156,7 +156,7 @@ sub MizarizeRef
 
 	if($here==0)
 	{
-	    $res = $ar . ':' . $mizkind . ' ' . $nr;
+	    $res = uc($ar) . ':' . $mizkind . ' ' . $nr;
 	}
 	else { $res = ucfirst($mizkind) . $nr; }
     }
