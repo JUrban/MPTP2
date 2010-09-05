@@ -538,7 +538,7 @@ elsif($generatehtml==1)
 if(($generateatp > 0) || ($problemstosolvenr > 0)) 
 {
     ### NOTE: this can be more targeted and parallelized as the html parallelization
-    system("time $xsltproc --param dump_prop_labels 1 $mizpl $ProblemFileXml.abs  > $ProblemFileXml2 2>$ProblemFileXml.errpl");
+    system("cd $TemporaryProblemDirectory; time $xsltproc --param dump_prop_labels 1 $mizpl $ProblemFileXml.abs  > $ProblemFileXml2 2>$ProblemFileXml.errpl");
     
 
 # ajax proofs are probably not wanted for the first stab
