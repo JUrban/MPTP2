@@ -665,7 +665,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 		}
  		if (!($status eq szs_THEOREM)) 
 		{ @refs = (); @mizrefs = (); @simprefs = (); 
-		  print $fhout ($line, "_", $col, ":", "Unsolved\n"); 
+		  print $fhout ($line, "_", $col, ":::", "Unsolved\n"); 
 		}
 		else 
 		{ 
