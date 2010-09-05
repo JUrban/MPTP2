@@ -91,6 +91,90 @@ sub HTMLizeLines
     print $query->end_html();
 }
 
+my %kind2miz = 
+(
+ 't' => '',
+ 'd' => 'def',
+ 'fc' => 'funcreg',
+ 'cc' => 'condreg',
+ 'rc' => 'exreg',
+ 's' => 'sch',
+ 'k' => 'func',
+ 'l' => 'struct',
+ 'm' => 'mode',
+ 'u' => 'sel',
+ 'g' => 'aggr',
+ 'r' => 'pred',
+ 'v' => 'attr',
+ 'e' => 'lemma'
+);
+
+
+## provide Mizar names to various MPTP references
+sub MizarizeRef
+{
+    my ($ref,$input_article) = @_;
+    my $res = '';
+
+    if(($ref=~m/^([dtl])([0-9]+)_(.*)$/) 
+       || ($ref=~m/^(s)([0-9]+)_(.*?)__.*$/) 
+       || ($ref=~m/^([fcr]c)([0-9]+)_(.*)$/) 
+       || ($ref=~m/^dt_([klmugrv])([0-9]+)_(.*)$/))
+    {
+	my ($kind,$nr,$ar) = ($1,$2,$3);
+
+	if(($ref=~m/^l.*/) && ($kind =~ m/^l/)) { $kind = 'e'; }
+
+	my $mizkind = $kind2miz{$kind};
+	my $here = ($ar eq $input_article) ? 1 : 0;
+
+	if($here==0)
+	{
+	    $res = $ar . ':' . $mizkind . ' ' . $nr;
+	}
+	else
+	{
+	    if($mizkind eq '') {$mizkind = 'th'; }
+	    $res = ucfirst($mizkind) . $nr;
+	}
+    }
+    elsif($ref=~m/^(e)([0-9]+)_(.*)__(.*)$/)
+    {
+	$res = uc($1) . '__' . $2; 
+    }
+    elsif($ref=~m/^d[et]_(c[0-9]+)_(.*)__(.*)$/)
+    {
+	$res = uc($1) . '__' . $2;
+    }
+    elsif($ref=~m/^(abstractness|free|existence|redefinition|symmetry|antisymmetry|asymmetry|reflexivity|irreflexivity|connectedness|commutativity|idempotence|involutiveness|projectivity)_([klmugrv])([0-9]+)_(.*)$/)
+    {
+
+	my ($prop,$kind,$nr,$ar) = ($1,$2,$3);
+
+	my $mizkind = $kind2miz{$kind};
+	my $here = ($ar eq $input_article) ? 1 : 0;
+
+	if($here==0)
+	{
+	    $res = $ar . ':' . $mizkind . ' ' . $nr;
+	}
+	else { $res = ucfirst($mizkind) . $nr; }
+    }
+    elsif($ref=~m/^spc([0-9]+)_boole$/) 
+    {
+	if($1 eq "0") { $res = $1 . "_is_empty"; } 
+	else { $res = $1 . "_is_non_empty"; } 
+    }
+    elsif($ref=~m/^spc([0-9]+)_numerals$/)
+    {
+	if($1 eq "0") { $res = $1 . "_is_Element_of_NAT"; }
+	else { $res = $1 . "_is_positive_Element_of_NAT"; }
+    }
+    elsif($ref=~m/^rq.*$/) { $res = "arithmetic_evaluation"; }
+    elsif($ref=~m/^fraenkel_.*$/) { $res = "fraenkel_functor"; }
+    return $res;
+}
+
 
 
 
