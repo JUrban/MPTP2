@@ -10,7 +10,7 @@ use File::Temp qw/ :mktemp  /;
 use IPC::Open2;
 use HTTP::Request::Common;
 use LWP::Simple;
-
+use MPTPNames;
 
 # possible SZS statuses
 sub szs_INIT        ()  { 'Initial' } # system was not run on the problem yet
@@ -589,6 +589,8 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 	{
 
 	    my @refs=();
+	    my @htmlrefs = ();
+	    my @mizrefs = ();
 	    my $status = szs_UNKNOWN;
 	    
 	    ###TODO: this is mostly stolen from showby.cgi, refactor!
@@ -628,6 +630,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 		    my $ref1 = ($ref=~ m/(.*)__.*/)? $1 : $ref;
 		    my $pos = $fla2pos{$ref1};
 		    push( @refs, "$ref\[$pos\]");
+		    push( @mizrefs, MizarizeRef($ref, $aname_uc) . '[' . $pos .']');
 		}
 		close(EP);
 		##DEBUG print ("refs: ", join(",",@refs));
@@ -643,8 +646,12 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 		{
 		    #print "Bad vampire status line: $status_line, please complain";
 		}
- 		if (!($status eq szs_THEOREM)) { @refs = () }
-		else { print $fhout ($line, "_", $col, ":", join(',',@refs), "\n"); }
+ 		if (!($status eq szs_THEOREM)) { @refs = (); @mizrefs = (); }
+		else 
+		{ 
+		    print $fhout ($line, "_", $col, ":", join(',',@refs), "\n"); 
+		    print $fhout ($line, "_", $col, "::", join(',',@mizrefs), "\n");
+		}
 	    }
 
 	}
