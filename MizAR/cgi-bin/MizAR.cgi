@@ -158,6 +158,7 @@ my $ProblemDir = $TemporaryProblemDirectory . "/problems/" . $aname;
 my $ProblemFile = $ProblemFileOrig . ".miz";
 my $ProblemFileXml = $ProblemFileOrig . ".xml";
 my $ProblemFileXml2 = $ProblemFileOrig . ".xml2";
+my $ProblemFileFlaNames = $ProblemFileOrig . ".propnames";
 my $ProblemFileHtml = $ProblemFileOrig . ".html";
 my $ProblemFileErr = $ProblemFileOrig . ".err";
 my $ProblemFileErr1 = $ProblemFileOrig . ".err1";
@@ -537,7 +538,7 @@ elsif($generatehtml==1)
 if(($generateatp > 0) || ($problemstosolvenr > 0)) 
 {
     ### NOTE: this can be more targeted and parallelized as the html parallelization
-    system("time $xsltproc $mizpl $ProblemFileXml.abs  > $ProblemFileXml2 2>$ProblemFileXml.errpl");
+    system("time $xsltproc --param dump_prop_labels 1 $mizpl $ProblemFileXml.abs  > $ProblemFileXml2 2>$ProblemFileXml.errpl");
     
 
 # ajax proofs are probably not wanted for the first stab
@@ -570,6 +571,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 	my $MMLAxs = $Mizfiles . "/mptp/00allmmlax" ;
 
 	my %fla2pos = ();
+	my %fla2name = ();
 	open(XML2, $ProblemFileXml2);
 	while (<XML2>)
 	{
@@ -579,6 +581,16 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 	    }
 	}
 	close(XML2);
+
+	open(PROPNAMES, $ProblemFileFlaNames);
+	while (<PROPNAMES>)
+	{
+	    if(m/^propname\(([^,]+),[']([^']+)[']\)/)
+	    {
+		$fla2name{$1}= $2;
+	    }
+	}
+	close(PROPNAMES);
 
 	if($problemstosolvenr > 10)
 	{
@@ -630,7 +642,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 		    my $ref1 = ($ref=~ m/(.*)__.*/)? $1 : $ref;
 		    my $pos = $fla2pos{$ref1};
 		    push( @refs, "$ref\[$pos\]");
-		    push( @mizrefs, MPTPNames::MizarizeRef($ref, $aname_uc) . ($pos ? '[' . $pos .']' : ''));
+		    push( @mizrefs, MPTPNames::MizarizeRef($ref, $aname_uc, \%fla2name) . ($pos ? '[' . $pos .']' : ''));
 		}
 		close(EP);
 		##DEBUG print ("refs: ", join(",",@refs));

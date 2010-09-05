@@ -113,7 +113,7 @@ my %kind2miz =
 ## provide Mizar names to various MPTP references
 sub MizarizeRef
 {
-    my ($ref,$input_article) = @_;
+    my ($ref,$input_article,$fla2name) = @_;
     my $res = '';
 
     if(($ref=~m/^([dtl])([0-9]+)_(.*)$/) 
@@ -132,6 +132,10 @@ sub MizarizeRef
 	{
 	    $res = uc($ar) . ':' . $mizkind . ((length($mizkind)>0) ? ' ' : '') . $nr;
 	}
+	elsif(defined($fla2name) && exists($fla2name->{$ref}))
+	{
+	    $res = $fla2name->{$ref};
+	}
 	else
 	{
 	    if($mizkind eq '') {$mizkind = 'th'; }
@@ -140,7 +144,11 @@ sub MizarizeRef
     }
     elsif($ref=~m/^e([0-9]+)_(.*)__(.*)$/)
     {
-	$res = 'Proposition' . $1 . '__Block' . $2; 
+	if(defined($fla2name) && exists($fla2name->{$ref}))
+	{
+	    $res = $fla2name->{$ref};
+	}
+	else { $res = 'Proposition' . $1 . '__Block' . $2;  }
     }
     elsif($ref=~m/^d[et]_c([0-9]+)_(.*)__(.*)$/)
     {
