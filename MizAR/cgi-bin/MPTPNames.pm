@@ -140,11 +140,11 @@ sub MizarizeRef
     }
     elsif($ref=~m/^e([0-9]+)_(.*)__(.*)$/)
     {
-	$res = 'Prop' . $1 . '__' . $2; 
+	$res = 'Proposition' . $1 . '__Block' . $2; 
     }
     elsif($ref=~m/^d[et]_c([0-9]+)_(.*)__(.*)$/)
     {
-	$res = 'Const' . $1 . '__' . $2;
+	$res = 'Constant' . $1 . '__Block' . $2;
     }
     elsif($ref=~m/^(abstractness|free|existence|redefinition|symmetry|antisymmetry|asymmetry|reflexivity|irreflexivity|connectedness|commutativity|idempotence|involutiveness|projectivity)_([klmugrv])([0-9]+)_(.*)$/)
     {
