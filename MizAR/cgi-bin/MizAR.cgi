@@ -676,7 +676,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 	    }
 
 	}
-	print $fhout ($outseparator, "Took ", time() - $starttime, "s\n");
+	print $fhout ($outseparator, "Request took ", time() - $starttime, "s\n");
 
     }
 }
