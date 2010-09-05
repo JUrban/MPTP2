@@ -113,8 +113,17 @@ my %kind2miz =
 ## provide Mizar names to various MPTP references
 sub MizarizeRef
 {
-    my ($ref,$input_article,$fla2name) = @_;
+    my ($ref,$input_article,$fla2name, $line, $pos) = @_;
     my $res = '';
+    my $simpres = '';
+
+    if(defined($line) && defined($pos) && ($pos=~m/(.*):.*/))
+    {
+	$pos = $1;
+	if($line == $pos) { $simpres = '::conj::'; }
+	elsif($line == $pos + 1) { $simpres = 'previous'; }
+    }
+
 
     if(($ref=~m/^([dtl])([0-9]+)_(.*)$/) 
        || ($ref=~m/^(s)([0-9]+)_(.*?)__.*$/) 
@@ -141,14 +150,26 @@ sub MizarizeRef
 	    if($mizkind eq '') {$mizkind = 'th'; }
 	    $res = ucfirst($mizkind) . $nr;
 	}
+
+	$simpres = ($simpres eq '') ? $res : $simpres;
     }
     elsif($ref=~m/^(e([0-9]+)_(.*))__(.*)$/)
     {
 	if(defined($fla2name) && exists($fla2name->{$1}))
 	{
 	    $res = $fla2name->{$1};
+	    $simpres = $res;
 	}
-	else { $res = 'Proposition' . $2 . '__Block' . $3;  }
+	else
+	{ 
+	    $res = 'Proposition' . $2 . '__Block' . $3;
+	    if($simpres eq '')
+	    {
+		if(defined($pos)) { $simpres = "Proposition_at_line_" . $pos; }
+		else { $simpres = $res}
+	    }
+	}
+
     }
     elsif($ref=~m/^d[et]_c([0-9]+)_(.*)__(.*)$/)
     {
@@ -180,7 +201,8 @@ sub MizarizeRef
     }
     elsif($ref=~m/^rq.*$/) { $res = "arithmetic_evaluation"; }
     elsif($ref=~m/^fraenkel_.*$/) { $res = "fraenkel_functor"; }
-    return $res;
+    $simpres = '' if($simpres eq '::conj::'); ## undo the temp setting
+    return ($res, $simpres);
 }
 
 

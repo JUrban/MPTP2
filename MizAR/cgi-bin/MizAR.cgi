@@ -605,6 +605,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 	    my @refs=();
 	    my @htmlrefs = ();
 	    my @mizrefs = ();
+	    my @simprefs = ();
 	    my $status = szs_UNKNOWN;
 	    
 	    ###TODO: this is mostly stolen from showby.cgi, refactor!
@@ -644,7 +645,9 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 		    my $ref1 = ($ref=~ m/(.*)__.*/)? $1 : $ref;
 		    my $pos = $fla2pos{$ref1};
 		    push( @refs, "$ref\[$pos\]");
-		    push( @mizrefs, MPTPNames::MizarizeRef($ref, $aname_uc, \%fla2name) . ($pos ? '[' . $pos .']' : ''));
+		    my ($fullmiz, $simplemiz) = MPTPNames::MizarizeRef($ref, $aname_uc, \%fla2name, $line, $pos);
+		    push( @mizrefs, $fullmiz . ($pos ? '[' . $pos .']' : ''));
+		    push( @simprefs, $simplemiz) if(length($simplemiz) > 0);
 		}
 		close(EP);
 		##DEBUG print ("refs: ", join(",",@refs));
@@ -660,11 +663,15 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 		{
 		    #print "Bad vampire status line: $status_line, please complain";
 		}
- 		if (!($status eq szs_THEOREM)) { @refs = (); @mizrefs = (); }
+ 		if (!($status eq szs_THEOREM)) 
+		{ @refs = (); @mizrefs = (); @simprefs = (); 
+		  print $fhout ($line, "_", $col, ":", "Unsolved\n"); 
+		}
 		else 
 		{ 
 		    print $fhout ($line, "_", $col, ":", join(',',@refs), "\n"); 
 		    print $fhout ($line, "_", $col, "::", join(',',@mizrefs), "\n");
+		    print $fhout ($line, "_", $col, "::", join(',',@simprefs), "\n");
 		}
 	    }
 
