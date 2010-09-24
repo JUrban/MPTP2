@@ -403,7 +403,11 @@ http://kti.mff.cuni.cz/~urban/MaLAReaSG1.pdf .
 
 =head1 CONTACT
 
-Josef Urban urban@kti.ms.mff.cuni.cz
+Josef Urban (firstname dot lastname at gmail dot com)
+
+=head1 COPYRIGHT
+
+Copyright (C) 2007-2010 Josef Urban (firstname dot lastname at gmail dot com)
 
 =head1 LICENCE
 
