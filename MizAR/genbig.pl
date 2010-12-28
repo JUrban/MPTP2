@@ -1,5 +1,9 @@
 #!/usr/bin/perl -w
-# create big versions of listed problems
+# Create big versions of listed problems,
+# Typically run after running gen.pl to generate the small versions, e.g.:
+# ./gen.pl
+# cd /tmp/98UIh/problems
+# ./genbig.pl *__*
 my $Mizfiles = "/home/mptp/public_html/mml4.145.1096";
 my $MMLAxs = $Mizfiles . "/mptp/00allmmlax" ;
 
