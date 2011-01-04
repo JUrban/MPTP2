@@ -31,7 +31,8 @@ my $input_name	  = $query->param('Name');
 my $aname         = lc($input_name); 
 # not sure what this is for
 my $atp_mode	  = $query->param('ATPMode');
-# not used yet
+# if defined, snow is started when 1 and not if 0
+# if undefined, snow is started according to $generateatp
 my $input_snow	  = $query->param('Snow');
 # atp calls for hard problems, implies html and mptp
 my $linkarproofs  = $query->param('ARProofs');
@@ -184,7 +185,7 @@ my $SnowSymOffset =   500000;
 my (%gsyms,$grefs,$ref);
 my $ghost	  = "localhost";
 my $snowport	  = -1;
-my $start_snow    = $generateatp;
+my $start_snow    = (defined $input_snow)? $input_snow : $generateatp;
 my $advisorport	  = -1;
 my %gconstrs      =
     (
