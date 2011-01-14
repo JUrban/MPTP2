@@ -83,9 +83,7 @@ sub CreateTables
 # provable by itself
 sub PrintProvedBy0
 {
-    my ($symoffset, $filestem, $loadprovedby) = @_;
-    my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref)
-	= CreateTables($symoffset, $filestem);
+    my ($symoffset, $filestem, $grefnr, $loadprovedby) = @_;
     my %proved_by_0 = ();
     open(PROVED_BY_0,">$filestem.proved_by_0");
     unless(defined($loadprovedby))
@@ -99,6 +97,95 @@ sub PrintProvedBy0
     close(PROVED_BY_0);
     return \%proved_by_0;
 }
+
+## test:
+## perl -e 'use AIAdvise;   my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = AIAdvise::CreateTables(500000, "zz"); AIAdvise::PrintProvedBy0(500000, "zz", $grefnr);'
+
+# Create a .train_$iter file from the %proved_by hash, where keys are proved
+# conjectures and values are arrays of references needed for the proof.
+# All the $filestem.train_* files are afterwards cat-ed to $filestem.alltrain_$iter
+# file, on which Learn() works.
+sub PrintTrainingFromHash
+{
+    my ($filestem,$iter,$proved_by,$grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = @_;
+    open(TRAIN, ">$filestem.train_$iter") or die "Cannot write train_$iter file";
+    foreach my $ref (sort keys %$proved_by)
+    {
+	my @refs = @{$proved_by->{$ref}};
+	# if($ggeneralize > 0)
+	# {
+	#     foreach my $rr (@{$proved_by->{$ref}})
+	#     {
+	# 	if(exists $gref2gen{$rr}) { push(@refs, $gref2gen{$rr}); }
+	#     }
+	# }
+	my @refs_nrs   = map { $grefnr->{$_} if(exists($grefnr->{$_})) } @refs;
+	my @syms = @{$grefsyms->{$ref}};
+#	push(@syms, $gggnewc) if exists $gref2gen{$ref};
+	my @syms_nrs   = map { $gsymnr->{$_} if(exists($gsymnr->{$_})) } @syms;
+	my @all_nrs = (@refs_nrs, @syms_nrs);
+	# if($gdotrmstd > 0)
+	# {
+	#     my @trmstd_nrs   = @{$greftrmstd{$ref}};
+	#     if(exists $gref2gen{$ref})
+	#     {
+	# 	my %tmp = ();
+	# 	@tmp{ @trmstd_nrs } = ();
+	# 	@tmp{ @{$greftrmstd{$gref2gen{$ref}}} } = ();
+	# 	@trmstd_nrs = keys %tmp;
+	#     }
+	#     push(@all_nrs, @trmstd_nrs);
+	# }
+	# if($gdotrmnrm > 0)
+	# {
+	#     my @trmnrm_nrs   = @{$greftrmnrm{$ref}};
+	#     if(exists $gref2gen{$ref})
+	#     {
+	# 	my %tmp = ();
+	# 	@tmp{ @trmnrm_nrs } = ();
+	# 	@tmp{ @{$greftrmnrm{$gref2gen{$ref}}} } = ();
+	# 	@trmnrm_nrs = keys %tmp;
+	#     }
+	#     push(@all_nrs, @trmnrm_nrs);
+	# }
+	# if(($guseposmodels > 0) && (exists $grefposmods{$ref}))
+	# {
+	#     my @posmod_nrs   = map { $gposmodeloffset + $_ } @{$grefposmods{$ref}};
+	#     push(@all_nrs, @posmod_nrs);
+	# }
+	# if(($gusenegmodels > 0) && (exists $grefnegmods{$ref}))
+	# {
+	#     my @negmod_nrs   = map { $gnegmodeloffset + $_ } @{$grefnegmods{$ref}};
+	#     push(@all_nrs, @negmod_nrs);
+	# }
+	# just a sanity check
+	foreach $ref (@refs)
+	{
+	    exists $grefsyms->{$ref} or die "Unknown reference $ref in refs: @refs";
+	    exists $grefnr->{$ref} or die "Unknown reference $ref in refs: @refs";
+	}
+
+	# for 0th iteration, we allow small boost of axioms of
+	# small specifications by $gboostweight
+	# if(($iter == 0) && ($gboostlimit > 0) && (exists $gspec{$ref}))
+	# {
+	#     my @all_refs = keys %{$gspec{$ref}};
+	#     # all_refs contains the conjecture too, so we don't have to add 1 to $#all_refs
+	#     if($#all_refs <= ($gboostlimit * $gtargetsnr))
+	#     {
+	# 	my @ax_nrs   = map { $grefnr{$_} . '(' . $gboostweight . ')'
+	# 				 if(exists($grefnr{$_})) } @all_refs;
+	# 	push(@all_nrs, @ax_nrs);
+	#     }
+	# }
+
+	my $training_exmpl = join(",", @all_nrs);
+	print TRAIN "$training_exmpl:\n";
+    }
+    close TRAIN;
+}
+
+## test: perl -e 'use AIAdvise; my ($filestem,$symoffset)=("zz",500000); my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = AIAdvise::CreateTables($symoffset, $filestem); my $proved_by = AIAdvise::PrintProvedBy0($symoffset, $filestem, $grefnr); AIAdvise::PrintTrainingFromHash($filestem,0,$proved_by,$grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref); '
 
 
 ##  StartSNoW($path2snow, $path2advisor, $symoffset, $snow_filestem);
