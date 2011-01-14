@@ -12,6 +12,9 @@ sub min { my ($x,$y) = @_; ($x <= $y)? $x : $y }
 ## and advisor.  $snow_symoffset tells the translation daemon where
 ## the symbol numbering starts.
 ##
+## Be sure to sleep for sufficient amount of time (ca 40s for all MML)
+## until SNoW loads before asking queries to it.
+##
 ##
 ## SYNOPSIS:
 ## my $BinDir = "/home/urban/bin";
@@ -20,8 +23,6 @@ sub min { my ($x,$y) = @_; ($x <= $y)? $x : $y }
 sub StartSNoW
 {
     my ($path2snow, $path2advisor, $snow_symoffset, $snow_filestem) = @_;
-    my $advisor_output = $snow_filestem . '.adv_out';
-    my $snow_output = $snow_filestem . '.snow_out';
     my $snow_net = $snow_filestem . '.net';
     my $snow_arch =     $snow_filestem . '.arch';
 #--- get unused port for SNoW
@@ -39,11 +40,12 @@ sub StartSNoW
     if ($snow_pid == 0)
     {
 	# in child, start snow
-	open(LOG,">", "$snow_output");
-	*STDERR = *LOG;
-	*STDOUT = *LOG;
+	open STDOUT, '>', $snow_filestem . '.snow_out';
+	open STDERR, '>', $snow_filestem . '.snow_err';
 	exec("$path2snow -server $sport -o allboth -F $snow_net -A $snow_arch ")
 	    or print STDERR "couldn't exec $path2snow: $!";
+	close(STDOUT);
+	close(STDERR);
 	exit(0);
     }
 
@@ -58,9 +60,8 @@ sub StartSNoW
     if ($adv_pid == 0)
     {
 	# in child, start advisor
-	open(LOG1,">", "$advisor_output");
-	*STDERR = *LOG1;
-	*STDOUT = *LOG1;
+	open STDOUT, '>', $snow_filestem . '.adv_out';
+	open STDERR, '>', $snow_filestem . '.adv_err';
 	exec("$path2advisor -p $sport -a $aport -o $snow_symoffset $snow_filestem")
 	    or print STDERR "couldn't exec $path2advisor: $!";
 	exit(0);
@@ -108,19 +109,19 @@ sub GetRefs
     return @res;
 }
 
-## test: load snow/advisor on mpa1, send it a simple request and print result, kill both
+## test: load snow/advisor on thms3, send it a simple request and print result, kill both
 
 sub Tst1
 {
     my $BinDir = "/home/urban/gr/MPTP2/MizAR/cgi-bin/bin";
-    my ($aport, $sport, $adv_pid, $snow_pid) = StartSNoW("$BinDir/snow", "$BinDir/advisor.pl", 500000, 'mpa1');
-    sleep 40;
-    my $input1 = ['HIDDEN:mode 1', 'HIDDEN:pred 1'];
-    my $input2 = ['HIDDEN:pred 1', 'HIDDEN:pred 2'];
+    my ($aport, $sport, $adv_pid, $snow_pid) = StartSNoW("$BinDir/snow", "$BinDir/advisor.pl", 500000, 'thms3');
+    sleep 120;
+    my $input1 = ['k3_csspace3'];
+    my $input2 = ['v2_rearran1'];
     my @refs1 = GetRefs('localhost', $aport, $input1, 10);
-    print join(',',@refs1) . "\n";
+    print join(',',@refs1) . "\n\n";
     my @refs2 = GetRefs('localhost', $aport, $input2, 10);
-    print join(',',@refs2) . "\n";
+    print join(',',@refs2) . "\n\n";
 }
 
 
