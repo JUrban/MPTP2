@@ -77,6 +77,29 @@ sub CreateTables
 
 }
 
+# PrintProvedBy0($symoffset, $filestem, $loadprovedby)
+#
+# create the initial info for $filestem saying that each reference is
+# provable by itself
+sub PrintProvedBy0
+{
+    my ($symoffset, $filestem, $loadprovedby) = @_;
+    my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref)
+	= CreateTables($symoffset, $filestem);
+    my %proved_by_0 = ();
+    open(PROVED_BY_0,">$filestem.proved_by_0");
+    unless(defined($loadprovedby))
+    {
+	foreach my $i (keys %$grefnr)
+	{
+	    print PROVED_BY_0 "proved_by($i,[$i]).\n";
+	    push( @{$proved_by_0{$i}}, $i);
+	}
+    }
+    close(PROVED_BY_0);
+    return \%proved_by_0;
+}
+
 
 ##  StartSNoW($path2snow, $path2advisor, $symoffset, $snow_filestem);
 ##
@@ -87,6 +110,9 @@ sub CreateTables
 ##
 ## Be sure to sleep for sufficient amount of time (ca 40s for all MML)
 ## until SNoW loads before asking queries to it.
+##
+## Note that the SNoW and the advisor need the .net, .arch, .refnr,
+## .symnr files created by CreateTables from .refsyms and later training.
 ##
 ##
 ## SYNOPSIS:
