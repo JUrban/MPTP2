@@ -46,13 +46,13 @@ sub CreateTables
 	## this now also remembers arity and symbol kind in %gsymarity
 	foreach $sym (@psyms)
 	{
-	    $sym =~ m/^ *([^\/]+)[\/]([^\/]+)[\/].*/ or die "Bad symbol $sym in $_";
+	    $sym =~ m/^ *([^\/ ]+) *[\/] *([0-9]+).*/ or die "Bad symbol $sym in $_";
 	    $gsymarity{$1} = [$2, 'p'];
 	    push(@{$grefsyms{$ref}}, $1);
 	}
 	foreach $sym (@fsyms)
 	{
-	    $sym =~ m/^ *([^\/]+)[\/]([^\/]+)[\/].*/ or die "Bad symbol $sym in $_";
+	    $sym =~ m/^ *([^\/ ]+) *[\/] *([0-9]+).*/ or die "Bad symbol $sym in $_";
 	    $gsymarity{$1} = [$2, 'f'];
 	    push(@{$grefsyms{$ref}}, $1);
 	}
@@ -72,7 +72,7 @@ sub CreateTables
 #    LoadTermTable("$filestem.trmnrm",\%greftrmnrm,$gnrmtrmoffset) if($gdotrmnrm > 0);
 
     my $gtargetsnr = $#gnrref;
-#    print $gtargetsnr . "\n";
+    print $gtargetsnr . "\n";
     return (\%grefnr, \%gsymnr, \%gsymarity, \%grefsyms, \@gnrsym, \@gnrref);
 
 }
