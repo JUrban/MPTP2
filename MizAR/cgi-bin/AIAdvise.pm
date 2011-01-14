@@ -3,7 +3,7 @@ package AIAdvise;
 use strict;
 use IO::Socket;
 
-
+sub min { my ($x,$y) = @_; ($x <= $y)? $x : $y }
 
 ##  StartSNoW($path2snow, $path2advisor, $snow_symoffset, $snow_filestem);
 ##
@@ -107,5 +107,21 @@ sub GetRefs
     @res  = @res1[0 .. $outnr];
     return @res;
 }
+
+## test: load snow/advisor on mpa1, send it a simple request and print result, kill both
+
+sub Tst1
+{
+    my $BinDir = "/home/urban/gr/MPTP2/MizAR/cgi-bin/bin";
+    my ($aport, $sport, $adv_pid, $snow_pid) = StartSNoW("$BinDir/snow", "$BinDir/advisor.pl", 500000, 'mpa1');
+    sleep 40;
+    my $input1 = ['HIDDEN:mode 1', 'HIDDEN:pred 1'];
+    my $input2 = ['HIDDEN:pred 1', 'HIDDEN:pred 2'];
+    my @refs1 = GetRefs('localhost', $aport, $input1, 10);
+    print join(',',@refs1) . "\n";
+    my @refs2 = GetRefs('localhost', $aport, $input2, 10);
+    print join(',',@refs2) . "\n";
+}
+
 
 1;
