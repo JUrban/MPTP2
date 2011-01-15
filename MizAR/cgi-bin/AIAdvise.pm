@@ -187,8 +187,19 @@ sub PrintTrainingFromHash
 
 ## test: perl -e 'use AIAdvise; my ($filestem,$symoffset)=("zz",500000); my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = AIAdvise::CreateTables($symoffset, $filestem); my $proved_by = AIAdvise::PrintProvedBy0($symoffset, $filestem, $grefnr); AIAdvise::PrintTrainingFromHash($filestem,0,$proved_by,$grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref); '
 
+sub Learn0
+{
+    my ($path2snow, $filestem, $targetsnr) = @_;
+    `$path2snow -train -I $filestem.train_0 -F $filestem.net_1  -B :0-$targetsnr`;
+    open(ARCH, ">$filestem.arch") or die "Cannot write arch file";
+    print ARCH "-B :0-$targetsnr\n";
+    close(ARCH);
+}
 
-##  StartSNoW($path2snow, $path2advisor, $symoffset, $snow_filestem);
+# test:
+# perl -e 'use AIAdvise; AIAdvise::Learn0("/home/urban/gr/MPTP2/MizAR/cgi-bin/bin/snow", "zz", 43);'
+
+##  StartSNoW($path2snow, $path2advisor, $symoffset, $filestem);
 ##
 ## Get unused ports for SNoW and for the symbol translation daemon
 ## (advisor), start them, and return the ports and the pids of snow
@@ -208,9 +219,9 @@ sub PrintTrainingFromHash
 ## my ($aport, $sport, $adv_pid, $snow_pid) = StartSNoW("$BinDir/snow", "$BinDir/advisor.pl", 500000, 'test1');
 sub StartSNoW
 {
-    my ($path2snow, $path2advisor, $symoffset, $snow_filestem) = @_;
-    my $snow_net = $snow_filestem . '.net';
-    my $snow_arch =     $snow_filestem . '.arch';
+    my ($path2snow, $path2advisor, $symoffset, $filestem) = @_;
+    my $snow_net = $filestem . '.net';
+    my $snow_arch =     $filestem . '.arch';
 #--- get unused port for SNoW
     socket(SOCK,PF_INET,SOCK_STREAM,(getprotobyname('tcp'))[2]);
     bind( SOCK,  sockaddr_in(0, INADDR_ANY));
@@ -226,8 +237,8 @@ sub StartSNoW
     if ($snow_pid == 0)
     {
 	# in child, start snow
-	open STDOUT, '>', $snow_filestem . '.snow_out';
-	open STDERR, '>', $snow_filestem . '.snow_err';
+	open STDOUT, '>', $filestem . '.snow_out';
+	open STDERR, '>', $filestem . '.snow_err';
 	exec("$path2snow -server $sport -o allboth -F $snow_net -A $snow_arch ")
 	    or print STDERR "couldn't exec $path2snow: $!";
 	close(STDOUT);
@@ -246,9 +257,9 @@ sub StartSNoW
     if ($adv_pid == 0)
     {
 	# in child, start advisor
-	open STDOUT, '>', $snow_filestem . '.adv_out';
-	open STDERR, '>', $snow_filestem . '.adv_err';
-	exec("$path2advisor -p $sport -a $aport -o $symoffset $snow_filestem")
+#	open STDOUT, '>', $filestem . '.adv_out';
+#	open STDERR, '>', $filestem . '.adv_err';
+	exec("$path2advisor -p $sport -a $aport -o $symoffset $filestem")
 	    or print STDERR "couldn't exec $path2advisor: $!";
 	exit(0);
     }
