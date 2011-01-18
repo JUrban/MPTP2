@@ -107,8 +107,14 @@ $snowport   = 50000 unless(defined($snowport));
 $gsymoffset = 500000 unless(defined($gsymoffset));;
 
 
+sub min { my ($x,$y) = @_; ($x <= $y)? $x : $y }
+
 # change for verbose logging
-sub LOGGING { 1 };
+sub LOGGING { 0 };
+sub LOGADVIO { 1 };
+sub LOGSNIO { 2 };
+sub LOGFLAGS { LOGADVIO | LOGSNIO };
+
 
 sub StartServer
 {    
@@ -165,7 +171,7 @@ sub ReceiveFrom #($socket)
 
 
 
-sub AskSnow
+sub AskSnowSlow
 {
     my ($msg) = @_;
     my $parameters = "-o allboth";
@@ -207,6 +213,67 @@ sub AskSnow
     return \@res;
 }
 
+sub AskSnowDummy {}
+
+sub AskSnow
+{
+    my ($msg, $socket) = @_;
+    my @res = ();
+    my $message;
+    # Now, we're ready to start sending examples and receiving the results.
+    # Send one example:
+    send $socket, pack("N", length $msg), 0;
+    print $socket $msg;
+    print 'SNOWIN: ' . $msg if(LOGFLAGS & LOGSNIO);
+    # Receive the server's classification information:
+    $message = ReceiveFrom($socket);
+    print 'SNOWOUT: ' . $message if(LOGFLAGS & LOGSNIO);
+    while($message=~/\b([0-9]+):/g) { push (@res, $1); };
+    return \@res;
+}
+
+
+
+# sub LoadSpecs($filestem,
+#
+# Following command will create all initial unpruned problem specifications,
+# in format spec(name,references), e.g.:
+# spec(t119_zfmisc_1,[reflexivity_r1_tarski,t118_zfmisc_1,rc1_xboole_0,dt_k2_zfmisc_1,t1_xboole_1,rc2_xboole_0]).
+# and print the into file foo.specs
+# for i in `ls */*`; do perl -e   'while(<>) { if(m/^ *fof\( *([^, ]+) *,(.*)/) { ($nm,$rest)=($1,$2); if($rest=~m/^ *conjecture/) {$conjecture=$nm;} else {$h{$nm}=();}}} print "spec($conjecture,[" . join(",", keys %h) . "]).\n";' $i; done >foo.specs
+
+# loads the specs
+# sub LoadSpecs
+# {
+# #    LoadTables();
+#     %gspec = ();
+#     %gresults = ();
+#     %gsubrefs = ();
+#     %gsuperrefs = ();
+#     open(SPECS, "$filestem.specs") or die "Cannot read specs file";
+#     while (<SPECS>) {
+# 	my ($ref,$refs,$ref1);
+
+# 	m/^spec\( *([a-z0-9A-Z_]+) *, *\[(.*)\] *\)\./ 
+# 	    or die "Bad spec info: $_";
+
+# 	($ref, $refs) = ($1, $2);
+# 	my @refs = split(/\,/, $refs);
+# 	$gspec{$ref} = {};
+# 	$gresults{$ref} = [];
+# 	my $new_spec = [szs_INIT, $#refs, -1, [@refs], []];
+# 	push(@{$gresults{$ref}}, $new_spec);
+# 	# also some sanity checking
+# 	foreach $ref1 (@refs)
+# 	{
+# 	    exists $grefnr{$ref} or die "Unknown reference $ref in $_";
+# 	    ${$gspec{$ref}}{$ref1} = ();
+# 	}
+#     }
+#     close SPECS;
+# }
+
+
 
 StartServer();
 
@@ -219,7 +286,7 @@ my $server = IO::Socket::INET->new( Proto     => "tcp",
 die "cannot setup server" unless $server;
 print "[Server $0 accepting clients]\n";
 
-
+my %snowprev = ();
 
 while ($client = $server->accept())
 {
@@ -231,30 +298,74 @@ while ($client = $server->accept())
     print "[accepted client]\n";
 #    $msg  = ReceiveFrom($client);
 #    while( $_=<$client> ) { $msg = $msg . $_; }
+    my $msgnr = 0;
+    my $limit = 64;
+    my $snowparameters = " -o allpredictions -L $limit ";
+
+    my $snowsocket = IO::Socket::INET->new( Proto     => "tcp",
+					PeerAddr  => "localhost",
+					PeerPort  => $snowport,
+				      );
+    die "The SNoW server is down, sorry" unless ($snowsocket);
+
+    # Next, send the server your parameters.  Y
+    # ou can (and should) use the command
+    # commented below if you have no parameters to send:
+    #send $socket, pack("N", 0), 0;
+    send $snowsocket, pack("N", length $snowparameters), 0;
+    print $snowsocket $snowparameters;
+
+    # Whether you sent parameters or not, 
+    # the server will then send you information
+    # about the algorithms used in training the network.
+    my $snowmessage = ReceiveFrom($snowsocket);
+    print 'Snow: ', $snowmessage if(LOGFLAGS & LOGSNIO);
+
+
+
     while($msg = <$client>)
-{    print $msg if(LOGGING);
+{    
+    print 'ADVIN: ', $msg if(LOGFLAGS & LOGADVIO);
     chop $msg;
+    $msg =~ m/ *\[ *(.*) *\] */;
+    $msg = $1;
     print "[received bytes]\n";
 #    @res  = unpack("a", $msg);
     @res = split(/\,/, $msg);
-    @res1   = map { $gsymnr{$_} if(exists($gsymnr{$_})) } @res;
-    foreach $_ (@res1)
-    {
-	push(@res2,$_) if("" ne $_);
+    $msgnr++;
+    if($msgnr == 1) { # SetupProblemParams(\@res); 
     }
+    else
+    {
+	@res1   = map { $gsymnr{$_} if(exists($gsymnr{$_})) } @res;
+	foreach $_ (@res1)
+	{
+	    push(@res2,$_) if("" ne $_);
+	}
 #    $msgout = pack("a", @res2);
-    $msgout = join(",", @res2);
-    $msg1 = AskSnow($msgout . ":");
-    print @$msg1, "\n" if(LOGGING);
-    @msg2 = map { $gnrref[$_] } @$msg1;
-    $msgout1 = join(",", @msg2);
-    print $msgout1, "\n" if(LOGGING);
+	$msgout = join(",", @res2);
+	if(exists $snowprev{$msg}) { $msg1=  $snowprev{$msg}; }
+	else
+	{
+	    $msg1 = AskSnow($msgout . ':', $snowsocket);
+	    print @$msg1, "\n" if(LOGGING);
+	    $snowprev{$msg} = $msg1;
+	}
+	@msg2 = map { $gnrref[$_] } @$msg1;
+	my $outnr = min($limit, 1 + $#msg2);
+	my @msg3  = @msg2[0 .. ($outnr -1)];
+	$msgout1 = join(",", @msg3);
+	print 'ADVOUT: ', $msgout1, "\n" if(LOGFLAGS & LOGADVIO);
 #    send $client, pack("N", length $msgout), 0;
+#	print $client '[' . '].' . "\n";
     print $client '[' . $msgout1 . '].' . "\n";
+    }
+}
+    # Last, tell the SNoW server that this client is done.
+    send $snowsocket, pack("N", 0), 0;
 
 #    close $client;
     print "[closed client]\n";
-}
 }
 
 

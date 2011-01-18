@@ -216,10 +216,10 @@ sub Learn0
 ## SYNOPSIS:
 ## my $BinDir = "/home/urban/bin";
 ##
-## my ($aport, $sport, $adv_pid, $snow_pid) = StartSNoW("$BinDir/snow", "$BinDir/advisor.pl", 500000, 'test1');
+## my ($aport, $sport, $adv_pid, $snow_pid) = StartSNoW("$BinDir/snow", "$BinDir/advisor.pl", 500000, 'test1', 64);
 sub StartSNoW
 {
-    my ($path2snow, $path2advisor, $symoffset, $filestem) = @_;
+    my ($path2snow, $path2advisor, $symoffset, $filestem, $outlimit) = @_;
     my $snow_net = $filestem . '.net';
     my $snow_arch =     $filestem . '.arch';
 #--- get unused port for SNoW
@@ -239,7 +239,7 @@ sub StartSNoW
 	# in child, start snow
 	open STDOUT, '>', $filestem . '.snow_out';
 	open STDERR, '>', $filestem . '.snow_err';
-	exec("$path2snow -server $sport -o allboth -F $snow_net -A $snow_arch ")
+	exec("$path2snow -server $sport -o allpredictions -L $outlimit -F $snow_net -A $snow_arch ")
 	    or print STDERR "couldn't exec $path2snow: $!";
 	close(STDOUT);
 	close(STDERR);
@@ -257,8 +257,8 @@ sub StartSNoW
     if ($adv_pid == 0)
     {
 	# in child, start advisor
-#	open STDOUT, '>', $filestem . '.adv_out';
-#	open STDERR, '>', $filestem . '.adv_err';
+	open STDOUT, '>', $filestem . '.adv_out';
+	open STDERR, '>', $filestem . '.adv_err';
 	exec("$path2advisor -p $sport -a $aport -o $symoffset $filestem")
 	    or print STDERR "couldn't exec $path2advisor: $!";
 	exit(0);
