@@ -15,9 +15,12 @@ my $filestem= shift;
 my $advlimit= shift;
 my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = AIAdvise::CreateTables($symoffset, $filestem);
 my $proved_by = AIAdvise::PrintProvedBy0($symoffset, $filestem, $grefnr);
+
 AIAdvise::PrintTrainingFromHash($filestem,0,$proved_by,$grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref);
 
-AIAdvise::Learn0( $snow, $filestem, $grefnr);
+my $gtargetsnr = scalar @$gnrref;
+
+AIAdvise::Learn0( $snow, $filestem, $gtargetsnr);
 my ($aport, $sport, $adv_pid, $snow_pid) = 
   AIAdvise::StartSNoW($snow, $advisor, $symoffset, $filestem, $advlimit);
 print "$aport,$sport\n";
