@@ -199,12 +199,13 @@ sub Learn0
 # test:
 # perl -e 'use AIAdvise; AIAdvise::Learn0("/home/urban/gr/MPTP2/MizAR/cgi-bin/bin/snow", "zz", 43);'
 
-##  StartSNoW($path2snow, $path2advisor, $symoffset, $filestem);
+##  StartSNoW($path2snow, $path2advisor, $symoffset, $filestem, $outlimit, $netiter);
 ##
 ## Get unused ports for SNoW and for the symbol translation daemon
 ## (advisor), start them, and return the ports and the pids of snow
-## and advisor.  $symoffset tells the translation daemon where
-## the symbol numbering starts.
+## and advisor.  $symoffset tells the translation daemon where the
+## symbol numbering starts. $outlimit is the number of advises,
+## $netiter is the serial number of the network file.
 ##
 ## Be sure to sleep for sufficient amount of time (ca 40s for all MML)
 ## until SNoW loads before asking queries to it.
@@ -216,11 +217,11 @@ sub Learn0
 ## SYNOPSIS:
 ## my $BinDir = "/home/urban/bin";
 ##
-## my ($aport, $sport, $adv_pid, $snow_pid) = StartSNoW("$BinDir/snow", "$BinDir/advisor.pl", 500000, 'test1', 64);
+## my ($aport, $sport, $adv_pid, $snow_pid) = StartSNoW("$BinDir/snow", "$BinDir/advisor.pl", 500000, 'test1', 64, 1);
 sub StartSNoW
 {
-    my ($path2snow, $path2advisor, $symoffset, $filestem, $outlimit) = @_;
-    my $snow_net = $filestem . '.net';
+    my ($path2snow, $path2advisor, $symoffset, $filestem, $outlimit, $netiter) = @_;
+    my $snow_net = $filestem . '.net_' . $netiter;
     my $snow_arch =     $filestem . '.arch';
 #--- get unused port for SNoW
     socket(SOCK,PF_INET,SOCK_STREAM,(getprotobyname('tcp'))[2]);
@@ -311,7 +312,7 @@ sub GetRefs
 sub Tst1
 {
     my $BinDir = "/home/urban/gr/MPTP2/MizAR/cgi-bin/bin";
-    my ($aport, $sport, $adv_pid, $snow_pid) = StartSNoW("$BinDir/snow", "$BinDir/advisor.pl", 500000, 'thms3');
+    my ($aport, $sport, $adv_pid, $snow_pid) = StartSNoW("$BinDir/snow", "$BinDir/advisor.pl", 500000, 'thms3', 64, 1);
     print "Advisor PID: $adv_pid, SNoW PID: $snow_pid\n";
     sleep 110;
     my $input1 = ['k3_csspace3'];

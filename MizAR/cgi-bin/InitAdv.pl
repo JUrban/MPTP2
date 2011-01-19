@@ -22,5 +22,5 @@ my $gtargetsnr = scalar @$gnrref;
 
 AIAdvise::Learn0( $snow, $filestem, $gtargetsnr);
 my ($aport, $sport, $adv_pid, $snow_pid) = 
-  AIAdvise::StartSNoW($snow, $advisor, $symoffset, $filestem, $advlimit);
+  AIAdvise::StartSNoW($snow, $advisor, $symoffset, $filestem, $advlimit, 1);
 print "$aport,$sport\n";
