@@ -2,7 +2,7 @@
 
 # train from the first argument symbolically and start the daemon
 #
-# usage: ./InitAdv.pl filestem
+# usage: ./InitAdv.pl filestem advlimit
 
 use lib '/home/urban/gr/MPTP2/MizAR/cgi-bin';
 use AIAdvise;
