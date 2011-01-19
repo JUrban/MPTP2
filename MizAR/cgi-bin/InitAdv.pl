@@ -19,5 +19,5 @@ AIAdvise::PrintTrainingFromHash($filestem,0,$proved_by,$grefnr, $gsymnr, $gsymar
 
 AIAdvise::Learn0( $snow, $filestem, $grefnr);
 my ($aport, $sport, $adv_pid, $snow_pid) = 
-  AIAdvise::StartSNoW($snow, $advisor", $symoffset, $filestem, $advlimit);
+  AIAdvise::StartSNoW($snow, $advisor, $symoffset, $filestem, $advlimit);
 print "$aport,$sport\n";
