@@ -290,10 +290,7 @@ my %snowprev = ();
 
 while ($client = $server->accept())
 {
-    my ($sym,$msg,$msgout,$msgout1,$msg1,@msg2,@res,@res1,@res2);
     $client->autoflush(1);
-
-    $msg = "";
 
     print "[accepted client]\n";
 #    $msg  = ReceiveFrom($client);
@@ -323,7 +320,7 @@ while ($client = $server->accept())
 
 
 
-    while($msg = <$client>)
+    while(my $msg = <$client>)
 {    
     print 'ADVIN: ', $msg if(LOGFLAGS & LOGADVIO);
     chop $msg;
@@ -331,19 +328,16 @@ while ($client = $server->accept())
     $msg = $1;
     print "[received bytes]\n";
 #    @res  = unpack("a", $msg);
-    @res = split(/\,/, $msg);
+    my @res = split(/\,/, $msg);
     $msgnr++;
     if($msgnr == 1) { # SetupProblemParams(\@res); 
     }
     else
     {
-	@res1   = map { $gsymnr{$_} if(exists($gsymnr{$_})) } @res;
-	foreach $_ (@res1)
-	{
-	    push(@res2,$_) if("" ne $_);
-	}
+	my @res1   = map { $gsymnr{$_} if(exists($gsymnr{$_})) } @res;
 #    $msgout = pack("a", @res2);
-	$msgout = join(",", @res2);
+	my $msgout = join(",", @res1);
+	my $msg1;
 	if(exists $snowprev{$msg}) { $msg1=  $snowprev{$msg}; }
 	else
 	{
@@ -351,10 +345,10 @@ while ($client = $server->accept())
 	    print @$msg1, "\n" if(LOGGING);
 	    $snowprev{$msg} = $msg1;
 	}
-	@msg2 = map { $gnrref[$_] } @$msg1;
+	my @msg2 = map { $gnrref[$_] } @$msg1;
 	my $outnr = min($limit, 1 + $#msg2);
 	my @msg3  = @msg2[0 .. ($outnr -1)];
-	$msgout1 = join(",", @msg3);
+	my $msgout1 = join(",", @msg3);
 	print 'ADVOUT: ', $msgout1, "\n" if(LOGFLAGS & LOGADVIO);
 #    send $client, pack("N", length $msgout), 0;
 #	print $client '[' . '].' . "\n";
