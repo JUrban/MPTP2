@@ -334,7 +334,7 @@ while ($client = $server->accept())
     }
     else
     {
-	my @res1   = map { if(exists($gsymnr{$_})) {$gsymnr{$_} } else {$_} } @res;
+	my @res1   = map { if(exists($gsymnr{$_})) {$gsymnr{$_} } else {'@@@' . $_ . '@@@'} } @res;
 #    $msgout = pack("a", @res2);
 	my $msgout = join(",", @res1);
 	my $msg1;
