@@ -18,7 +18,7 @@ my $proved_by = AIAdvise::PrintProvedBy0($symoffset, $filestem, $grefnr);
 
 AIAdvise::PrintTrainingFromHash($filestem,0,$proved_by,$grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref);
 
-my $gtargetsnr = scalar @$gnrref;
+my $gtargetsnr = (scalar @$gnrref) - 1;
 
 AIAdvise::Learn0( $snow, $filestem, $gtargetsnr);
 my ($aport, $sport, $adv_pid, $snow_pid) = 
