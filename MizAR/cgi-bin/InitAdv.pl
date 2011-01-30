@@ -8,7 +8,8 @@ use lib '/home/urban/gr/MPTP2/MizAR/cgi-bin';
 use AIAdvise;
 
 my $MizAR_path = '/home/urban/gr/MPTP2/MizAR/cgi-bin';
-my $snow = $MizAR_path . '/bin/snow';
+my $snow = '/home/urban/ec/Snow_v3.2/snow';
+# $MizAR_path . '/bin/snow';
 my $advisor = $MizAR_path . '/advisor_lean.pl';
 my $symoffset=500000;
 my $filestem= shift;
