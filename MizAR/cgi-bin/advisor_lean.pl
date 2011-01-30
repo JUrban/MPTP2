@@ -141,7 +141,7 @@ sub StartSnow
     my ($iter,$wantednr) = @_;
     my $net = ($iter < 0)? 'net': "net_$iter";
 
-    my $snowpid = open2(*SNOWREADER,*SNOWWRITER,"$gpathtosnow -test  -I /dev/stdin  -o allboth -F $filestem.$net -L $wantednr -B :0-$gtargetsnr");
+    my $snowpid = open2(*SNOWREADER,*SNOWWRITER,"$gpathtosnow -test  -I /dev/stdin  -o allpredictions -F $filestem.$net -L $wantednr -B :0-$gtargetsnr|tee $filestem.snow_out");
 
     while (<SNOWREADER>)
     {
@@ -227,10 +227,12 @@ sub AskSnowPipe
 
     print SNOWWRITER ($msg);
 
-    while (defined($_=<SNOWREADER>) && !($_ eq "\n"))
+    while (<SNOWREADER>)
     {
 	push(@lines, $_);
 	if(/\b([0-9]+):/) { push (@res, $1); };
+	if($_ eq "\n") {$_ = <SNOWREADER>; last;} ## two newlines
+
     }
 
     print 'SNOWOUT: ' . join("", @lines), "\n" if(LOGFLAGS & LOGSNIO);
