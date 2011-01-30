@@ -420,7 +420,8 @@ while ($client = $server->accept())
 	    }
 	    elsif($gsnowserver == 2)
 	    {
-		$msg1 = AskSnowPipe($msgout . ':' . "\n");
+		$msg1 = AskSnowPipe($msgout . ':' . "\n"); 
+#		foreach my $ii (1 .. 20) {AskSnowPipe($msgout . ':' . "\n");}
 	    }
 	    print @$msg1, "\n" if(LOGGING);
 	    $snowprev{$msg} = $msg1;
