@@ -267,6 +267,35 @@ sub StartSNoW
     return ($aport, $sport, $adv_pid, $snow_pid);
 }
 
+## this starts snow in pipe inside advisor
+sub StartAdvisor
+{
+    my ($path2snow, $path2advisor, $symoffset, $filestem, $outlimit, $netiter) = @_;
+    my $snow_net = $filestem . '.net_' . $netiter;
+    my $snow_arch =     $filestem . '.arch';
+
+#--- get unused port for advisor
+    socket(SOCK1,PF_INET,SOCK_STREAM,(getprotobyname('tcp'))[2]);
+    bind( SOCK1,  sockaddr_in(0, INADDR_ANY));
+    my $aport = (sockaddr_in(getsockname(SOCK1)))[0];
+#    print("advisorport $aport\n");
+    close(SOCK1);
+
+    my $adv_pid = fork();
+    if ($adv_pid == 0)
+    {
+	# in child, start advisor
+	open STDOUT, '>', $filestem . '.adv_out';
+	open STDERR, '>', $filestem . '.adv_err';
+	exec("$path2advisor -a $aport -W2 --snowpath=$path2snow -L $outlimit -I $netiter  -o $symoffset $filestem")
+	    or print STDERR "couldn't exec $path2advisor: $!";
+	exit(0);
+    }
+    return ($aport, $adv_pid);
+}
+
+
+
 
 
 
