@@ -142,6 +142,13 @@ sub StartSnow
     my $net = ($iter < 0)? 'net': "net_$iter";
 
     my $snowpid = open2(*SNOWREADER,*SNOWWRITER,"$gpathtosnow -test  -I /dev/stdin  -o allboth -F $filestem.$net -L $wantednr -B :0-$gtargetsnr");
+
+    while (<SNOWREADER>)
+    {
+	print $_ if (LOGGING);
+	last if /^Naive/;
+    }
+
     return $snowpid;
 }
 
