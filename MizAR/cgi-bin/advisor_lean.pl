@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-
+$|++;
 =head1 NAME
 
 advisor.pl (Server translating Mizar symbols to numbers, talking to snow)
@@ -129,7 +129,7 @@ $gsymoffset = 500000 unless(defined($gsymoffset));;
 sub min { my ($x,$y) = @_; ($x <= $y)? $x : $y }
 
 # change for verbose logging
-sub LOGGING { 0 };
+sub LOGGING { 1 };
 sub LOGADVIO { 1 };
 sub LOGSNIO { 2 };
 sub LOGFLAGS { LOGADVIO | LOGSNIO };
@@ -411,7 +411,7 @@ while ($client = $server->accept())
 	    }
 	    elsif($gsnowserver == 2)
 	    {
-		$msg1 = AskSnowPipe($msgout . ':');
+		$msg1 = AskSnowPipe($msgout . ':' . "\n");
 	    }
 	    print @$msg1, "\n" if(LOGGING);
 	    $snowprev{$msg} = $msg1;
