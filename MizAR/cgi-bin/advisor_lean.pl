@@ -89,7 +89,7 @@ my @gnrref;     # Nr2Ref array for references
 my %gsymnr;   # Sym2Nr hash for symbols
 my @gnrsym;   # Nr2Sym array for symbols - takes gsymoffset into account!
 
-my ($gpathtosnow,$snowport,$gport,$gsymoffset,$glimittargets,$gsnowserver);
+my ($gpathtosnow,$snowport,$gport,$gsymoffset,$glimittargets,$gsnowserver,$giterrecover);
 my ($help, $man);
 Getopt::Long::Configure ("bundling");
 
@@ -99,6 +99,7 @@ GetOptions('snowpath|s=s'    => \$gpathtosnow,
 	   'symoffset|o=i'   => \$gsymoffset,
 	   'limittargets|L=i' => \$glimittargets,
 	   'snowserver|W=i'    => \$gsnowserver,
+	   'iterrecover|I=i' => \$giterrecover,
 	   'help|h'          => \$help,
 	   'man'             => \$man)
     or pod2usage(2);
@@ -115,6 +116,8 @@ $snowport   = 50000 unless(defined($snowport));
 $glimittargets = 0 unless(defined($glimittargets));
 $gsnowserver = 1 unless(defined($gsnowserver));
 $gpathtosnow = "/home/urban/ec/Snow_v3.2/snow" unless(defined($gpathtosnow));
+$giterrecover = -1 unless(defined($giterrecover));
+
 my $gtargetsnr;
 my $gwantednr;
 
@@ -136,8 +139,9 @@ my $gsnowpid;
 sub StartSnow
 {
     my ($iter,$wantednr) = @_;
+    my $net = ($iter < 0)? 'net': "net_$iter";
 
-    my $snowpid = open2(*SNOWREADER,*SNOWWRITER,"$gpathtosnow -test  -I /dev/stdin  -o allboth -F $filestem.net_$iter -L $wantednr -B :0-$gtargetsnr");
+    my $snowpid = open2(*SNOWREADER,*SNOWWRITER,"$gpathtosnow -test  -I /dev/stdin  -o allboth -F $filestem.$net -L $wantednr -B :0-$gtargetsnr");
     return $snowpid;
 }
 
@@ -332,7 +336,7 @@ sub AskSnow
 
 
 
-StartServer();
+StartServer($giterrecover);
 
 
 my $server = IO::Socket::INET->new( Proto     => "tcp",
