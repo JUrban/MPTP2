@@ -15,6 +15,8 @@ advisor.pl -s/home/urban/bin/snow -p50000 -a60000 /usr/local/share/mpadata/mpa1
    --snowport=<arg>,        -p<arg>
    --advport=<arg>,         -a<arg>
    --symoffset=<arg>,       -o<arg>
+   --limittargets=<arg>,    -L<arg>
+   --snowserver=<arg>,      -W<arg>
    --help,                  -h
    --man
 
@@ -39,6 +41,12 @@ The port for communiacting with advisor, default is 60000.
 
 The offset where symbol numbering starts. Has to correspond
 to the one use for training the net.
+
+=item B<<< --snowserver=<arg>, -B<W><arg> >>>
+
+If 1, snow not started but run as daemon on snowport.
+If 2, snow run over pipe and started inside this.
+Default is 1.
 
 =item B<<< --help, -h >>>
 
@@ -72,6 +80,7 @@ use strict;
 use Pod::Usage;
 use Getopt::Long;
 use IO::Socket;
+use IPC::Open2;
 
 my (%gsyms,$grefs,$client);
 my %grefnr;     # Ref2Nr hash for references
@@ -80,14 +89,16 @@ my @gnrref;     # Nr2Ref array for references
 my %gsymnr;   # Sym2Nr hash for symbols
 my @gnrsym;   # Nr2Sym array for symbols - takes gsymoffset into account!
 
-my ($pathtosnow,$snowport,$gport,$gsymoffset);
+my ($gpathtosnow,$snowport,$gport,$gsymoffset,$glimittargets,$gsnowserver);
 my ($help, $man);
 Getopt::Long::Configure ("bundling");
 
-GetOptions('snowpath|s=s'    => \$pathtosnow,
+GetOptions('snowpath|s=s'    => \$gpathtosnow,
 	   'snowport|p=i'    => \$snowport,
 	   'advport|a=i'     => \$gport,
 	   'symoffset|o=i'   => \$gsymoffset,
+	   'limittargets|L=i' => \$glimittargets,
+	   'snowserver|W=i'    => \$gsnowserver,
 	   'help|h'          => \$help,
 	   'man'             => \$man)
     or pod2usage(2);
@@ -101,6 +112,11 @@ my $filestem   = shift(@ARGV);
 
 $gport      = 60000 unless(defined($gport));
 $snowport   = 50000 unless(defined($snowport));
+$glimittargets = 0 unless(defined($glimittargets));
+$gsnowserver = 1 unless(defined($gsnowserver));
+$gpathtosnow = "/home/urban/ec/Snow_v3.2/snow" unless(defined($gpathtosnow));
+my $gtargetsnr;
+my $gwantednr;
 
 # offset at which symbol numbering starts -
 # this depends on the params used for learning!
@@ -115,9 +131,20 @@ sub LOGADVIO { 1 };
 sub LOGSNIO { 2 };
 sub LOGFLAGS { LOGADVIO | LOGSNIO };
 
+my $gsnowpid;
 
+sub StartSnow
+{
+    my ($iter,$wantednr) = @_;
+
+    my $snowpid = open2(*SNOWREADER,*SNOWWRITER,"$gpathtosnow -test  -I /dev/stdin  -o allboth -F $filestem.net_$iter -L $wantednr -B :0-$gtargetsnr");
+    return $snowpid;
+}
+
+# initializes also $gtargetsnr
 sub StartServer
 {    
+    my ($iter) = @_;
     my $i = 0;
 
     open(REFNR, "$filestem.refnr") or die "Cannot read refnr file";
@@ -126,13 +153,22 @@ sub StartServer
     while($_=<REFNR>) { chop; push(@gnrref, $_); };
     while($_=<SYMNR>) { chop; $gsymnr{$_} = $gsymoffset + $i++; };
 
-    if(defined($pathtosnow))
-    {
-	my $snowcommand = "nohup ". $pathtosnow." -server " . $snowport
-	    . " -o allboth -F " . $filestem . ".net -A " 
-		. $filestem . ".arch > /dev/null 2>&1 &";
+    $gtargetsnr = scalar @gnrref;
 
-	system($snowcommand);
+    $gwantednr = ($glimittargets > 0) ? $glimittargets : $gtargetsnr;
+
+    if($gsnowserver == 2)
+    {
+
+	my $snowpid = StartSnow($iter, $gwantednr);
+
+
+# old stuff 0 never made it work properly:
+	# my $snowcommand = "nohup ". $gpathtosnow." -server " . $snowport
+	#     . " -o allboth -F " . $filestem . ".net -A " 
+	# 	. $filestem . ".arch > /dev/null 2>&1 &";
+
+	# system($snowcommand);
 	print "Snow started, may take a while to load\n";
     }
     else
@@ -169,6 +205,27 @@ sub ReceiveFrom #($socket)
   return $message;
 }
 
+
+sub AskSnowPipe
+{
+    my ($msg) = @_;
+    my @res = ();
+    my @lines =();
+
+    print 'SNOWIN: ' . $msg if(LOGFLAGS & LOGSNIO);
+
+    print SNOWWRITER ($msg);
+
+    while (defined($_=<SNOWREADER>) && !($_ eq "\n"))
+    {
+	push(@lines, $_);
+	if(/\b([0-9]+):/) { push (@res, $1); };
+    }
+
+    print 'SNOWOUT: ' . join("", @lines), "\n" if(LOGFLAGS & LOGSNIO);
+
+    return \@res;
+}
 
 
 sub AskSnowSlow
@@ -219,14 +276,14 @@ sub AskSnow
 {
     my ($msg, $socket) = @_;
     my @res = ();
-    my $message;
+
     # Now, we're ready to start sending examples and receiving the results.
     # Send one example:
     send $socket, pack("N", length $msg), 0;
     print $socket $msg;
     print 'SNOWIN: ' . $msg if(LOGFLAGS & LOGSNIO);
     # Receive the server's classification information:
-    $message = ReceiveFrom($socket);
+    my $message = ReceiveFrom($socket);
     print 'SNOWOUT: ' . $message if(LOGFLAGS & LOGSNIO);
     while($message=~/\b([0-9]+):/g) { push (@res, $1); };
     return \@res;
@@ -298,26 +355,29 @@ while ($client = $server->accept())
     my $msgnr = 0;
     my $limit = 64;
     my $snowparameters = " -o allpredictions -L $limit ";
-
-    my $snowsocket = IO::Socket::INET->new( Proto     => "tcp",
+    my $snowsocket;
+    
+    if($gsnowserver == 1)
+    {
+	$snowsocket = IO::Socket::INET->new( Proto     => "tcp",
 					PeerAddr  => "localhost",
 					PeerPort  => $snowport,
 				      );
-    die "The SNoW server is down, sorry" unless ($snowsocket);
-
-    # Next, send the server your parameters.  Y
-    # ou can (and should) use the command
-    # commented below if you have no parameters to send:
-    #send $socket, pack("N", 0), 0;
-    send $snowsocket, pack("N", length $snowparameters), 0;
-    print $snowsocket $snowparameters;
-
-    # Whether you sent parameters or not, 
-    # the server will then send you information
-    # about the algorithms used in training the network.
-    my $snowmessage = ReceiveFrom($snowsocket);
-    print 'Snow: ', $snowmessage if(LOGFLAGS & LOGSNIO);
-
+	die "The SNoW server is down, sorry" unless ($snowsocket);
+    
+	# Next, send the server your parameters.  Y
+	# ou can (and should) use the command
+	# commented below if you have no parameters to send:
+	#send $socket, pack("N", 0), 0;
+	send $snowsocket, pack("N", length $snowparameters), 0;
+	print $snowsocket $snowparameters;
+	
+	# Whether you sent parameters or not, 
+	# the server will then send you information
+	# about the algorithms used in training the network.
+	my $snowmessage = ReceiveFrom($snowsocket);
+	print 'Snow: ', $snowmessage if(LOGFLAGS & LOGSNIO);
+    }
 
 
     while(my $msg = <$client>)
@@ -341,7 +401,14 @@ while ($client = $server->accept())
 	if(exists $snowprev{$msg}) { $msg1=  $snowprev{$msg}; }
 	else
 	{
-	    $msg1 = AskSnow($msgout . ':', $snowsocket);
+	    if($gsnowserver == 1)
+	    {
+		$msg1 = AskSnow($msgout . ':', $snowsocket);
+	    }
+	    elsif($gsnowserver == 2)
+	    {
+		$msg1 = AskSnowPipe($msgout . ':');
+	    }
 	    print @$msg1, "\n" if(LOGGING);
 	    $snowprev{$msg} = $msg1;
 	}
@@ -356,8 +423,10 @@ while ($client = $server->accept())
     }
 }
     # Last, tell the SNoW server that this client is done.
+if($gsnowserver == 1)
+{
     send $snowsocket, pack("N", 0), 0;
-
+}
 #    close $client;
     print "[closed client]\n";
 }
