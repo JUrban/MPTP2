@@ -77,6 +77,52 @@ sub CreateTables
 
 }
 
+
+## test:
+## perl -e 'use AIAdvise;   AIAdvise::CreateProb2Cl("00allBushyL");'
+
+# make the prob2cl (problem to clauses) and prob2conj hashes
+sub CreateProb2Cl
+{
+    my ($filestem,$grefnr) = @_;
+
+    open(BATCHFILE, "$filestem.probs") or die "Cannot read batchfile";
+    open(PROB2CL, ">$filestem.prob2cl") or die "Cannot write prob2cl file";    
+    open(PROB2CONJ, ">$filestem.prob2conj") or die "Cannot write prob2conj file";
+
+    my %prob2cl = ();	# clause of each problem
+    my %prob2conj = ();	# conjs for each problem
+
+    while(<BATCHFILE>)
+    {
+	chop;
+	my $prob=$_;
+	$prob2cl{$prob} = [];
+	$prob2conj{$prob} = [];
+	open(PROB, "$prob") or die "Cannot read $prob file named in batchfile";
+	while(<PROB>)
+	{
+	    if(m/^dnf. *([^, ]+) *, *([^, ]+) *,/)
+	    {
+		my ($cl, $role) = ($1,$2);
+		exists $grefnr->{$cl} or die "Unknown reference $cl in $_";
+		my $clnr = $grefnr->{$cl};
+		$prob2cl{$prob}->{$clnr} = ();
+		$prob2conj{$prob}->{$clnr} = () if($role=~m/conjecture/);
+	    }
+	}
+	print PROB2CL ("prob2cl($prob,[", join(',', keys %{$prob2cl{$prob}})  ,"]).\n");
+	print PROB2CONJ ("prob2conj($prob,[", join(',', keys %{$prob2conj{$prob}})  ,"]).\n");
+	close(PROB);
+    }
+    close(PROB2CONJ);
+    close(PROB2CL);
+    close(BATCHFILE);
+
+    return (\%prob2cl, \%prob2conj);
+}
+
+
 # PrintProvedBy0($symoffset, $filestem, $loadprovedby)
 #
 # create the initial info for $filestem saying that each reference is
@@ -97,6 +143,41 @@ sub PrintProvedBy0
     close(PROVED_BY_0);
     return \%proved_by_0;
 }
+
+# get the axioms used, get the decisions (path successes/choices) inside proofs
+# no info from incomplete proofs here (do it in another function)
+sub  GetLeancopProofData
+{
+    my ($filestem,$filebase,$grefnr,$iter) = @_;
+    
+
+}
+
+
+# CollectProvedByN($symoffset, $filestem, $iter)
+#
+# From .out_$iter files collect those that were proved.
+# The result kept is for each solved problem a triple:
+# {hash_of_used_conjectures}, {hash_of_all_used_clauses}, {$path_choices}.
+sub CollectProvedByN
+{
+    my ($symoffset, $filestem, $iter, $grefnr, $prob2conj) = @_;
+    my %proved_byN = ();
+    open(PROVED_BY,">$filestem.proved_by_$iter");
+    foreach my $i (keys %$prob2conj)
+    {
+	my ($clausenrs, $path_choices) = GetLeancopProofData($filestem,$i,$grefnr,$iter);
+	my @conjs = grep { exists $prob2conj->{$i}->{$_} } @$clausenrs;
+	$proved_byN{$i}->[1] = [@conjs];
+	$proved_byN{$i}->[2] = [@$clausenrs];
+	$proved_byN{$i}->[3] = $path_choices;
+	print PROVED_BY "proved_by([", join(',', @conjs), '],[', join(',', @$clausenrs), "]).\n";
+    }
+    close(PROVED_BY);
+    return \%proved_byN;
+}
+
+
 
 ## test:
 ## perl -e 'use AIAdvise;   my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = AIAdvise::CreateTables(500000, "zz"); AIAdvise::PrintProvedBy0(500000, "zz", $grefnr);'
