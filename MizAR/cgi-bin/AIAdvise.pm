@@ -146,11 +146,43 @@ sub PrintProvedBy0
 
 # get the axioms used, get the decisions (path successes/choices) inside proofs
 # no info from incomplete proofs here (do it in another function)
+### TODO: a bit funny - the refs are translated but not the syms - should be nuified with PrintTrainingFromHash
 sub  GetLeancopProofData
 {
     my ($filestem,$filebase,$grefnr,$iter) = @_;
-    
+    my %clausenrs = ();
+    my %path_choices = ();
+    my $proof = "$filebase.out_$iter";
 
+    if (system ("grep --quiet 'Proof' $proof") == 0)
+    {
+	open(PROOF, $proof);
+	while(<PROOF>)
+	{
+	    if(m/.*then clause .(\d+).*/) 
+	    {
+		my ($cl) = ($1);
+		exists $grefnr->{$cl} or die "Unknown reference $cl in $_";
+		my $clnr = $grefnr->{$cl};
+		$clausenrs{$clnr} = ();
+	    }
+	    elsif(m/^&[^\[]*\[([^\]]*)\] *\>\>\> * (\d+)/)
+	    {
+		my ($syms0, $cl) = ($1,$2);
+		exists $grefnr->{$cl} or die "Unknown reference $cl in $_";
+		my $clnr = $grefnr->{$cl};
+		my $syms = join(',', sort split(/ *, */, $syms0));
+
+		if(!exists $path_choices{$syms})
+		{
+		    $path_choices{$syms} = {};
+		}
+
+		$path_choices{$syms}->{$cl} = ();
+	    }
+	}
+    }
+    return (\%clausenrs, \%path_choices);
 }
 
 
@@ -167,11 +199,14 @@ sub CollectProvedByN
     foreach my $i (keys %$prob2conj)
     {
 	my ($clausenrs, $path_choices) = GetLeancopProofData($filestem,$i,$grefnr,$iter);
-	my @conjs = grep { exists $prob2conj->{$i}->{$_} } @$clausenrs;
-	$proved_byN{$i}->[1] = [@conjs];
-	$proved_byN{$i}->[2] = [@$clausenrs];
-	$proved_byN{$i}->[3] = $path_choices;
-	print PROVED_BY "proved_by([", join(',', @conjs), '],[', join(',', @$clausenrs), "]).\n";
+	if((scalar @$clausenrs) > 0)
+	{
+	    my @conjs = grep { exists $prob2conj->{$i}->{$_} } keys %$clausenrs;
+	    $proved_byN{$i}->[1] = [@conjs];
+	    $proved_byN{$i}->[2] = $clausenrs;
+	    $proved_byN{$i}->[3] = $path_choices;
+	    print PROVED_BY "proved_by([", join(',', @conjs), '],[', join(',', @$clausenrs), "]).\n";
+	}
     }
     close(PROVED_BY);
     return \%proved_byN;
