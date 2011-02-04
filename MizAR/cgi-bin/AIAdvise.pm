@@ -144,22 +144,25 @@ sub PrintProvedBy0
     return \%proved_by_0;
 }
 
+## test:
+## perl -e 'use AIAdvise;   my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = AIAdvise::CreateTables(500000,"zzzz");    my ($clausenrs, $path_choices) = AIAdvise::GetLeancopProofData("zzzz", "zfmisc_1__t6_zfmisc_1.p.leancop", $grefnr,1);      print join(",", keys %$clausenrs),"\n"; foreach my $k (keys %$path_choices ) { print "$k:", join(",", keys %{$path_choices->{$k}}),"\n"; }'
+
 # get the axioms used, get the decisions (path successes/choices) inside proofs
 # no info from incomplete proofs here (do it in another function)
-### TODO: a bit funny - the refs are translated but not the syms - should be nuified with PrintTrainingFromHash
+### TODO: a bit funny - the refs are translated but not the syms - should be unified with PrintTrainingFromHash
 sub  GetLeancopProofData
 {
     my ($filestem,$filebase,$grefnr,$iter) = @_;
     my %clausenrs = ();
     my %path_choices = ();
-    my $proof = "$filebase.out_$iter";
+    my $proof = $filebase . '.out_' . $iter;
 
-    if (system ("grep --quiet 'Proof' $proof") == 0)
+    if (system ("grep --quiet Proof $proof") == 0)
     {
 	open(PROOF, $proof);
 	while(<PROOF>)
 	{
-	    if(m/.*then clause .(\d+).*/) 
+	    if(m/.*Then clause .(\d+).*/) 
 	    {
 		my ($cl) = ($1);
 		exists $grefnr->{$cl} or die "Unknown reference $cl in $_";
@@ -178,7 +181,7 @@ sub  GetLeancopProofData
 		    $path_choices{$syms} = {};
 		}
 
-		$path_choices{$syms}->{$cl} = ();
+		$path_choices{$syms}->{$clnr} = ();
 	    }
 	}
     }
