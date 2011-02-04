@@ -122,6 +122,8 @@ sub CreateProb2Cl
     return (\%prob2cl, \%prob2conj);
 }
 
+## test:
+## perl -e 'use AIAdvise;   my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = AIAdvise::CreateTables(500000, "zz"); AIAdvise::PrintProvedBy0(500000, "zz", $grefnr);'
 
 # PrintProvedBy0($symoffset, $filestem, $loadprovedby)
 #
@@ -192,7 +194,7 @@ sub  GetLeancopProofData
 ## test:
 ## perl -e 'use AIAdvise;   my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = AIAdvise::CreateTables(500000,"zzzz");    my  ($prob2cl, $prob2conj)=AIAdvise::CreateProb2Cl("zzzz",$grefnr); AIAdvise::CollectProvedByN(500000,"zzzz", 1, $grefnr, $prob2conj);'
 
-# CollectProvedByN($symoffset, $filestem, $iter)
+# CollectProvedByN($symoffset, $filestem, $iter, $grefnr, $prob2conj)
 #
 # From .out_$iter files collect those that were proved.
 # The result kept is for each solved problem a triple:
@@ -219,9 +221,54 @@ sub CollectProvedByN
 }
 
 
+## test:  perl -e 'use AIAdvise;   my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = AIAdvise::CreateTables(500000,"zzzz");    my  ($prob2cl, $prob2conj)=AIAdvise::CreateProb2Cl("zzzz",$grefnr); my $proved_byN=AIAdvise::CollectProvedByN(500000,"zzzz", 1, $grefnr, $prob2conj); AIAdvise::PrintTrainingFromClauseHash($filestem,1,$proved_byN,$grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref,3); '
 
-## test:
-## perl -e 'use AIAdvise;   my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = AIAdvise::CreateTables(500000, "zz"); AIAdvise::PrintProvedBy0(500000, "zz", $grefnr);'
+
+# Create a .train_$iter file from the %proved_byN hash, where keys are
+# proved problems, and values conjectures and references and pathinfo
+# needed for the proof.  Mode encodes the info printed. If (mode & 1)
+# > 0, print the clauses, if (mode & 2) > 0, print the pathinfo. Thus,
+# use 3 for doing both.
+#
+# All the $filestem.train_* files are afterwards cat-ed to $filestem.alltrain_$iter
+# file, on which Learn() works.
+sub PrintTrainingFromClauseHash
+{
+    my ($filestem,$iter,$proved_byN, $grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref, $mode) = @_;
+    open(TRAIN, ">$filestem.train_$iter") or die "Cannot write train_$iter file";
+    foreach my $i (sort keys %$proved_byN)
+    {
+	if(($mode & 1) > 0)
+	{
+	    my @conjs = @{$proved_byN->{$i}->[1]};
+	    my @clausenrs = keys %{$proved_byN->{$i}->[2]};
+	    my @all_sym_nrs =  ();
+
+	    foreach my $refnr (@conjs)
+	    {
+		my @syms = @{$grefsyms->{$gnrref->[$refnr]}};
+		my @syms_nrs   = map { $gsymnr->{$_} if(exists($gsymnr->{$_})) } @syms;
+		push(@all_sym_nrs, @syms_nrs);
+	    }
+
+	    my $training_exmpl = join(",", (@all_sym_nrs, @clausenrs));
+	    print TRAIN "$training_exmpl:\n";
+	}
+
+	if(($mode & 2) > 0)
+	{
+	    my $path_choices = $proved_byN->{$i}->[3];
+	    foreach my $syms (keys %$path_choices)
+	    {
+		 my @clausenrs = keys %{$path_choices->{$syms}};
+		 my @syms_nrs   = map { $gsymnr->{$_} if(exists($gsymnr->{$_})) }  split(/,/, $syms);
+		 my $training_exmpl = join(",", (@syms_nrs, @clausenrs));
+		 print TRAIN "$training_exmpl:\n";
+	     }
+	}
+    }
+    close TRAIN;
+}
 
 # Create a .train_$iter file from the %proved_by hash, where keys are proved
 # conjectures and values are arrays of references needed for the proof.
