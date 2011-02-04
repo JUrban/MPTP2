@@ -17,6 +17,7 @@ advisor.pl -s/home/urban/bin/snow -p50000 -a60000 /usr/local/share/mpadata/mpa1
    --symoffset=<arg>,       -o<arg>
    --limittargets=<arg>,    -L<arg>
    --snowserver=<arg>,      -W<arg>
+   --probleminfo=<arg>,      -b<arg>
    --help,                  -h
    --man
 
@@ -47,6 +48,12 @@ to the one use for training the net.
 If 1, snow not started but run as daemon on snowport.
 If 2, snow run over pipe and started inside this.
 Default is 1.
+
+=item B<<< --probleminfo=<arg>, -B<b><arg> >>>
+
+If 1, tables mapping problems to their formulas
+and conjectures are loaded based on the listing of problems in filestem.probs,
+and used for filtering snow output. Default is 0.
 
 =item B<<< --help, -h >>>
 
@@ -88,8 +95,10 @@ my @gnrref;     # Nr2Ref array for references
 
 my %gsymnr;   # Sym2Nr hash for symbols
 my @gnrsym;   # Nr2Sym array for symbols - takes gsymoffset into account!
+my %gprob2cl = ();	# clauses (possibly flas) of each problem -- needs $gprobinfo > 0
+my %gprob2conj = ();	# conjs for each problem
 
-my ($gpathtosnow,$snowport,$gport,$gsymoffset,$glimittargets,$gsnowserver,$giterrecover);
+my ($gpathtosnow,$snowport,$gport,$gsymoffset,$glimittargets,$gsnowserver,$giterrecover,$gprobinfo);
 my ($help, $man);
 Getopt::Long::Configure ("bundling");
 
@@ -100,6 +109,7 @@ GetOptions('snowpath|s=s'    => \$gpathtosnow,
 	   'limittargets|L=i' => \$glimittargets,
 	   'snowserver|W=i'    => \$gsnowserver,
 	   'iterrecover|I=i' => \$giterrecover,
+	   'probleminfo|b=i' => \$gprobinfo,
 	   'help|h'          => \$help,
 	   'man'             => \$man)
     or pod2usage(2);
@@ -114,6 +124,7 @@ my $filestem   = shift(@ARGV);
 $gport      = 60000 unless(defined($gport));
 $snowport   = 50000 unless(defined($snowport));
 $glimittargets = 0 unless(defined($glimittargets));
+$gprobinfo = 0 unless(defined($gprobinfo));
 $gsnowserver = 1 unless(defined($gsnowserver));
 $gpathtosnow = "/home/urban/ec/Snow_v3.2/snow" unless(defined($gpathtosnow));
 $giterrecover = -1 unless(defined($giterrecover));
@@ -161,7 +172,7 @@ sub StartServer
     open(REFNR, "$filestem.refnr") or die "Cannot read refnr file";
     open(SYMNR, "$filestem.symnr") or die "Cannot read symnr file";
 
-    while($_=<REFNR>) { chop; push(@gnrref, $_); };
+    while($_=<REFNR>) { chop; push(@gnrref, $_); $grefnr{$_} = $#gnrref;};
     while($_=<SYMNR>) { chop; $gsymnr{$_} = $gsymoffset + $i++; };
 
     $gtargetsnr = scalar @gnrref;
@@ -186,6 +197,50 @@ sub StartServer
     {
 	print "Connecting to Snow\n";
     }
+}
+
+
+# make the %gprob2cl (problem to clauses) and %gprob2conj hashes
+# and return them
+# each info is a hash fo fast intersectioning
+sub LoadProbInfo
+{
+    open(BATCHFILE, "$filestem.probs") or die "Cannot read batchfile";
+#    open(PROB2CL, ">$filestem.prob2cl") or die "Cannot write prob2cl file";    
+#    open(PROB2CONJ, ">$filestem.prob2conj") or die "Cannot write prob2conj file";
+
+    my %gprob2cl = ();	# clause of each problem
+    my %gprob2conj = ();	# conjs for each problem
+
+    while(<BATCHFILE>)
+    {
+	chop;
+	my $prob=$_;
+	$gprob2cl{$prob} = {};
+	$gprob2conj{$prob} = {};
+	open(PROB, "$prob") or die "Cannot read $prob file named in batchfile";
+	while(<PROB>)
+	{
+	    if(m/^dnf. *([^, ]+) *, *([^, ]+) *,/)
+	    {
+		my ($cl, $role) = ($1,$2);
+		exists $grefnr{$cl} or die "Unknown reference $cl in $_";
+		my $clnr = $grefnr{$cl};
+		$gprob2cl{$prob}->{$clnr} = ();
+		$gprob2conj{$prob}->{$clnr} = () if($role=~m/conjecture/);
+#		push(@{$gprob2cl{$prob}}, $clnr);
+#		push(@{$gprob2conj{$prob}}, $clnr) 
+	    }
+	}
+#	print PROB2CL ("prob2cl($prob,[", join(',', @{$gprob2cl{$prob}})  ,"]).\n");
+#	print PROB2CONJ ("prob2conj($prob,[", join(',', @{$gprob2conj{$prob}})  ,"]).\n");
+	close(PROB);
+    }
+#    close(PROB2CONJ);
+#    close(PROB2CL);
+    close(BATCHFILE);
+
+    return (\%gprob2cl, \%gprob2conj);
 }
 
 
@@ -347,6 +402,7 @@ sub AskSnow
 
 StartServer($giterrecover);
 
+LoadProbInfo() if($gprobinfo > 0);
 
 my $server = IO::Socket::INET->new( Proto     => "tcp",
 				 LocalPort => $gport,
@@ -356,7 +412,7 @@ my $server = IO::Socket::INET->new( Proto     => "tcp",
 die "cannot setup server" unless $server;
 print "[Server $0 accepting clients]\n";
 
-my %snowprev = ();
+my %gsnowprev = ();
 
 while ($client = $server->accept())
 {
@@ -392,6 +448,7 @@ while ($client = $server->accept())
 	print 'Snow: ', $snowmessage if(LOGFLAGS & LOGSNIO);
     }
 
+    my $problem;
 
     while(my $msg = <$client>)
 {    
@@ -403,15 +460,17 @@ while ($client = $server->accept())
 #    @res  = unpack("a", $msg);
     my @res = split(/ *, */, $msg);
     $msgnr++;
-    if($msgnr == 1) { # SetupProblemParams(\@res); 
+    if($msgnr == 1) 
+    { 
+	$problem = $res[0]; # SetupProblemParams(\@res); 	
     }
     else
     {
 	my @res1   = map { if(exists($gsymnr{$_})) {$gsymnr{$_} } else {'@@@' . $_ . '@@@'} } @res;
 #    $msgout = pack("a", @res2);
 	my $msgout = join(",", @res1);
-	my $msg1;
-	if(exists $snowprev{$msg}) { $msg1=  $snowprev{$msg}; }
+	my ($msg1,$msg2);
+	if(exists $gsnowprev{$msg}) { $msg2=  $gsnowprev{$msg}; }
 	else
 	{
 	    if($gsnowserver == 1)
@@ -424,11 +483,14 @@ while ($client = $server->accept())
 #		foreach my $ii (1 .. 20) {AskSnowPipe($msgout . ':' . "\n");}
 	    }
 	    print @$msg1, "\n" if(LOGGING);
-	    $snowprev{$msg} = $msg1;
+	    my @tmp2 = map { $gnrref[$_] } @$msg1;
+	    $gsnowprev{$msg} =  [@tmp2];
+	    $msg2=  $gsnowprev{$msg};
 	}
-	my @msg2 = map { $gnrref[$_] } @$msg1;
-	my $outnr = min($limit, 1 + $#msg2);
-	my @msg3  = @msg2[0 .. ($outnr -1)];
+	my @msg22 = (($gprobinfo == 0) || (!exists $gprob2cl{$problem}))? @$msg2 
+	    : grep { exists $gprob2cl{$problem}->{$_} } @$msg2;
+	my $outnr = min($limit, 1 + $#msg22);
+	my @msg3  = @msg22[0 .. ($outnr -1)];
 	my $msgout1 = join(",", @msg3);
 	print 'ADVOUT: ', $msgout1, "\n" if(LOGFLAGS & LOGADVIO);
 #    send $client, pack("N", length $msgout), 0;
