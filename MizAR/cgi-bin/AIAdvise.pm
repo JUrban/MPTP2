@@ -97,8 +97,8 @@ sub CreateProb2Cl
     {
 	chop;
 	my $prob=$_;
-	$prob2cl{$prob} = [];
-	$prob2conj{$prob} = [];
+	$prob2cl{$prob} = {};
+	$prob2conj{$prob} = {};
 	open(PROB, "$prob") or die "Cannot read $prob file named in batchfile";
 	while(<PROB>)
 	{
@@ -189,6 +189,9 @@ sub  GetLeancopProofData
 }
 
 
+## test:
+## perl -e 'use AIAdvise;   my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = AIAdvise::CreateTables(500000,"zzzz");    my  ($prob2cl, $prob2conj)=AIAdvise::CreateProb2Cl("zzzz",$grefnr); AIAdvise::CollectProvedByN(500000,"zzzz", 1, $grefnr, $prob2conj);'
+
 # CollectProvedByN($symoffset, $filestem, $iter)
 #
 # From .out_$iter files collect those that were proved.
@@ -202,13 +205,13 @@ sub CollectProvedByN
     foreach my $i (keys %$prob2conj)
     {
 	my ($clausenrs, $path_choices) = GetLeancopProofData($filestem,$i,$grefnr,$iter);
-	if((scalar @$clausenrs) > 0)
+	if((scalar (keys %$clausenrs)) > 0)
 	{
 	    my @conjs = grep { exists $prob2conj->{$i}->{$_} } keys %$clausenrs;
 	    $proved_byN{$i}->[1] = [@conjs];
 	    $proved_byN{$i}->[2] = $clausenrs;
 	    $proved_byN{$i}->[3] = $path_choices;
-	    print PROVED_BY "proved_by([", join(',', @conjs), '],[', join(',', @$clausenrs), "]).\n";
+	    print PROVED_BY "proved_by([", join(',', @conjs), '],[', join(',', keys %$clausenrs), "]).\n";
 	}
     }
     close(PROVED_BY);
