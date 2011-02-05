@@ -146,7 +146,7 @@ sub RunLeancopProblems
 {
     my ($filestem, $problems, $leancop, $prologdir, $iter, $params, $minimize) = @_;
 
-    foreach my $problem (keys %$problems)
+    foreach my $problem (sort keys %$problems)
     {
 	print "$problem: ";
 	system("cd $prologdir; time $leancop $problem $params > $problem.outf_$iter 2> $problem.errf_$iter");
@@ -428,6 +428,7 @@ sub Learn
     my ($path2snow, $filestem, $targetsnr, $iter) = @_;
     my $next_iter = 1 + $iter;
     print "LEARNING:$iter\n";
+    `cat $filestem.train_* > $filestem.alltrain_$iter`;
     `$path2snow -train -I $filestem.alltrain_$iter -F $filestem.net_$next_iter  -B :0-$targetsnr`;
 }
 
@@ -569,6 +570,25 @@ sub GetRefs
     @res  = @res1[0 .. $outnr];
     return @res;
 }
+
+## test: 
+## perl -e 'use AIAdvise;  AIAdvise::TstLoop1("swipl","00allBushy2","uuu",".","/home/urban/ec/Snow_v3.2/snow");'
+
+sub TstLoop1
+{
+    my ($prolog, $filelist, $filestem, $prologdir, $path2snow) = @_;
+    LeancopClausify($prolog, $filelist, $filestem, $prologdir);
+    my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) =  CreateTables(500000, $filestem);
+    my ($prob2cl,$prob2conj) = CreateProb2Cl($filestem,$grefnr);
+    RunLeancopProblems($filestem,$prob2cl,"./leancop_dnf.sh", $prologdir, 0, "",1);
+
+    my $targetsnr = (scalar @$gnrref) - 1;
+    my $proved_byN = CollectProvedByN(500000, $filestem, 0, $grefnr, $prob2conj); 
+    PrintTrainingFromClauseHash($filestem,0,$proved_byN,$grefnr,$gsymnr,$gsymarity,$grefsyms,$gnrsym,$gnrref,3);
+    Learn($path2snow, $filestem, $targetsnr, 0);
+
+}
+
 
 ## test: load snow/advisor on thms3, send it a simple request and print result, kill both
 
