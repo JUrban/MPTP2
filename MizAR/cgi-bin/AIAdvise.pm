@@ -407,15 +407,21 @@ sub PrintTrainingFromHash
     close TRAIN;
 }
 
+sub CreateArch
+{
+    my ($filestem, $targetsnr) = @_;
+    open(ARCH, ">$filestem.arch") or die "Cannot write arch file";
+    print ARCH "-B :0-$targetsnr\n";
+    close(ARCH);
+}
+
 ## test: perl -e 'use AIAdvise; my ($filestem,$symoffset)=("zz",500000); my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = AIAdvise::CreateTables($symoffset, $filestem); my $proved_by = AIAdvise::PrintProvedBy0($symoffset, $filestem, $grefnr); AIAdvise::PrintTrainingFromHash($filestem,0,$proved_by,$grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref); '
 
 sub Learn0
 {
     my ($path2snow, $filestem, $targetsnr) = @_;
     `$path2snow -train -I $filestem.train_0 -F $filestem.net_1  -B :0-$targetsnr`;
-    open(ARCH, ">$filestem.arch") or die "Cannot write arch file";
-    print ARCH "-B :0-$targetsnr\n";
-    close(ARCH);
+    CreateArch($filestem, $targetsnr);
 }
 
 # test:
@@ -522,7 +528,7 @@ sub StartAdvisor
 	# in child, start advisor
 	open STDOUT, '>', $filestem . '.adv_out';
 	open STDERR, '>', $filestem . '.adv_err';
-	exec("$path2advisor -a $aport -W2 --snowpath=$path2snow -L $outlimit -I $netiter  -o $symoffset $filestem")
+	exec("$path2advisor -a $aport -W2 --snowpath=$path2snow -L $outlimit -I $netiter -b1 -o $symoffset $filestem")
 	    or print STDERR "couldn't exec $path2advisor: $!";
 	exit(0);
     }
@@ -577,15 +583,29 @@ sub GetRefs
 sub TstLoop1
 {
     my ($prolog, $filelist, $filestem, $prologdir, $path2snow) = @_;
+    my $symoffset = 500000;
+    my $advisor = "/home/urban/gr/MPTP2/MizAR/cgi-bin/advisor_lean.pl";
+    my $advlimit = 64;
     LeancopClausify($prolog, $filelist, $filestem, $prologdir);
-    my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) =  CreateTables(500000, $filestem);
+    my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) =  CreateTables($symoffset, $filestem);
     my ($prob2cl,$prob2conj) = CreateProb2Cl($filestem,$grefnr);
-    RunLeancopProblems($filestem,$prob2cl,"./leancop_dnf.sh", $prologdir, 0, "",1);
 
     my $targetsnr = (scalar @$gnrref) - 1;
-    my $proved_byN = CollectProvedByN(500000, $filestem, 0, $grefnr, $prob2conj); 
-    PrintTrainingFromClauseHash($filestem,0,$proved_byN,$grefnr,$gsymnr,$gsymarity,$grefsyms,$gnrsym,$gnrref,3);
-    Learn($path2snow, $filestem, $targetsnr, 0);
+#    CreateArch($filestem, $targetsnr);
+
+    my $proved_by = PrintProvedBy0($symoffset, $filestem, $grefnr); 
+    PrintTrainingFromHash($filestem,0,$proved_by,$grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref);
+
+    my $iter = 1;
+    RunLeancopProblems($filestem,$prob2cl,"./leancop_dnf.sh", $prologdir, $iter, "",1);
+
+    my $proved_byN = CollectProvedByN($symoffset, $filestem, $iter, $grefnr, $prob2conj); 
+    PrintTrainingFromClauseHash($filestem,$iter,$proved_byN,$grefnr,$gsymnr,$gsymarity,$grefsyms,$gnrsym,$gnrref,3);
+    Learn($path2snow, $filestem, $targetsnr, $iter);
+
+    my ($aport, $adv_pid) =
+	StartAdvisor($path2snow, $advisor, $symoffset, $filestem, $advlimit, $iter+1);
+    print "$aport,##\n";
 
 }
 
