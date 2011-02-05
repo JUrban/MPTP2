@@ -136,6 +136,22 @@ sub CreateProb2Cl
     return (\%prob2cl, \%prob2conj);
 }
 
+
+## test:
+## perl -e 'use AIAdvise;  AIAdvise::LeancopClausify("swipl","00allBushy2","uu","."); my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = AIAdvise::CreateTables(500000, "uu"); my ($prob2cl,$prob2conj) = AIAdvise::CreateProb2Cl("uu",$grefnr); AIAdvise::RunLeancopProblems("uu",$prob2cl,"./leancop_dnf.sh", ".", 0, "");'
+
+# run leancop with params for $problems
+sub RunLeancopProblems
+{
+    my ($filestem, $problems, $leancop, $prologdir, $iter, $params) = @_;
+
+    foreach my $problem (keys %$problems)
+    {
+	system("cd $prologdir; time $leancop $problem $params > $problem.out_$iter 2> $problem.err_$iter");
+    }
+}
+
+
 ## test:
 ## perl -e 'use AIAdvise;   my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = AIAdvise::CreateTables(500000, "zz"); AIAdvise::PrintProvedBy0(500000, "zz", $grefnr);'
 
