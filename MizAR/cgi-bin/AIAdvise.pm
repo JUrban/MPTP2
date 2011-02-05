@@ -582,7 +582,7 @@ sub GetRefs
 
 sub TstLoop1
 {
-    my ($prolog, $filelist, $filestem, $prologdir, $path2snow) = @_;
+    my ($prolog, $filelist, $filestem, $prologdir, $path2snow, $initrunfile) = @_;
     my $symoffset = 500000;
     my $advisor = "/home/urban/gr/MPTP2/MizAR/cgi-bin/advisor_lean.pl";
     my $advlimit = 64;
@@ -597,7 +597,17 @@ sub TstLoop1
     PrintTrainingFromHash($filestem,0,$proved_by,$grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref);
 
     my $iter = 1;
-    RunLeancopProblems($filestem,$prob2cl,"./leancop_dnf.sh", $prologdir, $iter, "",1);
+
+    my $initprobs = $prob2cl;
+    if(defined $initrunfile)
+    {
+	open(I,$initrunfile); my %h=();
+	while(<I>) { chop; $h{$_} = (); }
+	close(I);
+	$initprobs = \%h;
+    }
+
+    RunLeancopProblems($filestem,$initprobs,"./leancop_dnf.sh", $prologdir, $iter, "",1);
 
     my $proved_byN = CollectProvedByN($symoffset, $filestem, $iter, $grefnr, $prob2conj); 
     PrintTrainingFromClauseHash($filestem,$iter,$proved_byN,$grefnr,$gsymnr,$gsymarity,$grefsyms,$gnrsym,$gnrref,3);
