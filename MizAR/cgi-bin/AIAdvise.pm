@@ -93,7 +93,7 @@ sub CreateTables
 
 
 ## test:
-## perl -e 'use AIAdvise;   AIAdvise::CreateProb2Cl("00allBushyL");'
+## perl -e 'use AIAdvise; my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = AIAdvise::CreateTables(500000, "uuu"); AIAdvise::CreateProb2Cl("uuu",$grefnr);'
 
 # make the prob2cl (problem to clauses) and prob2conj hashes
 sub CreateProb2Cl
