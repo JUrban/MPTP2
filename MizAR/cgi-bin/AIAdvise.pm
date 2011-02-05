@@ -140,17 +140,20 @@ sub CreateProb2Cl
 ## test:
 ## perl -e 'use AIAdvise;  AIAdvise::LeancopClausify("swipl","00allBushy2","uu","."); my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = AIAdvise::CreateTables(500000, "uu"); my ($prob2cl,$prob2conj) = AIAdvise::CreateProb2Cl("uu",$grefnr); AIAdvise::RunLeancopProblems("uu",$prob2cl,"./leancop_dnf.sh", ".", 0, "", 1);'
 
-# run leancop with params for $problems
+# run leancop with params for $problems, do minimization if minimize==1 in order to
+# get only useful proofchoices info
 sub RunLeancopProblems
 {
     my ($filestem, $problems, $leancop, $prologdir, $iter, $params, $minimize) = @_;
 
     foreach my $problem (keys %$problems)
     {
+	print "$problem: ";
 	system("cd $prologdir; time $leancop $problem $params > $problem.outf_$iter 2> $problem.errf_$iter");
 
 	if (system("grep --quiet Proof $problem.outf_$iter") == 0)
 	{
+	    print "Theorem\n";
 	    if($minimize == 1)
 	    {
 		my %used = ();
@@ -166,6 +169,7 @@ sub RunLeancopProblems
 		system("cp $problem.outf_$iter$problem.out_$iter; cp $problem.errf_$iter $problem.err_$iter");
 	    }
 	}
+	else { print "Unsolved\n"; }
     }
 }
 
@@ -200,6 +204,7 @@ sub PrintProvedBy0
 # get the axioms used, get the decisions (path successes/choices) inside proofs
 # no info from incomplete proofs here (do it in another function)
 ### TODO: a bit funny - the refs are translated but not the syms - should be unified with PrintTrainingFromHash
+### todo: collect the second number in proof choices for learning big shortcuts on unsuccessful runs
 sub  GetLeancopProofData
 {
     my ($filestem,$filebase,$grefnr,$iter) = @_;
@@ -415,6 +420,18 @@ sub Learn0
 
 # test:
 # perl -e 'use AIAdvise; AIAdvise::Learn0("/home/urban/gr/MPTP2/MizAR/cgi-bin/bin/snow", "zz", 43);'
+
+
+# Learn from the .alltrain_$iter file, which was created by PrintTrainingFromHash
+sub Learn
+{
+    my ($path2snow, $filestem, $targetsnr, $iter) = @_;
+    my $next_iter = 1 + $iter;
+    print "LEARNING:$iter\n";
+    `$path2snow -train -I $filestem.alltrain_$iter -F $filestem.net_$next_iter  -B :0-$targetsnr`;
+}
+
+
 
 ##  StartSNoW($path2snow, $path2advisor, $symoffset, $filestem, $outlimit, $netiter);
 ##
