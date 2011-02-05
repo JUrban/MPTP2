@@ -147,7 +147,18 @@ sub RunLeancopProblems
 
     foreach my $problem (keys %$problems)
     {
-	system("cd $prologdir; time $leancop $problem $params > $problem.out_$iter 2> $problem.err_$iter");
+	system("cd $prologdir; time $leancop $problem $params > $problem.outf_$iter 2> $problem.errf_$iter");
+
+	if (system("grep --quiet Proof $problem.outf_$iter") == 0)
+	{
+	    my %used = ();
+	    open(P,"$problem.outf_$iter");
+	    while(<P>) { if(m/.*Then clause .(\d+).*/) {  $used{$1} = (); } }
+	    close(P);
+	    my $regexp = '^dnf.\(' . join('\|', keys %used) . '\),';
+	    system("grep '$regexp' $problem > $problem.small ");
+	    system("cd $prologdir; time $leancop $problem.small $params > $problem.out_$iter 2> $problem.err_$iter");
+	}
     }
 }
 
@@ -189,7 +200,7 @@ sub  GetLeancopProofData
     my %path_choices = ();
     my $proof = $filebase . '.out_' . $iter;
 
-    if (system ("grep --quiet Proof $proof") == 0)
+    if((-e $proof) && (system ("grep --quiet Proof $proof") == 0))
     {
 	open(PROOF, $proof);
 	while(<PROOF>)
@@ -251,7 +262,7 @@ sub CollectProvedByN
 }
 
 
-## test:  perl -e 'use AIAdvise;   my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = AIAdvise::CreateTables(500000,"zzzz");    my  ($prob2cl, $prob2conj)=AIAdvise::CreateProb2Cl("zzzz",$grefnr); my $proved_byN=AIAdvise::CollectProvedByN(500000,"zzzz", 1, $grefnr, $prob2conj); AIAdvise::PrintTrainingFromClauseHash($filestem,1,$proved_byN,$grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref,3); '
+## test:  perl -e 'use AIAdvise;   my $filestem ="uu"; my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = AIAdvise::CreateTables(500000,$filestem);    my  ($prob2cl, $prob2conj)=AIAdvise::CreateProb2Cl($filestem,$grefnr); my $proved_byN=AIAdvise::CollectProvedByN(500000,$filestem, 1, $grefnr, $prob2conj); AIAdvise::PrintTrainingFromClauseHash($filestem,1,$proved_byN,$grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref,3); '
 
 
 # Create a .train_$iter file from the %proved_byN hash, where keys are
