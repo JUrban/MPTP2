@@ -526,8 +526,8 @@ sub StartAdvisor
     if ($adv_pid == 0)
     {
 	# in child, start advisor
-	open STDOUT, '>', $filestem . '.adv_out';
-	open STDERR, '>', $filestem . '.adv_err';
+	open STDOUT, '>', $filestem . ".adv_out_$$";
+	open STDERR, '>', $filestem . ".adv_err_$$";
 	exec("$path2advisor -a $aport -W2 --snowpath=$path2snow -L $outlimit -I $netiter -b1 -o $symoffset $filestem")
 	    or print STDERR "couldn't exec $path2advisor: $!";
 	exit(0);
@@ -618,6 +618,10 @@ sub TstLoop1
     print "$aport,##\n";
 
 }
+
+## test: load advisor on pre-learned data
+## 
+# perl -e 'use AIAdvise;  my ($aport, $adv_pid)=AIAdvise::StartAdvisor("/home/urban/ec/Snow_v3.2/snow","/home/urban/gr/MPTP2/MizAR/cgi-bin/advisor_lean.pl",500000,"uu",64,2); print "$aport,##\n";'
 
 
 ## test: load snow/advisor on thms3, send it a simple request and print result, kill both

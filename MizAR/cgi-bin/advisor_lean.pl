@@ -152,7 +152,7 @@ sub StartSnow
     my ($iter,$wantednr) = @_;
     my $net = ($iter < 0)? 'net': "net_$iter";
 
-    my $snowpid = open2(*SNOWREADER,*SNOWWRITER,"$gpathtosnow -test  -I /dev/stdin  -o allpredictions -F $filestem.$net -L $wantednr -B :0-$gtargetsnr|tee $filestem.snow_out");
+    my $snowpid = open2(*SNOWREADER,*SNOWWRITER,"$gpathtosnow -test  -I /dev/stdin  -o allpredictions -F $filestem.$net -L $wantednr -B :0-$gtargetsnr|tee $filestem.snow_out_$$");
 
     while (<SNOWREADER>)
     {
