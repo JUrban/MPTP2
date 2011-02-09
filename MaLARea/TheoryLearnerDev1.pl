@@ -1967,7 +1967,7 @@ sub PrintModels
 #	    push( @syms_nrs, $grefnr{$tmpref} );
 #	    my $testing_exmpl = join(",", @syms_nrs);
 
-	    print MODELS "$testing_exmpl:\n";
+	    print MODELS ($#edges, ';', "$testing_exmpl:\n");
 	}
     }
     close(MODELS);
