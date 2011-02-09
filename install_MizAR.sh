@@ -31,19 +31,19 @@ mkdir $mycgi
 tar xzf mizbin.tar.gz -C$mycgi
 
 mkdir html 
-cp ../Makefile .
+cp /home/urban/gitrepo/MPTP2/mizsys/Makefile.4.145 Makefile
 cp -a mml miztmp
 cp Makefile  miztmp
 export MIZFILES=`pwd`
 cd miztmp
 make -j8 allacc | tee 00acc.log
 make -j8 allhdr | tee 00hdr.log
-make -j16 allxml | tee 00xml.log
-make -j16 allxml1 | tee 00xml1.log
-make -j16 allhtmla1 | tee 00htmla1.log
-make -j12 allxml2 | tee 00xml2.log
-make -j12 allevl1 | tee 00evl1.log
-make -j12 allevl2 | tee 00evl2.log
+make -j8 allxml | tee 00xml.log
+make -j8 allxml1 | tee 00xml1.log
+make -j8 allhtmla1 | tee 00htmla1.log
+make -j8 allxml2 | tee 00xml2.log
+make -j8 allevl1 | tee 00evl1.log
+make -j8 allevl2 | tee 00evl2.log
 
 make hidden.acc
 make hidden.hdr
