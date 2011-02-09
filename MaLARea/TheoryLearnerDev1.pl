@@ -1962,7 +1962,7 @@ sub PrintModels
 		push(@edges, "$m:$m");
 	    }
 
-	    my $training_exmpl = join(",", (@edges, $grefnr{$tmpref}));
+	    my $testing_exmpl = join(",", (@edges, $grefnr{$tmpref}));
 
 #	    push( @syms_nrs, $grefnr{$tmpref} );
 #	    my $testing_exmpl = join(",", @syms_nrs);
