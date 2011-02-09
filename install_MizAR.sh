@@ -27,6 +27,9 @@ tar xzf mizshare.tar.gz
 tar xzf mizdoc.tar.gz 
 mkdir bin
 tar xzf mizbin.tar.gz -Cbin
+cp  kernel/verifier bin/verifier.bfex
+mv bin/verifier bin/verifier.std
+ln -s bin/verifier.bfex bin/verifier
 mkdir $mycgi
 tar xzf mizbin.tar.gz -C$mycgi
 
