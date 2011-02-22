@@ -550,7 +550,7 @@ sub PrepareXmlFile
 	if($line =~ m/<By .*/)
 	{
 	    $bcount++;
-	    if(($bcount % $nrpieces) == $chunk - 1)
+	    if(($bcount % $nrpieces) != $chunk - 1)
 	    {
 		print XML1 ('<ErrorInf/>', "\n");
 		$printit = 0 unless($line =~ m/<By .*\/>/);
