@@ -12,6 +12,7 @@ root=`pwd`
 ph=/home/mptp/public_html
 cgi=$ph/cgi-bin
 mycgi=$cgi/bin$2
+mymml=$ph/mml$2
 
 wget ftp://mizar.uwb.edu.pl/pub/system/i386-linux/mizar-$ver-i386-linux.tar
 mkdir $ver
@@ -75,4 +76,17 @@ ln -s MPTP2 mptp
 cd mptp
 mkdir pl
 mkdir Axioms
+mkdir problems
 for i in dcl2 dco2 evl2 lem2 sch2 the2 xml2; do mv ../miztmp/*.$i pl; done
+
+cp hidden.dco2 pl/hidden.dco2
+ln -s ../mml.lar mml.lar
+
+ln -s $root/$ver $ph/$ver
+ln -s $root/$ver $ph/$mymml
+
+sed -ie "s/^mml_dir(.*/mml_dir(\"\/home\/mptp\/mizwrk\/$ver\/MPTP2\/pl\/\")./" utils.pl
+
+
+swipl -nodebug -A0 -L0 -G0 -T0 -q -t "[utils], mml2tptp_includes('Axioms/'), halt."
+cat Axioms/*.ax > 00allmmlax
