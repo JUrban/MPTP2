@@ -36,7 +36,7 @@ mkdir $mycgi
 tar xzf mizbin.tar.gz -C$mycgi
 
 mkdir html 
-cp /home/urban/gitrepo/MPTP2/mizsys/Makefile.4.145 Makefile
+cp /home/mptp/gitrepo/MPTP2/mizsys/Makefile.4.145 Makefile
 cp -a mml miztmp
 cp Makefile  miztmp
 export MIZFILES=`pwd`
