@@ -13,6 +13,7 @@ ph=/home/mptp/public_html
 cgi=$ph/cgi-bin
 mycgi=$cgi/bin$2
 mymml=$ph/mml$2
+jobs=8
 
 wget ftp://mizar.uwb.edu.pl/pub/system/i386-linux/mizar-$ver-i386-linux.tar
 mkdir $ver
@@ -40,14 +41,14 @@ cp -a mml miztmp
 cp Makefile  miztmp
 export MIZFILES=`pwd`
 cd miztmp
-make -j8 allacc | tee 00acc.log
-make -j8 allhdr | tee 00hdr.log
-make -j8 allxml | tee 00xml.log
-make -j8 allxml1 | tee 00xml1.log
-make -j8 allhtmla1 | tee 00htmla1.log
-make -j8 allxml2 | tee 00xml2.log
-make -j8 allevl1 | tee 00evl1.log
-make -j8 allevl2 | tee 00evl2.log
+make -j $jobs allacc | tee 00acc.log
+make -j $jobs allhdr | tee 00hdr.log
+make -j $jobs allxml | tee 00xml.log
+make -j $jobs allxml1 | tee 00xml1.log
+make -j $jobs allhtmla1 | tee 00htmla1.log
+make -j $jobs allxml2 | tee 00xml2.log
+make -j $jobs allevl1 | tee 00evl1.log
+make -j $jobs allevl2 | tee 00evl2.log
 
 make hidden.acc
 make hidden.hdr
@@ -62,7 +63,7 @@ make tarski.xml1
 make tarski.htmla1
 make tarski.xml2
 
-make -j8 alldco2
+make -j $jobs alldco2
 make tarski.dco2
 
 for j in `ls *.htmla1| sed -e 's/.htmla1//'`; do mv $j.htmla1 ../html/$j.html; done
