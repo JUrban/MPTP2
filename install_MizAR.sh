@@ -1,5 +1,5 @@
 #!/bin/bash
-# $1= 7.8.10 $2=4.99.1005
+# $1= 7.8.10 $2=4.99.1005 $3=http://mws.cs.ru.nl/~mptp
 # script installing MizAR for particular version of library and sources
 # assumes we are in some mizwrk directory
 # old copied info:
@@ -7,10 +7,12 @@
 # current dir should contain the Makefile for doing this,
 # and all prerequisities required by the Makefile have to be present 
 ver="$1_$2"
+myurl=$3
 cvsver=`echo -n $1| sed -e 's/\./_/g'`
 root=`pwd`
 ph=/home/mptp/public_html
 cgi=$ph/cgi-bin
+bindir=bin$2
 mycgi=$cgi/bin$2
 mymml=$ph/mml$2
 jobs=8
@@ -31,9 +33,10 @@ mkdir bin
 tar xzf mizbin.tar.gz -Cbin
 cp  kernel/verifier bin/verifier.bfex
 mv bin/verifier bin/verifier.std
-ln -s bin/verifier.bfex bin/verifier
+cd bin && ln -s verifier.bfex verifier && cd ..
 mkdir $mycgi
-tar xzf mizbin.tar.gz -C$mycgi
+ln -s $root/$ver/bin $mycgi/mizar 
+# tar xzf mizbin.tar.gz -C$mycgi
 
 mkdir html 
 cp /home/mptp/gitrepo/MPTP2/mizsys/Makefile.4.145 Makefile
@@ -73,6 +76,9 @@ mv miztmp/proofs html
 tar czf html_abstr.$ver.tar.gz html
 
 git clone git@github.com:JUrban/MPTP2.git
+git branch --track MizAR1096 origin/MizAR1096
+git checkout MizAR1096
+
 ln -s MPTP2 mptp
 cd mptp
 mkdir pl
@@ -85,9 +91,19 @@ ln -s ../mml.lar mml.lar
 
 ln -s $root/$ver $ph/$ver
 ln -s $root/$ver $ph/$mymml
+ln -s /home/mptp/gitrepo/xsl4mizar $ph/xsl4mizar
+
+cp /home/mptp/gitrepo/MPTP2/MizAR/cgi-bin/bin/* $mycgi 
 
 sed -ie "s/^mml_dir(.*/mml_dir(\"\/home\/mptp\/mizwrk\/$ver\/MPTP2\/pl\/\")./" utils.pl
-
+sed -ie "s/^bindir=.*/bindir=$bindir/" $mycgi/mizf
+sed -ie "s/^\(my .MyUrl = \).http:..mws.cs.ru.nl.~mptp.;/\1'$myurl';/" $mycgi/MizAR.cgi
 
 swipl -nodebug -A0 -L0 -G0 -T0 -q -t "[utils], mml2tptp_includes('Axioms/'), halt."
 cat Axioms/*.ax > 00allmmlax
+
+# fix bindir in mizf
+
+# upon first install, files in cgi-bin need to be symlinked to MizAR/cgi-bin files
+# xsl4mizar expected in public_html - done
+# ERROR: script_file `/home/mptp/public_html/cgi-bin/bin4.160.1126/utils.pl' does not exist
