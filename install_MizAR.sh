@@ -95,6 +95,8 @@ ln -s /home/mptp/gitrepo/xsl4mizar $ph/xsl4mizar
 
 cp /home/mptp/gitrepo/MPTP2/MizAR/cgi-bin/bin/* $mycgi 
 
+ln -s $mymml/mptp/utils.pl $mycgi/utils.pl
+
 sed -ie "s/^mml_dir(.*/mml_dir(\"\/home\/mptp\/mizwrk\/$ver\/MPTP2\/pl\/\")./" utils.pl
 sed -ie "s/^bindir=.*/bindir=$bindir/" $mycgi/mizf
 sed -ie "s/^\(my .MyUrl = \).http:..mws.cs.ru.nl.~mptp.;/\1'$myurl';/" $mycgi/MizAR.cgi
@@ -106,4 +108,5 @@ cat Axioms/*.ax > 00allmmlax
 
 # upon first install, files in cgi-bin need to be symlinked to MizAR/cgi-bin files
 # xsl4mizar expected in public_html - done
-# ERROR: script_file `/home/mptp/public_html/cgi-bin/bin4.160.1126/utils.pl' does not exist
+# ERROR: script_file `/home/mptp/public_html/cgi-bin/bin4.160.1126/utils.pl' does not exist - DONE
+# The requested URL /~mptp/cgi-bin/bin4.160.1126/showby.cgi was not found on this server.
