@@ -3,25 +3,31 @@
 #          Mizar Verifier, example shell command
 #
 
+bindir=bin4.160.1126
+
 accommodate()
 {
- bin/mizar/accom -a $1
+PWD1=`pwd`
+cd `dirname $1`
+$PWD1/$bindir/mizar/accom -q -a $1
  if test "$?" = "0"
   then
+   cd $PWD1
    echo ""
    verify $1
   else
-   bin/mizar/errflag $1
-   bin/mizar/addfmsg $1 $MIZFILES/mizar
+   cd $PWD1
+   $bindir/mizar/errflag $1
+   $bindir/mizar/addfmsg $1 $MIZFILES/mizar
    exit 2
  fi
 }
 
 verify()
 {
- bin/mizar/verifier -q $1
- bin/mizar/errflag $1
- bin/mizar/addfmsg $1 $MIZFILES/mizar
+ $bindir/mizar/verifier -q -l $1
+ $bindir/mizar/errflag $1
+ $bindir/mizar/addfmsg $1 $MIZFILES/mizar
 }
 
 if test -z "$1" 
