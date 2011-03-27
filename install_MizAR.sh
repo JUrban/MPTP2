@@ -24,6 +24,8 @@ cd $ver
 cvs -d:pserver:softdev@mizar.uwb.edu.pl:2401/srv/cvsroot co -rver_$cvsver kernel libtools
 cd kernel
 fpc -Sd -dCH_REPORT -dSCH_REPORT verifier.dpr 
+cd ../libtools
+fpc -Sd -Fu../kernel envget.dpr
 cd ..
 ### TODO: fix mizf!!
 
@@ -32,6 +34,7 @@ tar xzf mizdoc.tar.gz
 mkdir bin
 tar xzf mizbin.tar.gz -Cbin
 cp  kernel/verifier bin/verifier.bfex
+cp  libtools/envget bin/envget
 mv bin/verifier bin/verifier.std
 cd bin && ln -s verifier.bfex verifier && cd ..
 mkdir $mycgi
