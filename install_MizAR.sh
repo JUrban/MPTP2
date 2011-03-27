@@ -21,7 +21,7 @@ wget ftp://mizar.uwb.edu.pl/pub/system/i386-linux/mizar-$ver-i386-linux.tar
 mkdir $ver
 tar xf mizar-$ver-i386-linux.tar -C$ver 
 cd $ver
-cvs -d:pserver:softdev@mizar.uwb.edu.pl:2401/srv/cvsroot co -rver_$cvsver kernel
+cvs -d:pserver:softdev@mizar.uwb.edu.pl:2401/srv/cvsroot co -rver_$cvsver kernel libtools
 cd kernel
 fpc -Sd -dCH_REPORT -dSCH_REPORT verifier.dpr 
 cd ..
