@@ -13,6 +13,7 @@ my $bigext = '.big';
 
 for my $ext (@smallextensions)
 {
+    print("ulimit -t $tl; $prog $vampire_params2 $filestem$ext > $filestem$ext.eout1 & ");
     system("ulimit -t $tl; $prog $vampire_params2 $filestem$ext > $filestem$ext.eout1 & ");
 }
 
