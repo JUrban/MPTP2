@@ -550,7 +550,17 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
     system("$mk_derived_mptp_files $ProblemFileOrig 2> $ProblemFileOrig.derived_err");
     system("$xsltproc $evl2pl $ProblemFileOrig.evl   > $ProblemFileOrig.evl1");
     system("$dbenv2 $ProblemFileOrig > $ProblemFileOrig.evl2");
-
+    
+    my @env_keywords = ("constructors","theorems","vocabularies","notations",
+			"registrations","schemes","requirements");
+    my %henv=();  # create hash of environment articles
+    if(open(EVL,"$ProblemFileOrig.evl2"))
+    {
+	my $evl=<EVL>; close(EVL);	
+	my @env= $evl =~ m/[a-z0-9_]+/g; 
+	@henv{@env}=(); 
+	foreach my $k (@env_keywords) { delete $henv{$k}; }
+    }
 
     my $Tmp1 = $TemporaryProblemDirectory . '/';
 # swipl -G50M -s utils.pl -g "mptp2tptp('$1',[opt_NO_FRAENKEL_CONST_GEN],user),halt." |& grep "^fof"
@@ -566,12 +576,27 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 	my $atpout = ($query_mode eq 'HTML')? "$ProblemFileOrig.atpoutput" : '-';
 	open(my $fhout,">$atpout");
 	my $runwtlimit = "$Bindir/runwtlimit";
+	my $parwtlimit = "$Bindir/parwtlimit";
 	my $vampire =     "$Bindir/vampire_rel2";
 	my $cpulimit = 15;
 	my $vampire_params = " -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t $cpulimit -m 1234  -input_file ";
 
+	my $vampire_params_sd = " -ss included -sd ";
+	my $vampire_params2 = " -proof tptp -output_axiom_names on --mode casc -t $cpulimit -m 1234  -input_file ";
+
+
+
 	my $LocalAxs = $ProblemDir . "/" . $aname . ".ax" ;
 	my $MMLAxs = $Mizfiles . "/mptp/00allmmlax" ;
+
+	my $EnvIncludeFile = $ProblemDir . "/" . $aname . ".envinclude";
+
+	open(ENVIN,">$EnvIncludeFile");
+	foreach my $envin (keys %henv) 
+	{ 
+	    print ENVIN "include('$Mizfiles/mptp/Axioms/$envin.ax').\n"; 
+	}
+	close(ENVIN);
 
 	my %fla2pos = ();
 	my %fla2name = ();
@@ -630,15 +655,19 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 		my @allowed = split(/\, */, $1);
 
 		my $regexp = '"^fof( *\(' . join('\|',@allowed) . '\) *,"';
+		`grep $regexp $LocalAxs >> $File.big0`;
+		`cat $File >> $File.big0`;
+		`cat $EnvIncludeFile > $File.big1`;
+		`cat $File.big0 >> $File.big1`;
 		`echo "include('$MMLAxs')." > $File.big`;
-		`grep $regexp $LocalAxs >> $File.big`;
-		`cat $File >> $File.big`;
+		`cat $File.big0 >> $File.big`;
 
 		##DEBUG print `pos`;
 		##DEBUG print `pwd`;
 		##DEBUG print "$runwtlimit $cpulimit $vampire -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t 10 -m 1234  -input_file $File | tee $File.eout1 | grep '\bfile('|";
-		my $eproof_pid = open(EP,"$runwtlimit $cpulimit $vampire\ $vampire_params $File.big | tee $File.eout1 | grep '\\bfile('|") or die("bad vampire input file $File.big"); 
+		# my $eproof_pid = open(EP,"$runwtlimit $cpulimit $vampire\ $vampire_params_sd 1 $vampire_params2 $File.big | tee $File.eout1 | grep '\\bfile('|") or die("bad vampire input file $File.big"); 
 
+		my $eproof_pid = open(EP,"$parwtlimit $cpulimit $vampire\ $vampire_params_sd  $vampire_params2 $File |") or die("bad vampire run on input filestem $File");
 
 ##--- read the needed axioms for proof
  		while ($_=<EP>)
