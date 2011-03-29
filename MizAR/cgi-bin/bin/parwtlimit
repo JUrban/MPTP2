@@ -1,0 +1,36 @@
+#!/usr/bin/perl -w
+
+# parallelizes vampire with four different extensions, the biggest is run with -sd 1
+
+use strict;
+my $tl = 1 + shift @ARGV;
+my $prog = shift @ARGV;
+my $filestem = shift @ARGV;
+my $vampire_params_sd  = shift @ARGV;  # the -d sine param without a number
+my $vampire_params2 = shift @ARGV;
+my @smallextensions = ('', '.big0', '.big1'); 
+my $bigext = '.big';
+
+for my $ext (@smallextensions)
+{
+    system("ulimit -t $tl; $prog $vampire_params2 $filestem$ext > $filestem$ext.eout1 & ");
+}
+
+
+system("ulimit -t $tl; $prog $vampire_params_sd 1 $vampire_params2 $filestem$bigext > $filestem$bigext.eout1 & ");
+
+my $num = $tl+1;
+while($num-- > 0)
+{
+    sleep(2);
+    foreach my $ext (@smallextensions, $bigext)
+    {
+	my $exit_code = system('grep', '-q', '\\bfile(',  "$filestem$ext.eout1");
+	if(0 == $exit_code)
+	{
+	    exec('grep', '\\bfile(',  "$filestem$ext.eout1");
+	    exit 0;
+	}
+    }
+}
+
