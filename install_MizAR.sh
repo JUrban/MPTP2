@@ -104,6 +104,9 @@ sed -ie "s/^mml_dir(.*/mml_dir(\"\/home\/mptp\/mizwrk\/$ver\/MPTP2\/pl\/\")./" u
 sed -ie "s/^bindir=.*/bindir=$bindir/" $mycgi/mizf
 sed -ie "s/^\(my .MyUrl = \).http:..mws.cs.ru.nl.~mptp.;/\1'$myurl';/" $mycgi/MizAR.cgi
 
+
+which swipl > /dev/null ; if [ $? != 0 ]; then echo "swipl not executable, exiting"; exit 1; fi
+
 swipl -nodebug -A0 -L0 -G0 -T0 -q -t "[utils], mml2tptp_includes('Axioms/'), halt."
 cat Axioms/*.ax > 00allmmlax
 
