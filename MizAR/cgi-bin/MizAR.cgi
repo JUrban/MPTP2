@@ -93,6 +93,8 @@ $proofsbyajax = 0; # unless defined($proofsbyajax); comented - not wroking yet, 
 
 my $starttime = time(); # for measuring the query processing time
 
+$ENV{"PATH"} = $ENV{"PATH"} . ":/home/mptp/bin";
+
 sub my_warning
 {
     print $_;
