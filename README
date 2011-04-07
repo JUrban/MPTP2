@@ -113,3 +113,6 @@ xsl/miz.xsl         ... create the html doc from normal Mizar XML
 xsl/constrnames.xsl ... print the mapping to pretty-printing names
 
 
+License:
+
+GPL
