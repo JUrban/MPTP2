@@ -3,7 +3,7 @@ MMLLAR  = $(MFILES)/mml.lar
 MMLLAR100  = $(MFILES)/mml.lar.100
 MIZ100     = $(shell cat $(MMLLAR100))
 STANDARDMIZ     = $(shell cat $(MMLLAR))
-SHMIZ = $(shell shuffle < $(MMLLAR))
+SHMIZ = $(shell sort -R < $(MMLLAR))
 
 XSL4MIZAR =/home/urban/gr/xsl4mizar
 MPTP2 =/home/urban/gr/MPTP2
