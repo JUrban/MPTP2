@@ -42,7 +42,7 @@ ln -s $root/$ver/bin $mycgi/mizar
 # tar xzf mizbin.tar.gz -C$mycgi
 
 mkdir html 
-cp /home/mptp/gitrepo/MPTP2/mizsys/Makefile.4.145 Makefile
+sed -e 's/urban/mptp/' /home/mptp/gitrepo/MPTP2/mizsys/Makefile.4.145 > Makefile
 cp -a mml miztmp
 cp Makefile  miztmp
 export MIZFILES=`pwd`
