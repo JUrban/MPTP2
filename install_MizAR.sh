@@ -79,8 +79,8 @@ mv miztmp/proofs html
 tar czf html_abstr.$ver.tar.gz html
 
 git clone git@github.com:JUrban/MPTP2.git
-git branch --track MizAR1096 origin/MizAR1096
-git checkout MizAR1096
+# git branch --track MizAR1096 origin/MizAR1096
+# git checkout MizAR1096
 
 ln -s MPTP2 mptp
 cd mptp
