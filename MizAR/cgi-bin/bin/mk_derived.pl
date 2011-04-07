@@ -1,1 +1,1 @@
-/home/urban/gr/MPTP2/mk_derived.pl
+../../../mk_derived.pl
