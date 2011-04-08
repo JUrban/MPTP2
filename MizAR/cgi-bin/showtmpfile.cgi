@@ -13,6 +13,7 @@ my $query	  = new CGI;
 my $input_file	  = $query->param('file');
 my $input_tmp     = $query->param('tmp');
 my $input_raw     = $query->param('raw');
+my $input_html     = $query->param('html');
 my $input_refresh  = $query->param('refresh');
 my $input_pos  = $query->param('pos');
 my $content_type = $query->param('content-type');
@@ -30,6 +31,17 @@ if (defined($input_refresh))
 	if ($now < $mtime + 6) { $print_refresh = 1 }
     }
 }
+
+
+# if (defined($input_html))
+# {
+#     use MPTPNames;
+
+#     MPTPNames::HTMLizeLines($MizHtml,$input_article);
+
+#     exit 0;
+
+# }
 
 if ($print_refresh == 1) { print $query->header(-Refresh=>'2'); }
 else { print $query->header(); }
