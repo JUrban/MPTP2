@@ -31,9 +31,12 @@ while($num > 0)
 	my $exit_code = system('grep', '-q', '\\bfile(',  "$filestem$ext.eout1");
 	if(0 == $exit_code)
 	{
+	    `grep 'SZS status' $filestem$ext.eout1 |tail -n1 > $filestem.status`;
 	    exec('grep', '\\bfile(',  "$filestem$ext.eout1");
 	    exit 0;
 	}
     }
 }
+
+`grep 'SZS status' $filestem$bigext.eout1 |tail -n1 > $filestem.status`;
 

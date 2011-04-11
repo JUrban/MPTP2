@@ -673,7 +673,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 ##--- read the needed axioms for proof
  		while ($_=<EP>)
  		{
-		    m/.*\bfile\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $File.eout1: $_";
+		    m/.*\bfile\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $File.eout: $_";
 		    my $ref = $1;
 		    my $ref1 = ($ref=~ m/(.*)__.*/)? $1 : $ref;
 		    my $pos = $fla2pos{$ref1};
@@ -686,7 +686,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 		##DEBUG print ("refs: ", join(",",@refs));
 
 		# Vampire can print multiple SZS lines (for each strategy); get the last one
- 		my $status_line = `grep 'SZS status' $File.eout1 |tail -n1`;
+ 		my $status_line = `grep 'SZS status' $File.status |tail -n1`;
 
 		if ($status_line=~m/.*SZS status[ :]*([a-zA-Z0-9_-]+)/)
 		{
