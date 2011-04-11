@@ -22,14 +22,16 @@ for my $ext (@smallextensions)
 system("ulimit -t $tl; $prog $vampire_params_sd 1 $vampire_params2 $filestem$bigext > $filestem$bigext.eout1 & ");
 
 my $num = $tl+1;
-while($num-- > 0)
+while($num > 0)
 {
+    $num = $num - 2;
     sleep(2);
     foreach my $ext (@smallextensions, $bigext)
     {
 	my $exit_code = system('grep', '-q', '\\bfile(',  "$filestem$ext.eout1");
 	if(0 == $exit_code)
 	{
+	    print "$ext";
 	    exec('grep', '\\bfile(',  "$filestem$ext.eout1");
 	    exit 0;
 	}
