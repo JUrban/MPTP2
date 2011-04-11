@@ -594,7 +594,8 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 	open(ENVIN,">$EnvIncludeFile");
 	foreach my $envin (keys %henv) 
 	{ 
-	    print ENVIN "include('$Mizfiles/mptp/Axioms/$envin.ax').\n"; 
+	    print ENVIN "include('$Mizfiles/mptp/Axioms/$envin.ax').\n"
+		if(-e "$Mizfiles/mptp/Axioms/$envin.ax");
 	}
 	close(ENVIN);
 
