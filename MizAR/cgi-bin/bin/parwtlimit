@@ -6,14 +6,15 @@ use strict;
 my $tl = 1 + shift @ARGV;
 my $prog = shift @ARGV;
 my $filestem = shift @ARGV;
-my $vampire_params_sd  = shift @ARGV;  # the -d sine param without a number
-my $vampire_params2 = shift @ARGV;
+# my $vampire_params_sd  = shift @ARGV;  
+my $vampire_params2 = @ARGV;
+my $vampire_params_sd = " -ss included -sd "; # the -d sine param without a number
 my @smallextensions = ('', '.big0', '.big1'); 
 my $bigext = '.big';
 
 for my $ext (@smallextensions)
 {
-    print("ulimit -t $tl; $prog $vampire_params2 $filestem$ext > $filestem$ext.eout1 & ");
+#    print("ulimit -t $tl; $prog $vampire_params2 $filestem$ext > $filestem$ext.eout1 & ");
     system("ulimit -t $tl; $prog $vampire_params2 $filestem$ext > $filestem$ext.eout1 & ");
 }
 

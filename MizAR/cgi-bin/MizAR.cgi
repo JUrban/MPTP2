@@ -581,7 +581,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 	my $cpulimit = 15;
 	my $vampire_params = " -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t $cpulimit -m 1234  -input_file ";
 
-	my $vampire_params_sd = " -ss included -sd ";
+	
 	my $vampire_params2 = " -proof tptp -output_axiom_names on --mode casc -t $cpulimit -m 1234  -input_file ";
 
 
@@ -667,7 +667,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 		##DEBUG print "$runwtlimit $cpulimit $vampire -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t 10 -m 1234  -input_file $File | tee $File.eout1 | grep '\bfile('|";
 		# my $eproof_pid = open(EP,"$runwtlimit $cpulimit $vampire\ $vampire_params_sd 1 $vampire_params2 $File.big | tee $File.eout1 | grep '\\bfile('|") or die("bad vampire input file $File.big"); 
 
-		my $eproof_pid = open(EP,"$parwtlimit $cpulimit $vampire $File $vampire_params_sd  $vampire_params2  |") or die("bad vampire run on input filestem $File");
+		my $eproof_pid = open(EP,"$parwtlimit $cpulimit $vampire $File $vampire_params2  |") or die("bad vampire run on input filestem $File");
 
 ##--- read the needed axioms for proof
  		while ($_=<EP>)
