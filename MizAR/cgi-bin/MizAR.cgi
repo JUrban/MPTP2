@@ -138,6 +138,7 @@ my $snow =     "$Bindir/snow";
 my $advisor =     "$Bindir/advisor.pl";
 my $exporter =     "$Bindir/mizar/exporter";
 my $xsltproc =     "xsltproc";
+my $dbenv = "$Bindir/dbenv.pl";
 my $dbenv2 = "$Bindir/dbenv2.pl";
 my $mk_derived_mptp_files = "$Bindir/mk_derived.pl";
 my $err2pl = "$Bindir/err2pl.pl";
@@ -548,8 +549,16 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 #    system("time $xsltproc --param default_target \\\'_self\\\' --param ajax_proof_dir \\\'$AjaxProofDir\\\' --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\' --param ajax_proofs 1 --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs > $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
 
     system("$mk_derived_mptp_files $ProblemFileOrig 2> $ProblemFileOrig.derived_err");
-    system("$xsltproc $evl2pl $ProblemFileOrig.evl   > $ProblemFileOrig.evl1");
-    system("$dbenv2 $ProblemFileOrig > $ProblemFileOrig.evl2");
+
+    if($mmlversion eq '4.100.1011')
+    {
+	system("$dbenv $ProblemFileOrig > $ProblemFileOrig.evl2");
+    }
+    else
+    {
+	system("$xsltproc $evl2pl $ProblemFileOrig.evl   > $ProblemFileOrig.evl1");    
+	system("$dbenv2 $ProblemFileOrig > $ProblemFileOrig.evl2");
+    }
     
     my @env_keywords = ("constructors","theorems","vocabularies","notations",
 			"registrations","schemes","requirements");
