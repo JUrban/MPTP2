@@ -552,7 +552,7 @@ elsif($generatehtml==1)
     }
 }
  
-if(($generateatp > 0) || ($problemstosolvenr > 0)) 
+if(($generateatp > 0) || ($problemstosolvenr > 0) || ($gemulate_all_by == 4)) 
 {
     ### NOTE: this can be more targeted and parallelized as the html parallelization
     system("cd $TemporaryProblemDirectory; time $xsltproc --param dump_prop_labels 1 $mizpl $ProblemFileXml.abs  > $ProblemFileXml2 2>$ProblemFileXml.errpl");
@@ -597,7 +597,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
     close(F);
     system($CreateProblemsCommand);
 
-    if($problemstosolvenr > 0)
+    if(($problemstosolvenr > 0) || ($gemulate_all_by == 4))
     {
 
 	my $atpout = ($query_mode eq 'HTML')? "$ProblemFileOrig.atpoutput" : '-';
