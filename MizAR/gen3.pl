@@ -24,7 +24,7 @@ MMLVersion => '4.160.1126',
 Verify => 1,
 Parallelize => 1,
 ProveUnsolved => 'All',
-ATPMode=7,
+ATPMode => 7,
 MODE => 'TEXT' ];
 
 
