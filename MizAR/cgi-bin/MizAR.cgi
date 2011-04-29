@@ -10,6 +10,7 @@ use File::Temp qw/ :mktemp  /;
 use IPC::Open2;
 use HTTP::Request::Common;
 use LWP::Simple;
+use POSIX qw( WNOHANG );
 use MPTPNames;
 
 # possible SZS statuses
@@ -561,12 +562,44 @@ elsif($generatehtml==1)
 	system("time $xsltproc  $genatpparams $ajaxproofparams --param mk_header 1 --param const_links 1  --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
     }
 }
- 
+
+## the forking to print some bogus while we wait in master mode
+sub ExecSlow
+{
+    my $command = shift;
+
+    if($gmaster_mode == 1)
+    {
+
+	my $pid = fork();
+	if ($pid) # parent
+	{ }
+	elsif ($pid == 0) 
+	{
+	    # child
+	    system($command);
+	    exit(0);
+	} 
+	else { die "couldn’t fork: $!\n"; }
+	
+	my $cnt=0;
+	while (waitpid($pid, WNOHANG) == 0) 
+	{
+	    sleep 1;
+	    if(++$cnt == 300) { print '.'; $cnt = 0; }
+	}
+    }
+    else
+    {	
+	system($command);
+    }
+}
+
 if(($generateatp > 0) || ($problemstosolvenr > 0) || ($gemulate_all_by == 4)) 
 {
     ### NOTE: this can be more targeted and parallelized as the html parallelization
-    system("cd $TemporaryProblemDirectory; time $xsltproc --param dump_prop_labels 1 $mizpl $ProblemFileXml.abs  > $ProblemFileXml2 2>$ProblemFileXml.errpl");
-    
+
+    ExecSlow("cd $TemporaryProblemDirectory; time $xsltproc --param dump_prop_labels 1 $mizpl $ProblemFileXml.abs  > $ProblemFileXml2 2>$ProblemFileXml.errpl");
 
 # ajax proofs are probably not wanted for the first stab
 #    system("time $xsltproc --param default_target \\\'_self\\\' --param ajax_proof_dir \\\'$AjaxProofDir\\\' --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\' --param ajax_proofs 1 --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs > $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
@@ -605,7 +638,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0) || ($gemulate_all_by == 4))
     open(F,">$ProblemFileOrig.plparams");
     print F $CreateProblemsCommand;
     close(F);
-    system($CreateProblemsCommand);
+    ExecSlow($CreateProblemsCommand);
 
     if(($problemstosolvenr > 0) || ($gemulate_all_by == 4))
     {
