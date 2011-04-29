@@ -104,6 +104,9 @@ my $gmaster_mode = $atp_mode & 1;
 my $gonly_create_problems = $atp_mode & 2;
 my $gemulate_all_by = $atp_mode & 4;
 
+# timelimit for swi prolog, only unlimited in master mode, otherwise 120s.
+my $swiulimit = ($gmaster_mode==1)? 100000 : 120;
+
 my $starttime = time(); # for measuring the query processing time
 
 $ENV{"PATH"} = $ENV{"PATH"} . ":/home/mptp/bin";
@@ -598,7 +601,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0) || ($gemulate_all_by == 4))
 
     my $Tmp1 = $TemporaryProblemDirectory . '/';
 # swipl -G50M -s utils.pl -g "mptp2tptp('$1',[opt_NO_FRAENKEL_CONST_GEN],user),halt." |& grep "^fof"
-    my $CreateProblemsCommand = "cd $TemporaryProblemDirectory; ulimit -t 120; swipl -G50M -s $utilspl -g \"(A=$aname,D=\'$Tmp1\',declare_mptp_predicates,time(load_mml_for_article(A, D, [A])),time(install_index),time(mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma, sublemma] $ATPProblemList],[opt_LOAD_MIZ_ERRORS,opt_ARTICLE_AS_TPTP_AXS,opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_ADDED_NON_MML([A]),opt_NON_MML_DIR(D),opt_LINE_COL_NMS,opt_PRINT_PROB_PROGRESS,opt_ALLOWED_REF_INFO,opt_PROVED_BY_INFO])),halt).\" > $aname.ploutput 2>&1";
+    my $CreateProblemsCommand = "cd $TemporaryProblemDirectory; ulimit -t $swiulimit; swipl -G50M -s $utilspl -g \"(A=$aname,D=\'$Tmp1\',declare_mptp_predicates,time(load_mml_for_article(A, D, [A])),time(install_index),time(mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma, sublemma] $ATPProblemList],[opt_LOAD_MIZ_ERRORS,opt_ARTICLE_AS_TPTP_AXS,opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_ADDED_NON_MML([A]),opt_NON_MML_DIR(D),opt_LINE_COL_NMS,opt_PRINT_PROB_PROGRESS,opt_ALLOWED_REF_INFO,opt_PROVED_BY_INFO])),halt).\" > $aname.ploutput 2>&1";
     open(F,">$ProblemFileOrig.plparams");
     print F $CreateProblemsCommand;
     close(F);
