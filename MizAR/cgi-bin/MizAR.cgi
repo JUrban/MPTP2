@@ -565,7 +565,12 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
     my %henv=();  # create hash of environment articles
     if(open(EVL,"$ProblemFileOrig.evl2"))
     {
-	my $evl=<EVL>; close(EVL);	
+	my $evl=<EVL>; close(EVL);
+	
+	## Remove the syntactic-only directives, in particular the
+	## vocabulary directive for the current article which might
+	## have the same name.
+	$evl =~ s/(vocabularies|notations).*?\]\),//g;
 	my @env= $evl =~ m/[a-z0-9_]+/g; 
 	@henv{@env}=(); 
 	foreach my $k (@env_keywords) { delete $henv{$k}; }
