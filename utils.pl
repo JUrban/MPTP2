@@ -1660,6 +1660,12 @@ mk_problems_from_file(File, AddOptions):-
 	mk_problems_from_list(List, AddOptions).
 
 
+%% Use this for generating all problems for a set of articles with the
+%% .allowed_local info for creating problems containing all previous
+%% references.
+
+%% ##TEST: :- declare_mptp_predicates,load_mml,install_index,all_articles(AA),checklist(abstract_fraenkels_if, AA),!,member(A,[tarski,xboole_0,xcmplx_0]),time(mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma, sublemma] ],[opt_LOAD_MIZ_ERRORS,opt_ARTICLE_AS_TPTP_AXS,opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_LINE_COL_NMS,opt_PRINT_PROB_PROGRESS,opt_ALLOWED_REF_INFO,opt_PROVED_BY_INFO])),fail.
+
 %% These two can be used for generating normal and chainy problems for
 %% all MML. The chainy version gives uses the whole theory of the
 %% current article. A super-chainy version can be done by replacing
