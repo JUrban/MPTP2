@@ -7,7 +7,8 @@ use HTTP::Request::Common qw(POST);
 $ua->timeout(100000);
 
 
-my @names = ('jgraph_4');
+my @names = @ARGV;
+## my @names = ('jgraph_4');
 
 
 foreach my $aname (@names)
