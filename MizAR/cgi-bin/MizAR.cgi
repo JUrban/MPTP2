@@ -587,10 +587,10 @@ if(($generateatp > 0) || ($problemstosolvenr > 0) || ($gemulate_all_by == 4))
     {
 	my $evl=<EVL>; close(EVL);
 	
-	## Remove the syntactic-only directives, in particular the
+	## Remove the syntactic-only directives (all before notations), in particular the
 	## vocabulary directive for the current article which might
 	## have the same name.
-	$evl =~ s/(vocabularies|notations).*?\]\),//g;
+	$evl =~ s/^.*notations.*?\]\),//;
 	my @env= $evl =~ m/[a-z0-9_]+/g; 
 	@henv{@env}=(); 
 	foreach my $k (@env_keywords) { delete $henv{$k}; }
