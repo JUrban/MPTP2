@@ -469,9 +469,16 @@ if($proveunsolved eq 'All')
     $ATPProblemList = ',problem_list([' . join(',', @provepositions) . '])';
 }
 
+## ignore the unproved positions if we want all
+if ($gemulate_all_by==4)
+{
+    $ATPProblemList = "";
+    @provepositions = ();
+}
+
 my $problemstosolvenr = scalar @provepositions;
 
-my $absolutize = (($generatehtml > 0) || ($generateatp > 0) || ($problemstosolvenr >0))? 1 : 0;
+my $absolutize = (($generatehtml > 0) || ($generateatp > 0) || ($problemstosolvenr >0) || ($gemulate_all_by==4))? 1 : 0;
 
 
 
