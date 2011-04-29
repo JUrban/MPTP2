@@ -29,7 +29,7 @@ my $VocContent       = $query->param('VocContent');
 my $input_article	  = $query->param('Formula');
 my $input_name	  = $query->param('Name');
 my $aname         = lc($input_name); 
-# not sure what this is for
+# not sure what this is for - now used for admin stuff
 my $atp_mode	  = $query->param('ATPMode');
 # if defined, snow is started when 1 and not if 0
 # if undefined, snow is started according to $generateatp
@@ -87,9 +87,22 @@ $generatehtml = 0 unless defined($generatehtml);
 $proveunsolved = "None" unless defined($proveunsolved);
 $gparallelize = 1 unless defined($gparallelize);
 $gppolicy = 1 unless defined($gppolicy);
+$query_mode = 'HTML' unless defined($query_mode);
 
 $mmlversion   = '4.100.1011' unless defined($mmlversion);
 $proofsbyajax = 0; # unless defined($proofsbyajax); comented - not wroking yet, trying to write the relative proof path
+
+# values: 1 for master mode If 1, master_mode (no limits) is used, if
+# 2, problems are only created, not solved, if 4, all "by" problems
+# are created. Combinations of these can be done by summing their
+# codes (i.e., value 7 would tell to use master_mode, create all "by",
+# and do not solve).
+
+$atp_mode = 0 unless defined($atp_mode);
+
+my $gmaster_mode = $atp_mode & 1;
+my $gonly_create_problems = $atp_mode & 2;
+my $gemulate_all_by = $atp_mode & 4;
 
 my $starttime = time(); # for measuring the query processing time
 
@@ -622,6 +635,11 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 	    {
 		$fla2pos{$1}= "$2:$3";
 	    }
+	    if(($gemulate_all_by == 4) && m/mizar_by..position\((\d+),(\d+)\)/)
+	    {
+		push(@provepositions, "pos(" . $1 . ',' . $2 . ")");
+		$problemstosolvenr = scalar @provepositions;
+	    }
 	}
 	close(XML2);
 
@@ -637,12 +655,12 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 	    close(PROPNAMES);
 	}
 
-	if($problemstosolvenr > 10)
+	if(($problemstosolvenr > 10) && ($gmaster_mode != 1))
 	{
 	    @provepositions = @provepositions[0..9]
 	}
 
-	foreach my $pos (@provepositions)
+      POS: foreach my $pos (@provepositions)
 	{
 
 	    my @refs=();
@@ -676,6 +694,9 @@ if(($generateatp > 0) || ($problemstosolvenr > 0))
 		`cat $File.big0 >> $File.big1`;
 		`echo "include('$MMLAxs')." > $File.big`;
 		`cat $File.big0 >> $File.big`;
+
+
+		next POS  if ($gonly_create_problems == 2);
 
 		##DEBUG print `pos`;
 		##DEBUG print `pwd`;
