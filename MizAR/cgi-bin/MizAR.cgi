@@ -192,6 +192,7 @@ my $MizOutputEmacs = $ProblemFileOrig . ".mizoutputemacs";
 my $ProblemFileBex = $ProblemFileOrig . ".bex";
 my $lbytmpdir = $PidNr;
 my $lbycgiparams = '\&ATP=refs\&HTML=1\&MMLVersion=' . $mmlversion;
+my $ltptproot= $MyUrl . '/';
 my $lbytptpcgi= $MyUrl . "/cgi-bin/$Bindir/showby.cgi";
 
 my $SnowDataDir =     $Mizfiles . "/mptp/snowdata";
@@ -553,7 +554,7 @@ elsif($generatehtml==1)
     }
     else
     {
-	my $genatpparams = ($generateatp==1)? " --param by_titles 1 --param linkarproofs $linkarproofs --param ajax_by 1 --param linkbytoself 1 --param linkby 3 --param thms_tptp_links 1 --param lbytptpcgi \\\'$lbytptpcgi\\\' --param lbytmpdir \\\'$lbytmpdir\\\' --param lbycgiparams \\\'$lbycgiparams\\\' " : "";
+	my $genatpparams = ($generateatp==1)? " --param by_titles 1 --param linkarproofs $linkarproofs --param ajax_by 1 --param linkbytoself 1 --param linkby 3 --param thms_tptp_links 1 --param ltptproot \\\'$ltptproot\\\' --param lbytptpcgi \\\'$lbytptpcgi\\\' --param lbytmpdir \\\'$lbytmpdir\\\' --param lbycgiparams \\\'$lbycgiparams\\\' " : "";
 
 	my $ajaxproofparams = ($proofsbyajax==1)? " -param lbytmpdir \\\'$lbytmpdir\\\'  --param ajax_proofs 3 " : " ";
 
@@ -563,8 +564,12 @@ elsif($generatehtml==1)
     }
 }
 
+## now just 'system'
+sub ExecSlow { my $command = shift; system($command); }
+
 ## the forking to print some bogus while we wait in master mode
-sub ExecSlow
+## this does not work as expected
+sub ExecSlowOld
 {
     my $command = shift;
 
