@@ -367,6 +367,9 @@ sublemmas, and scheme instances).
 If 2, references containing Mizar local constants are always
 included. These references are recognized by grepping
 for "\bc[0-9]+" in the formula symbols.
+If 3, it behaves like 1, but the regexp is "^fact_", which is used for
+some Isabelle problems.
+
 
 =item B<<< --tptpproofs, -z<arg> >>>
 
@@ -616,6 +619,15 @@ if($gparallelize > 1) { $gmakefile = 1; } else { $gmakefile = 0; }
 
 $gboostlimit  = $gboostlimit / 100;
 $gboostweight = exp (- $gboostweight);
+
+my $gmizrefsregexp = '^[tldes][0-9]+_';
+my $gisarefsregexp = '^fact_';
+my $gmconstregexp = '\bc[0-9]+';
+
+my $galwaysrefsregexp = $gmizrefsregexp;
+
+$galwaysrefsregexp = $gisarefsregexp if($galwaysmizrefs == 3);
+
 
 # list of all handled atps
 my @gallatps = ('atp_E','atp_EP','atp_SPASS','atp_VAMPIRE','atp_PARADOX',
@@ -1269,7 +1281,7 @@ sub AddMizarRefs
     {
 	if(!(exists $specrefs{$ref1})
 	   &&
-	   ((($galwaysmizrefs == 1) && ($ref1 =~ m/^[tldes][0-9]+_/)
+	   (((($galwaysmizrefs == 1) || ($galwaysmizrefs == 3)) && ($ref1 =~ m/$galwaysrefsregexp/)
 	     && (!($ref1 =~ m/^t[0-9]+_(numerals|boole|subset|arithm|real)$/)))
 	    ||
 	    (($galwaysmizrefs == 2) && (exists $glocal_consts_refs{$ref1}))))
@@ -1619,7 +1631,7 @@ sub SelectRelevantFromSpecs
 			&& !(exists $included{$ref1}))
 		    {
 			if (($#spec < $threshold)
-			    || (($galwaysmizrefs == 1) && ($ref1 =~ m/^[tldes][0-9]+_/)
+			    || ((($galwaysmizrefs == 1) || ($galwaysmizrefs == 3)) && ($ref1 =~ m/$galwaysrefsregexp/)
 				&& (!($ref1 =~ m/^t[0-9]+_(numerals|boole|subset|arithm|real)$/)))
 			    || (($galwaysmizrefs == 2) && (exists $glocal_consts_refs{$ref1})))
 			{
