@@ -19,6 +19,28 @@ sub LeancopClausify
     system("cd $prologdir; $prolog -nodebug -L120M -G120M -T100M -q -t \"$command\"");
 }
 
+# return a hash with names to formulas mapping
+## test: perl -e 'use AIAdvise;   $g=AIAdvise::LoadFlas2Hash("hoo.tptp");'
+sub LoadFlas2Hash
+{
+   my ($file) = @_;
+   my %res = ();
+
+   open(F,$file);
+   while(<F>)
+   {
+       chop;
+       if(m/^ *fof\( *([^, ]+) *, *([^, ]+) *,(.*)/)
+       {
+           my ($nm,$status,$rest)=($1,$2,$3);
+           $res{$nm} = $_;
+       }
+   }
+   close(F);
+   return \%res;
+}
+
+
 
 # CreateTables($symoffset, $filestem)
 #
