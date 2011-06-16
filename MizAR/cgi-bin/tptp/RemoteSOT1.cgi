@@ -59,6 +59,16 @@ my $File2 = $File0 . $col1 . $ext;
 my $File;
 if (-e $File1) { $File = $File1; } elsif(-e $File2) { $File = $File2}
 
+my $File3 = $File . '2';
+
+if((-e $File) && ($input_idv > 0))
+{
+    local $/;open(F1,$File);open(F2,">$File3"); $_=<>; 
+    if(m/% *SZS *output *start *Proof.*((.|[\n])*?)% *SZS *output *end *Proof/) { print F2 $1;}
+    close(F1); close(F2);
+    $File = $File3;
+}
+
 
 
 # #----Get format and transform options if specified
