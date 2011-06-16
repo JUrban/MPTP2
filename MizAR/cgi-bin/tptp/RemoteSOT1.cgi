@@ -43,12 +43,12 @@ my $col1 = $col - 4;
 
 my $ext = "";
 if($input_idv == 1) { 
-    $ext = ".eout"; 
+    $ext = ".eout1"; 
     $URLParameters{"IDV"} = "-T";
     $URLParameters{"SystemOnTSTP"} = "-S";
 }
 elsif($input_idv == 2) { 
-    $ext = ".eout"; 
+    $ext = ".eout1"; 
     $URLParameters{"SystemOnTSTP"} = "-S";
 }
 else {     $URLParameters{"SystemOnTPTP"} = "-P"; }
