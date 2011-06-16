@@ -63,7 +63,7 @@ my $File3 = $File . '2';
 
 if((-e $File) && ($input_idv > 0))
 {
-    local $/;open(F1,$File);open(F2,">$File3"); $_=<>; 
+    local $/;open(F1,$File);open(F2,">$File3"); $_=<F1>; 
     if(m/% *SZS *output *start *Proof.*((.|[\n])*?)% *SZS *output *end *Proof/) { print F2 $1;}
     close(F1); close(F2);
     $File = $File3;
