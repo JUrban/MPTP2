@@ -628,6 +628,11 @@ my $galwaysrefsregexp = $gmizrefsregexp;
 
 $galwaysrefsregexp = $gisarefsregexp if($galwaysmizrefs == 3);
 
+# Vampire version. We should allow more ATP versions/strategies to be
+# run simultaneously, this is a quick hack.
+
+my $gvampire_version = '0.6'; # another option is '9'
+
 
 # list of all handled atps
 my @gallatps = ('atp_E','atp_EP','atp_SPASS','atp_VAMPIRE','atp_PARADOX',
@@ -2390,17 +2395,25 @@ sub RunProblems
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 	    my $vamp_status_line =
-		`bin/runwtlimit $gtimelimit bin/vampire9 --output_syntax tptp -t $gtimelimit $file 2>$file.errv | tee $file.vout |grep "Refutation"`;
+		($gvampire_version eq '9') ? 
+		`bin/runwtlimit $gtimelimit bin/vampire9 --output_syntax tptp -t $gtimelimit $file 2>$file.errv | tee $file.vout |grep "Refutation"`
+		: ($gvampire_version eq '0.6') ?
+		`bin/runwtlimit $gtimelimit bin/vampire_rel2 -proof tptp -output_axiom_names on --mode casc -t $gtimelimit -m 1234 -input_file $file 2>$file.errv | tee $file.vout |grep "Refutation"`
+		: '';
 
 	    if ($vamp_status_line=~m/Refutation/)
 	    {
 		$vamp_status = szs_THEOREM;
 		$status      = szs_THEOREM;
 		($gtimelimit = $mintimelimit) if ($keep_cpu_limit == 0);
+		my $vampire_regexp = ($gvampire_version eq '9') ? '.*, *file\([^\),]+, *([a-z0-9A-Z_]+) *\)' :
+		    ($gvampire_version eq '0.6') ? '.*\bfile\([^\),]+, *([a-z0-9A-Z_]+) *\)' : '';
 		my $vamp_pid = open(VP,"cat $file.vout |grep file|") or die("Cannot start grep");
+		
 		while ($_=<VP>)
 		{
-		    m/.*, *file\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $file: $_";
+		    # m/.*, *file\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $file: $_";
+		    m/$vampire_regexp/ or die "bad proof line: $file: $_";
 		    my $ref = $1;
 		    exists $grefnr{$ref} or die "Unknown reference $ref in $file.vout: $_";
 		    push( @{$proved_by{$conj}}, $ref);
