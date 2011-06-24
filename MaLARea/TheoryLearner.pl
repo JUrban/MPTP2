@@ -2436,6 +2436,9 @@ sub RunProblems
 
 	if($status eq szs_THEOREM)
 	{
+	    # if the proof is empty, add at least the conjecture so
+	    # that we do not die here
+	    defined($proved_by{$conj}) or push( @{$proved_by{$conj}}, $conj);
 	    my $conj_refs = join(",", @{$proved_by{$conj}});
 	    print PROVED_BY "proved_by($conj,[$conj_refs]).\n";
 	    my %nonconj_refs = ();
