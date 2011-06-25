@@ -2398,10 +2398,10 @@ sub RunProblems
 		($gvampire_version eq '9') ? 
 		`bin/runwtlimit $gtimelimit bin/vampire9 --output_syntax tptp -t $gtimelimit $file 2>$file.errv | tee $file.vout |grep "Refutation"`
 		: ($gvampire_version eq '0.6') ?
-		`bin/runwtlimit $gtimelimit bin/vampire_rel2 -proof tptp -output_axiom_names on --mode casc -t $gtimelimit -m 1234 -input_file $file 2>$file.errv | tee $file.vout |grep "Refutation"`
+		`bin/runwtlimit $gtimelimit bin/vampire_rel2 -proof tptp -output_axiom_names on --mode casc -t $gtimelimit -m 1234 -input_file $file 2>$file.errv | tee $file.vout |grep "SZS *[sS]tatus *Theorem"`
 		: '';
 
-	    if ($vamp_status_line=~m/Refutation/)
+	    if ($vamp_status_line=~m/Refutation|Theorem/)
 	    {
 		$vamp_status = szs_THEOREM;
 		$status      = szs_THEOREM;
