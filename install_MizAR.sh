@@ -21,11 +21,11 @@ wget ftp://mizar.uwb.edu.pl/pub/system/i386-linux/mizar-$ver-i386-linux.tar
 mkdir $ver
 tar xf mizar-$ver-i386-linux.tar -C$ver 
 cd $ver
-cvs -d:pserver:softdev@mizar.uwb.edu.pl:2401/srv/cvsroot co -rver_$cvsver kernel libtools
+cvs -d:pserver:softdev@mizar.uwb.edu.pl:2401/srv/cvsroot co -rver_$cvsver kernel libtools base
 cd kernel
-fpc -Sd -dCH_REPORT -dSCH_REPORT verifier.dpr 
+fpc -Sd -dCH_REPORT -dSCH_REPORT -Fu../base verifier.dpr 
 cd ../libtools
-fpc -Sd -Fu../kernel envget.dpr
+fpc -Sd -Fu../base -Fu../kernel envget.dpr
 cd ..
 ### TODO: fix mizf!!
 
