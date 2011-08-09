@@ -93,7 +93,7 @@ cp hidden.dco2 pl/hidden.dco2
 ln -s ../mml.lar mml.lar
 
 ln -s $root/$ver $ph/$ver
-ln -s $root/$ver $ph/$mymml
+ln -s $root/$ver $mymml
 ln -s /home/mptp/gitrepo/xsl4mizar $ph/xsl4mizar
 
 cp /home/mptp/gitrepo/MPTP2/MizAR/cgi-bin/bin/* $mycgi 
