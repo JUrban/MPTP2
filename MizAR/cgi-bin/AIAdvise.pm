@@ -641,6 +641,56 @@ sub TstLoop1
 
 }
 
+
+## test: 
+## perl -e 'use AIAdvise;  AIAdvise::TstLoop2("swipl","00allBushy2","uuu",".","/home/urban/ec/Snow_v3.2/snow", 16);'
+
+sub TstLoop2
+{
+    my ($prolog, $filelist, $filestem, $prologdir, $path2snow, $gtimelimit, $initrunfile) = @_;
+    my $symoffset = 500000;
+    my $advisor = "/home/urban/gr/MPTP2/MizAR/cgi-bin/advisor_lean.pl";
+    my $advlimit = 64;
+    LeancopClausify($prolog, $filelist, $filestem, $prologdir);
+    my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) =  CreateTables($symoffset, $filestem);
+    my ($prob2cl,$prob2conj) = CreateProb2Cl($filestem,$grefnr);
+
+    my $targetsnr = (scalar @$gnrref) - 1;
+#    CreateArch($filestem, $targetsnr);
+
+    my $proved_by = PrintProvedBy0($symoffset, $filestem, $grefnr); 
+    PrintTrainingFromHash($filestem,0,$proved_by,$grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref);
+
+    my $iter = 1;
+
+    my $initprobs = $prob2cl;
+    if(defined $initrunfile)
+    {
+	open(I,$initrunfile); my %h=();
+	while(<I>) { chop; $h{$_} = (); }
+	close(I);
+	$initprobs = \%h;
+    }
+
+    RunLeancopProblems($filestem,$initprobs,"./leancop_dnf.sh", $prologdir, $iter, "",1);
+
+    while (0==0)
+    {
+	my $proved_byN = CollectProvedByN($symoffset, $filestem, $iter, $grefnr, $prob2conj); 
+	PrintTrainingFromClauseHash($filestem,$iter,$proved_byN,$grefnr,$gsymnr,$gsymarity,$grefsyms,$gnrsym,$gnrref,3);
+	Learn($path2snow, $filestem, $targetsnr, $iter);
+
+	my ($aport, $adv_pid) =
+	    StartAdvisor($path2snow, $advisor, $symoffset, $filestem, $advlimit, $iter+1);
+	print "$aport,##\n";
+
+	$iter++;
+	RunLeancopProblems($filestem,$initprobs,"./leancopscale1.sh1", $prologdir, $iter, " localhost:$aport $gtimelimit",1);
+
+	`kill $adv_pid`;
+    }
+}
+
 ## test: load advisor on pre-learned data
 ## 
 # perl -e 'use AIAdvise;  my ($aport, $adv_pid)=AIAdvise::StartAdvisor("/home/urban/ec/Snow_v3.2/snow","/home/urban/gr/MPTP2/MizAR/cgi-bin/advisor_lean.pl",500000,"uu",64,2); print "$aport,##\n";'
