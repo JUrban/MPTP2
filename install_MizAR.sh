@@ -104,6 +104,9 @@ sed -ie "s/^mml_dir(.*/mml_dir(\"\/home\/mptp\/mizwrk\/$ver\/MPTP2\/pl\/\")./" u
 sed -ie "s/^bindir=.*/bindir=$bindir/" $mycgi/mizf
 sed -ie "s/^\(my .MyUrl = \).http:..mws.cs.ru.nl.~mptp.;/\1'$myurl';/" $mycgi/MizAR.cgi
 
+## this is needed in the showby.cgi, however showby now seems symlinked to the main dir??
+# sed -ie "s/^\(my .MyUrl = \).http:..mws.cs.ru.nl.~mptp.;/\1'$myurl';/" $mycgi/showby.cgi
+
 
 ## this will fail in suse, forcing us to create a symlink to "pl" from ~mptp/bin/swipl
 which swipl > /dev/null ; if [ $? != 0 ]; then echo "swipl not executable, exiting"; exit 1; fi
@@ -118,3 +121,7 @@ cat Axioms/*.ax > 00allmmlax
 # xsl4mizar expected in public_html - done
 # ERROR: script_file `/home/mptp/public_html/cgi-bin/bin4.160.1126/utils.pl' does not exist - DONE
 # The requested URL /~mptp/cgi-bin/bin4.160.1126/showby.cgi was not found on this server.
+
+# The requested URL /~mptp/cgi-bin/tptp/RemoteSOT1.cgi was not found on this server.
+# - one-time symlink from ~/gr/MPTP2/MizAR/cgi-bin/tptp needed in ~ph/cgi-bin/tptp
+# - one-time: icons in ~/ph
