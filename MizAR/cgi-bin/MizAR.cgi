@@ -465,10 +465,19 @@ my $errorsnr = `wc -l <$ProblemFileErr`;
 
 if($proveunsolved eq 'All')
 {
+    my %done = ();
     open(ERR,$ProblemFileErr);
     while (<ERR>)
     {
-	if(m/^(\d+) +(\d+) +[14] *$/) { push(@provepositions, "pos(" . $1 . ',' . $2 . ")" ); }
+	if(m/^(\d+) +(\d+) +[14] *$/) 
+	{ 
+	    my $pos = "pos(" . $1 . ',' . $2 . ")";
+	    if( ! exists( $done{$pos}) )
+	    {
+		push(@provepositions, $pos ); 
+		$done{$pos}++;
+	    }
+	}
     }
     close(ERR);
     $ATPProblemList = ',problem_list([' . join(',', @provepositions) . '])';
