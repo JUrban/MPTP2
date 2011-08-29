@@ -90,10 +90,12 @@ sub HTMLize
     if(($ref=~m/^([dtl][0-9]+)_(.*)$/) 
        || ($ref=~m/^(s[0-9]+)_(.*?)__.*$/) 
        || ($ref=~m/^([fcr]c[0-9]+)_(.*)$/) 
+       || ($ref=~m/^(ie[0-9]+)_(.*)$/) 
        || ($ref=~m/^dt_([klmugrv][0-9]+)_(.*)$/))
     {
 	my ($kind,$ar) = ($1,$2);
 	if(($ref=~m/^l.*/) && ($kind =~ m/^l(.*)/)) { $kind = 'e' . $1; }
+	elsif(($kind =~ m/^ie(.*)/)) { $kind = 'iy' . $1; }
 	if($ar eq $input_article) {$res  = '#'.  uc($kind); }
 	else {$res  = $MizHtml . $ar . '.html#' . uc($kind); }
 	$title =  uc($ar) . ":" . uc($kind);
