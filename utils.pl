@@ -5505,6 +5505,12 @@ level_atom([H|T],Atom):- ground([H|T]),
 strip_univ_quant((! Vars : X ),Y,[Vars | VarsX]):- !,strip_univ_quant(X,Y,VarsX).
 strip_univ_quant(X,X,[]).
 
+%% strip_possible_antecedent(+FlaIn,-StrippedFla)
+%%
+%% strip at most one antecedent if any exists
+strip_possible_antecedent(( _ => B), B):- !.
+strip_possible_antecedent(X,X).
+
 %% installs the indeces for fast lookup of fof's;
 %% should be called only after addition of custom fof's like
 %% scheme instance, e.g.:
@@ -5644,7 +5650,8 @@ assert_syms(_,Ref1,definition,[],_,_,Id,_,Sec1,[redefinition(_,_,_,Sec2)|_]):-
 
 %% ###TODO: take the symbols from the UnivVars also for clusters (definitions?)
 assert_syms(identifyexp,Ref1,_,_,Fla1,File1,Id,LogicSyms,_,Spc):- !,
-	strip_univ_quant(Fla1, ( KTerm = _), UnivVars),
+	strip_univ_quant(Fla1, Fla2, UnivVars),
+	strip_possible_antecedent(Fla2, ( KTerm = _)),
 	collect_symbols_top([KTerm | UnivVars], AllSyms),
 	subtract(AllSyms,LogicSyms,Syms),
 	assert(fof_identifyexp(File1,Ref1,Syms)),
