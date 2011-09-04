@@ -6,6 +6,7 @@ use strict;
 my $tl = 1 + shift @ARGV;
 my $prog = shift @ARGV;
 my $filestem = shift @ARGV;
+my $mmlversion = shift @ARGV;   # needed for minimization
 # my $vampire_params_sd  = shift @ARGV;  
 my $vampire_params2 = join(' ', @ARGV);
 my $vampire_params_sd = " -ss included -sd "; # the -d sine param without a number
@@ -31,8 +32,21 @@ while($num > 0)
 	my $exit_code = system('grep', '-q', '\\bfile(',  "$filestem$ext.eout1");
 	if(0 == $exit_code)
 	{
-	    `grep 'SZS status' $filestem$ext.eout1 |tail -n1 > $filestem.status`;
-	    exec('grep', '\\bfile(',  "$filestem$ext.eout1");
+	    my $ext0 = $ext;
+	    open(F1,"$filestem$ext.eout1");
+	    while(<F1>) 
+	    {
+		if(m/.*\bfile\([^\),]+, *([a-z0-9A-Z_]+) *\)/)
+		{
+		    `grep -h "^fof.$1," /home/mptp/public_html/mml$mmlversion/mptp/00allmmlax  $filestem$ext >> $filestem.small `; }
+	    }
+	    close(F1);
+	    system("ulimit -t $tl; $prog $vampire_params2 $filestem.small > $filestem.small.eout1");
+	    my $exit_code1 = system('grep', '-q', '\\bfile(',  "$filestem.small.eout1");
+	    $ext0 = '.small' if(0 == $exit_code1);
+
+	    `grep 'SZS status' $filestem$ext0.eout1 |tail -n1 > $filestem.status`;
+	    exec('grep', '\\bfile(',  "$filestem$ext0.eout1");
 	    exit 0;
 	}
     }
