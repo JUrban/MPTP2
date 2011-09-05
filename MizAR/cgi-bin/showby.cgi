@@ -35,6 +35,7 @@ my $mmlversion    = $query->param('MMLVersion');
 (defined $eprover) or $eprover = 0;
 (defined $advice) or $advice = 0;
 (defined $unification) or $unification = 0;
+(defined $aport) or $aport = 50001;
 $mmlversion   = '4.100.1011' unless defined($mmlversion);
 
 # my $MyUrl = 'http://octopi.mizar.org/~mptp';
