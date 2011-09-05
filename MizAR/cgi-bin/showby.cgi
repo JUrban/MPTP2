@@ -5,8 +5,9 @@ use CGI;
 use IO::Socket;
 use File::Temp qw/ :mktemp  /;
 use IPC::Open2;
-use HTTP::Request::Common;
+use HTTP::Request::Common qw(POST);
 use LWP::Simple;
+use LWP::UserAgent;
 
 # possible SZS statuses
 sub szs_INIT        ()  { 'Initial' } # system was not run on the problem yet
@@ -26,12 +27,14 @@ my $htmlize	  = $query->param('HTML');
 my $spass	  = $query->param('spass');
 my $eprover	  = $query->param('eprover');
 my $advice	  = $query->param('advice');
+my $unification	  = $query->param('unification');
 my $aport	  = $query->param('ap');
 my $mmlversion    = $query->param('MMLVersion');
 
 (defined $spass) or $spass = 0;
 (defined $eprover) or $eprover = 0;
 (defined $advice) or $advice = 0;
+(defined $unification) or $unification = 0;
 $mmlversion   = '4.100.1011' unless defined($mmlversion);
 
 # my $MyUrl = 'http://octopi.mizar.org/~mptp';
@@ -59,6 +62,7 @@ my $mizpl = "$Xsl4MizarDir/mizpl.xsl";
 my $doatproof = 0;
 my $atproof = '@' . 'proof';
 
+my $UnificationServerUrl = 'http://cds.omdoc.org:8080/:search?mizar';
 
 
 my $advhost	  = "localhost";
@@ -185,6 +189,31 @@ sub GetRefs
     return @res;
 }
 
+# taken from mycgihol
+sub GetUnifications
+{
+    my ($fla, $limit) = @_;
+
+    $fla =~ s/[\n]+//;
+
+    if($fla=~ m/^<Not[^>]*\><For[^>]*\>(.*?)\<\/For\>\<\/Not\>/)
+    {
+	my @res = ();
+	my $UnifQuery = '<Query><Qvar nr="1"/><Exists>' . $1 . '</Exists></Query>';	
+	my $ua = new LWP::UserAgent;
+	$ua->timeout(10000);
+
+	my $response = $ua->request( POST $UnificationServerUrl, 
+				     Content_Type => 'text/xml', 
+				     Content => $UnifQuery)->as_string;
+        while($response =~ m/uri=.http:..www.mizar.org.version.current.html.([a-z0-9_]+)\.html[#]([TD])(\d+)/g)
+	{
+	    push( @res, lc($2) . $3 . '_' .$1);
+	}
+	return @res;
+    }
+    else { return ('DOWN'); }
+}
 
 
 
@@ -196,6 +225,7 @@ if($htmlize != 1)
 }
 else { print $query->header('text/xml');}
 
+my $AbsXml = "$TemporaryDirectory/matp_" . $input_tmp . "/" . $input_article . '.xml.abs';
 my $File0 = "$TemporaryDirectory/matp_" . $input_tmp . "/problems/" . 
     $input_article . "/" . $input_article . "__" . $line . "_";
 my $File1 = $File0 . $col;
@@ -249,6 +279,22 @@ if(    open(F,$File))
 		@refs = GetRefs($conj_syms, $advlimit);
 		$status = szs_THEOREM;
 	    }
+
+##--- Ask a unification query
+	    elsif($unification == 1)
+	    {
+		my $proposition;
+		open (ABSXML,$AbsXml);
+		{
+		    local $/; my $whole_file = <ABSXML>;
+		    $whole_file =~ m/\<Proposition.*\bline=\"$line\"[^>]*\>(.*?)\<\/Proposition\>/sg;
+		    my $proposition = $1;
+		    @refs = GetUnifications($proposition, $advlimit);
+		    $status = szs_THEOREM;
+		}
+		close(ABSXML);
+	    }
+
 
 
 ##--- This is the default - EP
@@ -316,7 +362,7 @@ if(    open(F,$File))
 		if($htmlize == 1)
 		{
 		    print '<?xml version="1.0"?><div>';
-		    if($advice == 1)
+		    if(($advice == 1) || ($unification == 1))
 		    {
 			print '<div class="box"><center><h4>Suggested hints</h4> ';
 #			print 'Suggested hints';
@@ -423,6 +469,14 @@ if(    open(F,$File))
 				     href=>'javascript:()',
 				     title=>"Suggest relevant references for proving this"},
 				    'Suggest hints, ');
+		    print    '<span> </span>';
+		    print $query->a({class=>"txt",
+				     onclick=>"makeRequest(this,\'$MyUrl/cgi-bin/$Bindir/showby.cgi?article=" .
+				     $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp .
+				     '&ap=' . $aport . '&ATP=refs&HTML=1&unification=1\')',
+				     href=>'javascript:()',
+				     title=>"Find unifying theorems (needs existential proposition)"},
+				    'Unification query, ');
 		    print    '<span> </span>';
 		    print $query->a({class=>"txt",
 				     onclick=>"makeRequest(this,\'$MyUrl/cgi-bin/$Bindir/showby.cgi?article=" .
