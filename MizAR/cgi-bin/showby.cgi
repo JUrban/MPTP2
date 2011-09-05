@@ -199,7 +199,7 @@ sub GetUnifications
 
     print LOG ('Unif1: ', $fla) if ($debug == 1);
 
-    $fla =~ s/[\n]+//;
+    $fla =~ s/[\n\r]+//g;
 
     print LOG ('Unif2: ', $fla) if ($debug == 1);
 
@@ -304,7 +304,7 @@ if(    open(F,$File))
 		open (ABSXML,$AbsXml);
 		{
 		    local $/; my $whole_file = <ABSXML>;
-		    $whole_file =~ m/\<Proposition.*\bline=\"$line\"[^>]*\>(.*?)\<\/Proposition\>/sg;
+		    $whole_file =~ m/\<Proposition[^>]*\bline=\"$line\"[^>]*\>(.*?)\<\/Proposition\>/sg;
 		    my $proposition = $1;
 		    @refs = GetUnifications($proposition, $advlimit);
 		    $status = szs_THEOREM;
