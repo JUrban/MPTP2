@@ -68,6 +68,9 @@ my $UnificationServerUrl = 'http://cds.omdoc.org:8080/:search?mizar';
 my $advhost	  = "localhost";
 my $advlimit	  = 16;
 
+my $debug = 0;
+
+my $LogFile = '';
 
 my %grefsyms =();     # Ref2Sym hash for each reference array of its symbols
 my %greftrmstd =();   # Ref2Sym hash for each reference array of its stdterms (their shared-entry numbers)
@@ -194,18 +197,27 @@ sub GetUnifications
 {
     my ($fla, $limit) = @_;
 
+    print LOG ('Unif1: ', $fla) if ($debug == 1);
+
     $fla =~ s/[\n]+//;
+
+    print LOG ('Unif2: ', $fla) if ($debug == 1);
 
     if($fla=~ m/^<Not[^>]*\><For[^>]*\>(.*?)\<\/For\>\<\/Not\>/)
     {
 	my @res = ();
 	my $UnifQuery = '<Query><Qvar nr="1"/><Exists>' . $1 . '</Exists></Query>';	
+	print LOG ('Unif3: ', $UnifQuery) if ($debug == 1);
+
 	my $ua = new LWP::UserAgent;
 	$ua->timeout(10000);
 
 	my $response = $ua->request( POST $UnificationServerUrl, 
 				     Content_Type => 'text/xml', 
 				     Content => $UnifQuery)->as_string;
+
+	print LOG ('Unif4: ', $response) if ($debug == 1);
+
         while($response =~ m/uri=.http:..www.mizar.org.version.current.html.([a-z0-9_]+)\.html[#]([TD])(\d+)/g)
 	{
 	    push( @res, lc($2) . $3 . '_' .$1);
@@ -226,6 +238,11 @@ if($htmlize != 1)
 else { print $query->header('text/xml');}
 
 my $AbsXml = "$TemporaryDirectory/matp_" . $input_tmp . "/" . $input_article . '.xml.abs';
+
+my $LogFile = "$TemporaryDirectory/matp_" . $input_tmp . "/" . $input_article . 'log1';
+
+open(LOG, ">>$LogFile") if($debug == 1);
+
 my $File0 = "$TemporaryDirectory/matp_" . $input_tmp . "/problems/" . 
     $input_article . "/" . $input_article . "__" . $line . "_";
 my $File1 = $File0 . $col;
