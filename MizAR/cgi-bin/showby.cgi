@@ -241,7 +241,7 @@ else { print $query->header('text/xml');}
 
 my $AbsXml = "$TemporaryDirectory/matp_" . $input_tmp . "/" . $input_article . '.xml.abs';
 
-my $LogFile = "$TemporaryDirectory/matp_" . $input_tmp . "/" . $input_article . 'log1';
+my $LogFile = "$TemporaryDirectory/matp_" . $input_tmp . "/" . $input_article . '.log1';
 
 open(LOG, ">>$LogFile") if($debug == 1);
 
