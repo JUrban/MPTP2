@@ -494,7 +494,7 @@ if(    open(F,$File))
 		{
 		    print $query->a({class=>"txt",
 				     onclick=>"makeRequest(this,\'$MyUrl/cgi-bin/$Bindir/showby.cgi?article=" .
-				     $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp .
+				     $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&MMLVersion=' . $mmlversion .
 				     '&ap=' . $aport . '&ATP=refs&HTML=1&advice=1\')',
 				     href=>'javascript:()',
 				     title=>"Suggest relevant references for proving this"},
@@ -502,7 +502,7 @@ if(    open(F,$File))
 		    print    '<span> </span>';
 		    print $query->a({class=>"txt",
 				     onclick=>"makeRequest(this,\'$MyUrl/cgi-bin/$Bindir/showby.cgi?article=" .
-				     $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp .
+				     $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&MMLVersion=' . $mmlversion .
 				     '&ap=' . $aport . '&ATP=refs&HTML=1&unification=1\')',
 				     href=>'javascript:()',
 				     title=>"Find unifying theorems (needs existential proposition)"},
@@ -510,14 +510,14 @@ if(    open(F,$File))
 		    print    '<span> </span>';
 		    print $query->a({class=>"txt",
 				     onclick=>"makeRequest(this,\'$MyUrl/cgi-bin/$Bindir/showby.cgi?article=" .
-				     $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp .
+				     $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&MMLVersion=' . $mmlversion .
 				     '&ap=' . $aport . '&ATP=refs&HTML=1&spass=1\')',
 				     href=>'javascript:()',
 				     title=>"Try the SPASS ATP system"},
 				    'Try SPASS, ');
 		    print    '<span> </span>';
 		    print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
-				     $input_article . '&lc=' . $input_lc .
+				     $input_article . '&lc=' . $input_lc . '&MMLVersion=' . $mmlversion .
 				     '&tmp=' . $input_tmp . '&DM=1',
 				     title=>"Try 20+ ATP systems in SystemOnTPTP"},
 				    "Export problem to SystemOnTPTP");
