@@ -201,22 +201,24 @@ sub GetUnifications
 
     $fla =~ s/[\n\r]+//g;
 
-    print LOG ('Unif2: ', $fla) if ($debug == 1);
+    print LOG ('Unif2: ', $fla, "\n") if ($debug == 1);
 
     if($fla=~ m/^<Not[^>]*\><For[^>]*\>(.*?)\<\/For\>\<\/Not\>/)
     {
 	my @res = ();
 	my $UnifQuery = '<Query><Qvar nr="1"/><Exists>' . $1 . '</Exists></Query>';	
-	print LOG ('Unif3: ', $UnifQuery) if ($debug == 1);
+	print LOG ('Unif3: ', $UnifQuery, "\n") if ($debug == 1);
 
 	my $ua = new LWP::UserAgent;
 	$ua->timeout(10000);
 
 	my $response = $ua->request( POST $UnificationServerUrl, 
 				     Content_Type => 'text/xml', 
+				     MMLVersion => $mmlversion,
+				     Aid => uc($input_article),
 				     Content => $UnifQuery)->as_string;
 
-	print LOG ('Unif4: ', $response) if ($debug == 1);
+	print LOG ('Unif4: ', $response, "\n") if ($debug == 1);
 
         while($response =~ m/uri=.http:..www.mizar.org.version.current.html.([a-z0-9_]+)\.html[#]([TD])(\d+)/g)
 	{
