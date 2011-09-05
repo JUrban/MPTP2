@@ -427,9 +427,14 @@ CreateTmpDir($ProblemDir);
 LogCGIParams();
 SetupArticleFiles();
 
+# temporary hack to prevent snow starting afresh
+$start_snow=0;
+
     # this has to precede creation of html, so that $aport
     # was set in the by-calls
 if($start_snow > 0) { ($advisorport, $snowport) = StartSNoW(); }
+else {$advisorport = 50001;}
+
 
 $ENV{"MIZFILES"}= $Mizfiles;
 if($gparallelize == 1)
