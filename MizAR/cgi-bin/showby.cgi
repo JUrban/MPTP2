@@ -175,9 +175,13 @@ sub min { my ($x,$y) = @_; ($x <= $y)? $x : $y }
 sub GetRefs
 {
     my ($syms, $limit) = @_;
+
+    print LOG ('GetRefs1: ', @$syms, "\n") if ($debug == 1);
     my ($msgin, @res1, @res);
     my $EOL = "\015\012";
     my $BLANK = $EOL x 2;
+
+    print LOG ('GetRefs2: ', $advhost, $aport, "\n") if ($debug == 1);
     my $remote = IO::Socket::INET->new( Proto     => "tcp",
 					PeerAddr  => $advhost,
 					PeerPort  => $aport,
