@@ -35,7 +35,13 @@ my $mmlversion    = $query->param('MMLVersion');
 (defined $eprover) or $eprover = 0;
 (defined $advice) or $advice = 0;
 (defined $unification) or $unification = 0;
+
+# manual startup:
+# nohup /home/mptp/gitrepo/MPTP2/MaLARea/bin/snow -server 50000  -o allboth -F /home/mptp/ph/7.11.06_4.145.1096/mptp/snowdata/thms3.net -A /home/mptp/ph/7.11.06_4.145.1096/mptp/snowdata/thms3.arch > /tmp/snow.out 2>&1 &
+# nohup /home/mptp/ph/cgi-bin/bin4.145.1096/advisor.pl -p 50000 -a 50001 -o 500000 /home/mptp/ph/7.11.06_4.145.1096/mptp/snowdata/thms3 > /tmp/advisor.out 2>&1 &
 (defined $aport) or $aport = 50001;
+
+
 $mmlversion   = '4.100.1011' unless defined($mmlversion);
 
 # my $MyUrl = 'http://octopi.mizar.org/~mptp';
@@ -242,7 +248,7 @@ else { print $query->header('text/xml');}
 
 my $AbsXml = "$TemporaryDirectory/matp_" . $input_tmp . "/" . $input_article . '.xml.abs';
 
-my $LogFile = "$TemporaryDirectory/matp_" . $input_tmp . "/" . $input_article . '.log1';
+$LogFile = "$TemporaryDirectory/matp_" . $input_tmp . "/" . $input_article . '.log1';
 
 open(LOG, ">>$LogFile") if($debug == 1);
 
