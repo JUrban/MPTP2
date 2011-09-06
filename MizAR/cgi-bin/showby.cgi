@@ -211,13 +211,14 @@ sub GetUnifications
     print LOG ('Unif1: ', $fla) if ($debug == 1);
 
     $fla =~ s/[\n\r]+//g;
+    $fla =~ s/\bConst/LocConst/g; # needed for MWS now
 
     print LOG ('Unif2: ', $fla, "\n") if ($debug == 1);
 
-    if($fla=~ m/^<Not[^>]*\><For[^>]*\>(.*?)\<\/For\>\<\/Not\>/)
+    if($fla=~ m/^<Not[^>]*\><For[^>]*\><Not[^>]*\>(.*?)<\/Not\>\<\/For\>\<\/Not\>/)
     {
 	my @res = ();
-	my $UnifQuery = '<Query><Qvar nr="1"/><Exists>' . $1 . '</Exists></Query>';	
+	my $UnifQuery = '<Query><Exists>' . $1 . '</Exists></Query>';	
 	print LOG ('Unif3: ', $UnifQuery, "\n") if ($debug == 1);
 
 	my $ua = new LWP::UserAgent;
