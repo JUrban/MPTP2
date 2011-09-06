@@ -211,7 +211,7 @@ sub GetUnifications
     print LOG ('Unif1: ', $fla) if ($debug == 1);
 
     $fla =~ s/[\n\r]+//g;
-    $fla =~ s/\bConst/LocConst/g; # needed for MWS now
+#    $fla =~ s/\bConst/LocConst/g; # needed for MWS now
 
     print LOG ('Unif2: ', $fla, "\n") if ($debug == 1);
 
