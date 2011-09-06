@@ -387,10 +387,11 @@ if(    open(F,$File))
  		if (!($status eq szs_THEOREM)) { @refs = () }
 	    }
 
+	    my $hints = $advice | $unification;
+
 ##--- Process references if found - AJAX
 	    if($#refs >= 0)
 	    {
-		my $hints = $advice | $unification;
 		if($htmlize == 1)
 		{
 		    print '<?xml version="1.0"?><div>';
