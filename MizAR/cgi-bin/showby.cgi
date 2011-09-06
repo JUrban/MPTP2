@@ -390,16 +390,17 @@ if(    open(F,$File))
 ##--- Process references if found - AJAX
 	    if($#refs >= 0)
 	    {
+		my $hints = $advice | $unification;
 		if($htmlize == 1)
 		{
 		    print '<?xml version="1.0"?><div>';
-		    if(($advice == 1) || ($unification == 1))
+		    if($hints == 1)
 		    {
 			print '<div class="box"><center><h4>Suggested hints</h4> ';
 #			print 'Suggested hints';
 		    }
 		    else { print '<div class="box"><center><h4>ATP explanation</h4> '; }
-		    if(($spass != 1) && ($advice != 1))
+		    if(($spass != 1) && ($hints != 1))
 		    {
 			print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
 					 $input_article . '&lc=' . $input_lc . '&tmp=' .
@@ -407,7 +408,7 @@ if(    open(F,$File))
 					$idv_img);
 			print ', ';
 		    }
-		    if(($spass != 1) && ($advice != 1))
+		    if(($spass != 1) && ($hints != 1))
 		    {
 			print $query->a({href=>"$MyUrl/cgi-bin/showtmpfile.cgi?file=problems/" . 
 					     $input_article . '/' . $input_article . '__' . $input_lc . '&tmp=' .
@@ -418,7 +419,7 @@ if(    open(F,$File))
 					$tptp_img);
 			print ', ';
 		    }
-		    if(($spass != 1) && ($advice != 1))
+		    if(($spass != 1) && ($hints != 1))
 		    {
 			print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
 					     $input_article . '&lc=' . $input_lc . '&tmp=' .
@@ -427,7 +428,7 @@ if(    open(F,$File))
 					"Export problem to SystemOnTPTP");
 			print ', ';
 		    }
-		    if(($spass != 1) && ($advice != 1))
+		    if(($spass != 1) && ($hints != 1))
 		    {
 			print $query->a({href=>"$MyUrl/cgi-bin/showtmpfile.cgi?file=problems/" . 
 					     $input_article . '/' . $input_article . '__' . $input_lc . '&tmp=' .
@@ -438,7 +439,7 @@ if(    open(F,$File))
 					$tstp_img);
 			print ', ';
 		    }
-		    if(($spass != 1) && ($advice != 1))
+		    if(($spass != 1) && ($hints != 1))
 		    {
 			print $query->a({href=>"$MyUrl/cgi-bin/tptp/RemoteSOT1.cgi?article=" .
 					 $input_article . '&lc=' . $input_lc . '&tmp=' .
@@ -447,7 +448,7 @@ if(    open(F,$File))
 					"Export solution to SystemOnTSTP");
 			print ', ';
 		    }
-		    if(($spass != 1) && ($advice != 1))
+		    if(($spass != 1) && ($hints != 1))
 		    {
 			print ', ';
 			print $query->a({href=>"$MyUrl/cgi-bin/tptp/MMLQuery.cgi?article=" .
@@ -456,7 +457,7 @@ if(    open(F,$File))
 					 title=>"Translate ATP proof using MML Query (experimental)"},
 					"MMLQuery (very experimental)");
 		    }
-		    print "<br>\n",'<h4>ATP Proof References</h4>' if($advice != 1);
+		    print "<br>\n",'<h4>ATP Proof References</h4>' if($hints != 1);
 #		    print $query->a({href=>"$MyUrl/cgi-bin/showby.cgi?article=" . $input_article . '&lc=' . $input_lc . '&tmp=' . $input_tmp . '&DM=1'}, "Do more"), " ):<br>\n";
 
 		    foreach my $ref (@refs)
@@ -479,7 +480,7 @@ if(    open(F,$File))
 			}
 			else {print $ref,", ";}
 		    }
-#		    if($advice != 1) { print "</center><br/></div>"; }
+#		    if($hints != 1) { print "</center><br/></div>"; }
 		    print "</center><br/></div>";
 		    print "</div>";
 		}
@@ -491,7 +492,7 @@ if(    open(F,$File))
 		print '<div class="box"><center><h4>ATP Proof not found</h4> ',
 		"status: $status", '<br/>';
 #		print "ATP Proof not found (status: $status, ";
-		if(($spass != 1) && ($advice != 1))
+		if(($spass != 1) && ($hints != 1))
 		{
 		    print $query->a({class=>"txt",
 				     onclick=>"makeRequest(this,\'$MyUrl/cgi-bin/$Bindir/showby.cgi?article=" .
