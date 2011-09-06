@@ -215,10 +215,10 @@ sub GetUnifications
 
     print LOG ('Unif2: ', $fla, "\n") if ($debug == 1);
 
-    if($fla=~ m/^<Not[^>]*\><For[^>]*\><Not[^>]*\>(.*?)<\/Not\>\<\/For\>\<\/Not\>/)
+    if($fla=~ m/^<Not[^>]*\><For[^>]*\>(<Typ (.*?)\<\/Typ\>)<Not[^>]*\>(.*?)<\/Not\>\<\/For\>\<\/Not\>/)
     {
 	my @res = ();
-	my $UnifQuery = '<Query><Exists>' . $1 . '</Exists></Query>';	
+	my $UnifQuery = '<Query><Exists>' . $1 . $3 . '</Exists></Query>';	
 	print LOG ('Unif3: ', $UnifQuery, "\n") if ($debug == 1);
 
 	my $ua = new LWP::UserAgent;
