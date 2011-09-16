@@ -1,1 +1,1 @@
-my $MyUrl = 'http://mws.cs.ru.nl/~mptp';
+sub MyUrl () { 'http://mws.cs.ru.nl/~mptp' }
