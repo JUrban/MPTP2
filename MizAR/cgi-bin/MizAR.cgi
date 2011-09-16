@@ -17,6 +17,7 @@ use MPTPNames;
 sub szs_INIT        ()  { 'Initial' } # system was not run on the problem yet
 sub szs_UNKNOWN     ()  { 'Unknown' } # used when system dies
 sub szs_THEOREM     ()  { 'Theorem' }
+sub szs_UNSAT       ()  { 'Unsatisfiable' }
 sub szs_COUNTERSAT  ()  { 'CounterSatisfiable' }
 sub szs_RESOUT      ()  { 'ResourceOut' }
 sub szs_GAVEUP      ()  { 'GaveUp' }   # system exited before the time limit for unknown reason
@@ -798,7 +799,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0) || ($gemulate_all_by == 4))
 		{
 		    #print "Bad vampire status line: $status_line, please complain";
 		}
- 		if (!($status eq szs_THEOREM)) 
+ 		if (!($status eq szs_THEOREM) && !($status eq szs_UNSAT)) 
 		{ @refs = (); @mizrefs = (); @simprefs = (); 
 		  print $fhout ($line, "_", $col, ":::", "Unsolved\n"); 
 		}
