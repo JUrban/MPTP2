@@ -11,6 +11,7 @@ use LWP::UserAgent;
 
 my $CgiDir = '/home/mptp/public_html/cgi-bin';
 do "$CgiDir/MizARconfig.pl";
+my $MyUrl = MyUrl();
 
 
 # possible SZS statuses
