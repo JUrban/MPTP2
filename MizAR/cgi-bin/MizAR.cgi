@@ -13,6 +13,9 @@ use LWP::Simple;
 use POSIX qw( WNOHANG );
 use MPTPNames;
 
+my $CgiDir = '/home/mptp/public_html/cgi-bin';
+do "$CgiDir/MizARconfig.pl";
+
 # possible SZS statuses
 sub szs_INIT        ()  { 'Initial' } # system was not run on the problem yet
 sub szs_UNKNOWN     ()  { 'Unknown' } # used when system dies
@@ -138,7 +141,6 @@ if (($proveunsolved eq "Positions") && (defined($provepositions)))
 }
 
 # my $MyUrl = 'http://octopi.mizar.org/~mptp';
-my $MyUrl = 'http://mws.cs.ru.nl/~mptp';
 my $PalmTreeUrl = $MyUrl . "/PalmTree.jpg";
 my $Xsl4MizarDir = "/home/mptp/public_html/xsl4mizar";
 my $Mizfiles = "/home/mptp/public_html/mml$mmlversion";
