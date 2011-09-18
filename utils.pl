@@ -4850,6 +4850,14 @@ constr2list(BinConstr, Last, [H,H1|T],Res):-
 	constr2list(BinConstr, Last, [H1|T], Tmp).
 constr2list(_BinConstr, T, [T], T):- !.
 
+% destruct also heads
+constr2list2(BinConstr, Last, List,Res):-
+	Res =.. [BinConstr, H, Tmp],!,
+	constr2list2(BinConstr, _, H0, H),
+	constr2list2(BinConstr, Last, List2, Tmp),
+	append(H0,List2,List).
+constr2list2(_BinConstr, T, [T], T):- !.
+
 
 print_refs_as_one_fla(Conjecture, AllRefs, _Options):-
 	delete(AllRefs, Conjecture, ProperRefs1),
@@ -5744,3 +5752,48 @@ expanded_franks(Flas,D):-
 dotimes(_,0).
 dotimes(X,N) :- N1 is N-1, (call(X);true), dotimes(X,N1).
 
+
+%%%%%%%%%%%%%%%%%%%% Prolog clauses for the type system %%%%%%%%%%%%%%%%%%%%
+
+% ##TEST: :- declare_mptp_predicates,load_mml,install_index,!, fof_cluster(A,B,C),fof(B,D,E,F,[mptp_info(_,_,ccluster,_,_)|_]),not(once(ccluster_to_clauses(E,J))).
+
+% ccluster_to_clauses(+CCl, -L)
+%
+%
+% Prune from Conseq the things present in Antec
+% ![ArgTypes]: ![LastVar:Typ] : sort(LastVar,(AntecedentConjunct)) => sort(LastVar,ConsequentConjunct) 
+% ArgTypes non empty followed by loci
+
+
+ccluster_to_clauses(! QVars: (![V:T]: (sort(V,Antec) => sort(V,Conseq))), L):- !,
+	append(QVars, [V:T], QVars1),
+	ccluster_to_clauses(! QVars1: (sort(V,Antec) => sort(V,Conseq)), L).
+
+ccluster_to_clauses(! QVars: (sort(V,Antec) => sort(V,Conseq)), L):- !,
+	sort_transform_qlist(QVars, Varlist, QConjunct),
+	sort_transform_top(sort(V,Antec), AntecConjunct),
+	sort_transform_top(sort(V,Conseq), ConseqConjunct),
+	Body = (QConjunct & AntecConjunct),
+%	write([QConjunct, AntecConjunct, ConseqConjunct, Body]),
+	constr2list2(&,_,BodyList,Body),
+	constr2list2(&,_,HeadList,ConseqConjunct),
+	numbervars([HeadList,BodyList],0,_),
+	subtract(HeadList,BodyList,NewHeadList),
+	write(NewHeadList :- BodyList),nl.
+	
+
+	
+
+
+% "!["; ploci(#nr=$l); " : "; apply[Typ]; "]: ("; 
+%     $ante = { `count(*[$pres + 2]/*)`; }
+%     $succ = { `count(*[$pres + 4]/*)`; }
+%     $srt_s; "("; ploci(#nr=$l); ",";
+%     if [$ante = 0] { "$true"; } else {
+%     if [$ante = 1] { apply[*[$pres + 2]]; } 
+%     else { "( "; apply[*[$pres + 2]]; " )"; } }
+%     ")"; $imp_s; $srt_s; "("; ploci(#nr=$l); ",";
+%     if [$succ = 0] { "$true"; } else {
+%     if [$succ = 1] { apply[*[$pres + 4]]; } 
+%     else { "( "; apply[*[$pres + 4]]; " )"; } }
+%     "))"; ",file("; lc(#s=`@aid`); ",";
