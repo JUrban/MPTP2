@@ -173,7 +173,8 @@ portray(A):- compound(A), A =.. [F|L], constr_name(F,Name,Quote),
 	    (Quote==1, write(''''),write(Name),write(''''))),
 	write('('), print_many(L), write(')').
 
-print_many([X]):- print(X).
+print_many([]).
+print_many([X]):- print(X),!.
 print_many([X|Y]):- print(X), write(','), print_many(Y).
 
 % explain tstp parsing
@@ -5759,7 +5760,7 @@ dotimes(X,N) :- N1 is N-1, (call(X);true), dotimes(X,N1).
 
 % ccluster_to_clauses(+CCl, -L)
 %
-%
+% Print ccluster as Prolog clauses.
 % Prune from Conseq the things present in Antec
 % ![ArgTypes]: ![LastVar:Typ] : sort(LastVar,(AntecedentConjunct)) => sort(LastVar,ConsequentConjunct) 
 % ArgTypes non empty followed by loci
@@ -5774,13 +5775,11 @@ ccluster_to_clauses(! QVars: (sort(V,Antec) => sort(V,Conseq)), L):- !,
 	sort_transform_top(sort(V,Antec), AntecConjunct),
 	sort_transform_top(sort(V,Conseq), ConseqConjunct),
 	Body = (QConjunct & AntecConjunct),
-%	write([QConjunct, AntecConjunct, ConseqConjunct, Body]),
 	constr2list2(&,_,BodyList,Body),
 	constr2list2(&,_,HeadList,ConseqConjunct),
 	numbervars([HeadList,BodyList],0,_),
 	subtract(HeadList,BodyList,NewHeadList),
-	write(NewHeadList :- BodyList),nl.
-	
+	findall(dummy,(member(H,NewHeadList), write(H), write(' :- '), print_many(BodyList),write('.'),nl),_).
 
 	
 
