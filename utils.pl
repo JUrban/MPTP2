@@ -5775,13 +5775,38 @@ ccluster_to_clauses(! QVars: (sort(V,Antec) => sort(V,Conseq)), L):- !,
 	sort_transform_top(sort(V,Antec), AntecConjunct),
 	sort_transform_top(sort(V,Conseq), ConseqConjunct),
 	Body = (QConjunct & AntecConjunct),
+	pair_conj_to_clauses(Body, ConseqConjunct).
+
+
+% ##TEST: :- declare_mptp_predicates,load_mml,install_index,!, fof_cluster(A,B,C),fof(B,D,E,F,[mptp_info(_,_,fcluster,_,_)|_]),not(once(fcluster_to_clauses(E,J))).
+
+fcluster_to_clauses( sort(T,Conseq), L):- !,
+	fcluster_to_clauses(! []: sort(T,Conseq), L).
+
+fcluster_to_clauses( ! QVars: sort(T,Conseq), L):- !,
+	sort_transform_qlist(QVars, Varlist, Body),
+	sort_transform_top(sort(T,Conseq), ConseqConjunct),
+	pair_conj_to_clauses(Body, ConseqConjunct).
+
+pair_conj_to_clauses(Body, ConseqConjunct):-
 	constr2list2(&,_,BodyList,Body),
 	constr2list2(&,_,HeadList,ConseqConjunct),
 	numbervars([HeadList,BodyList],0,_),
 	subtract(HeadList,BodyList,NewHeadList),
 	findall(dummy,(member(H,NewHeadList), write(H), write(' :- '), print_many(BodyList),write('.'),nl),_).
 
-	
+
+% "fof("; absk(#el=`.`,#kind="fc"); ",theorem,";
+%     apply[ArgTypes];
+%     $succ = { `count(Cluster[1]/*)`; }
+%     $srt_s; "("; apply[*[$pres + 2]];  ",";
+%     if [$succ = 0] { "$true"; } else {
+%     if [$succ = 1] { apply[Cluster[1]]; } 
+%     else { "( "; apply[Cluster[1]]; " )"; } }
+%     ")"; ",file("; lc(#s=`@aid`); ",";
+%     absk(#el=`.`,#kind="fc"); "),[mptp_info("; `@nr`; 
+%     ",[],fcluster,position(0,0),[";
+
 
 
 % "!["; ploci(#nr=$l); " : "; apply[Typ]; "]: ("; 
@@ -5796,3 +5821,5 @@ ccluster_to_clauses(! QVars: (sort(V,Antec) => sort(V,Conseq)), L):- !,
 %     if [$succ = 1] { apply[*[$pres + 4]]; } 
 %     else { "( "; apply[*[$pres + 4]]; " )"; } }
 %     "))"; ",file("; lc(#s=`@aid`); ",";
+
+
