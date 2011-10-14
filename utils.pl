@@ -173,7 +173,8 @@ portray(A):- compound(A), A =.. [F|L], constr_name(F,Name,Quote),
 	    (Quote==1, write(''''),write(Name),write(''''))),
 	write('('), print_many(L), write(')').
 
-print_many([X]):- print(X).
+print_many([]).
+print_many([X]):- print(X),!.
 print_many([X|Y]):- print(X), write(','), print_many(Y).
 
 % explain tstp parsing
@@ -4850,6 +4851,14 @@ constr2list(BinConstr, Last, [H,H1|T],Res):-
 	constr2list(BinConstr, Last, [H1|T], Tmp).
 constr2list(_BinConstr, T, [T], T):- !.
 
+% destruct also heads
+constr2list2(BinConstr, Last, List,Res):-
+	Res =.. [BinConstr, H, Tmp],!,
+	constr2list2(BinConstr, _, H0, H),
+	constr2list2(BinConstr, Last, List2, Tmp),
+	append(H0,List2,List).
+constr2list2(_BinConstr, T, [T], T):- !.
+
 
 print_refs_as_one_fla(Conjecture, AllRefs, _Options):-
 	delete(AllRefs, Conjecture, ProperRefs1),
@@ -5743,4 +5752,74 @@ expanded_franks(Flas,D):-
 
 dotimes(_,0).
 dotimes(X,N) :- N1 is N-1, (call(X);true), dotimes(X,N1).
+
+
+%%%%%%%%%%%%%%%%%%%% Prolog clauses for the type system %%%%%%%%%%%%%%%%%%%%
+
+% ##TEST: :- declare_mptp_predicates,load_mml,install_index,!, fof_cluster(A,B,C),fof(B,D,E,F,[mptp_info(_,_,ccluster,_,_)|_]),not(once(ccluster_to_clauses(E,J))).
+
+% ccluster_to_clauses(+CCl, -L)
+%
+% Print ccluster as Prolog clauses.
+% Prune from Conseq the things present in Antec
+% ![ArgTypes]: ![LastVar:Typ] : sort(LastVar,(AntecedentConjunct)) => sort(LastVar,ConsequentConjunct) 
+% ArgTypes non empty followed by loci
+
+
+ccluster_to_clauses(! QVars: (![V:T]: (sort(V,Antec) => sort(V,Conseq))), L):- !,
+	append(QVars, [V:T], QVars1),
+	ccluster_to_clauses(! QVars1: (sort(V,Antec) => sort(V,Conseq)), L).
+
+ccluster_to_clauses(! QVars: (sort(V,Antec) => sort(V,Conseq)), L):- !,
+	sort_transform_qlist(QVars, Varlist, QConjunct),
+	sort_transform_top(sort(V,Antec), AntecConjunct),
+	sort_transform_top(sort(V,Conseq), ConseqConjunct),
+	Body = (QConjunct & AntecConjunct),
+	pair_conj_to_clauses(Body, ConseqConjunct).
+
+
+% ##TEST: :- declare_mptp_predicates,load_mml,install_index,!, fof_cluster(A,B,C),fof(B,D,E,F,[mptp_info(_,_,fcluster,_,_)|_]),not(once(fcluster_to_clauses(E,J))).
+
+fcluster_to_clauses( sort(T,Conseq), L):- !,
+	fcluster_to_clauses(! []: sort(T,Conseq), L).
+
+fcluster_to_clauses( ! QVars: sort(T,Conseq), L):- !,
+	sort_transform_qlist(QVars, Varlist, Body),
+	sort_transform_top(sort(T,Conseq), ConseqConjunct),
+	pair_conj_to_clauses(Body, ConseqConjunct).
+
+pair_conj_to_clauses(Body, ConseqConjunct):-
+	constr2list2(&,_,BodyList,Body),
+	constr2list2(&,_,HeadList,ConseqConjunct),
+	numbervars([HeadList,BodyList],0,_),
+	subtract(HeadList,BodyList,NewHeadList),
+	findall(dummy,(member(H,NewHeadList), write(H), write(' :- '), print_many(BodyList),write('.'),nl),_).
+
+
+% "fof("; absk(#el=`.`,#kind="fc"); ",theorem,";
+%     apply[ArgTypes];
+%     $succ = { `count(Cluster[1]/*)`; }
+%     $srt_s; "("; apply[*[$pres + 2]];  ",";
+%     if [$succ = 0] { "$true"; } else {
+%     if [$succ = 1] { apply[Cluster[1]]; } 
+%     else { "( "; apply[Cluster[1]]; " )"; } }
+%     ")"; ",file("; lc(#s=`@aid`); ",";
+%     absk(#el=`.`,#kind="fc"); "),[mptp_info("; `@nr`; 
+%     ",[],fcluster,position(0,0),[";
+
+
+
+% "!["; ploci(#nr=$l); " : "; apply[Typ]; "]: ("; 
+%     $ante = { `count(*[$pres + 2]/*)`; }
+%     $succ = { `count(*[$pres + 4]/*)`; }
+%     $srt_s; "("; ploci(#nr=$l); ",";
+%     if [$ante = 0] { "$true"; } else {
+%     if [$ante = 1] { apply[*[$pres + 2]]; } 
+%     else { "( "; apply[*[$pres + 2]]; " )"; } }
+%     ")"; $imp_s; $srt_s; "("; ploci(#nr=$l); ",";
+%     if [$succ = 0] { "$true"; } else {
+%     if [$succ = 1] { apply[*[$pres + 4]]; } 
+%     else { "( "; apply[*[$pres + 4]]; " )"; } }
+%     "))"; ",file("; lc(#s=`@aid`); ",";
+
 
