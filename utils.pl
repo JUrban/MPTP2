@@ -5291,7 +5291,7 @@ print_for_nd(Q,InfKind,Refs,Assums,Options):-
 	;
 	  Q_1 == axiom, MpInfoRest = [_,henkin_axiom|_],!,
 	  %% this is not totally correct, the def is only partial
-	  Q1 = defnition %% plain
+	  Q1 = definition %% plain
 
 	%% these are defs I think, so just remove the commented code after a while 
 % 	;
