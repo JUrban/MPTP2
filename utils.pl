@@ -373,7 +373,7 @@ check_if_symbol(X1,S):-
 	).
 
 check_if_symbol_l([H|_],S):- check_if_symbol(H,S),!.
-check_if_symbol_l([_|T],S):- check_if_symbol_l(T,S),!.	
+check_if_symbol_l([_|T],S):- check_if_symbol_l(T,S),!.
 
 
 %%%%%%%%%%%%%%%%%%%% Sort relativization %%%%%%%%%%%%%%%%%%%%
@@ -766,7 +766,7 @@ mk_fraenkel_defs(File, [[V,C,_,GrC]|T], GrCopiesIn, GrCopiesOut, FrSyms, CachedG
 %% if cached, create the def and put the GroundCopy into normal GrCopies,
 %% so that the def is not created again (it will get caught by the previous clause).
 %% FrSyms are unchanged, because they contain CachedSym already
-mk_fraenkel_defs(File, [[V,C,Trm,GrC]|T], GrCopiesIn, GrCopiesOut, FrSyms, CachedGround, 
+mk_fraenkel_defs(File, [[V,C,Trm,GrC]|T], GrCopiesIn, GrCopiesOut, FrSyms, CachedGround,
 		 NewFrSyms, [[CachedSym,D]|Defs]):-
 	member([CachedSym,GrC], CachedGround), !,
 	mk_fraenkel_def(File, V, C, Trm, FrSyms, FrSyms, CachedSym, D),
@@ -774,7 +774,7 @@ mk_fraenkel_defs(File, [[V,C,Trm,GrC]|T], GrCopiesIn, GrCopiesOut, FrSyms, Cache
 			 GrCopiesOut, FrSyms, CachedGround, NewFrSyms, Defs).
 
 %% otherwise create the new def, update both GrCopies and FrSyms
-mk_fraenkel_defs(File, [[V,C,Trm,GrC]|T], GrCopiesIn, GrCopiesOut, FrSyms, CachedGround, 
+mk_fraenkel_defs(File, [[V,C,Trm,GrC]|T], GrCopiesIn, GrCopiesOut, FrSyms, CachedGround,
 		 NewFrSyms, [[NewSym,D]|Defs]):-
 	mk_fraenkel_def(File, V, C, Trm, FrSyms, FrSyms1, NewSym, D),
 	mk_fraenkel_defs(File, T, [[NewSym,GrC]|GrCopiesIn], GrCopiesOut,
@@ -988,7 +988,7 @@ fixpoint_(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
 	    sort(ConsInfos0, ConsInfos),
 	    union(OldSyms, NewSyms, AllSyms),
 	    add_rclusters_for_unhandled(F, Pos, RefsIn, AllSyms, ConsInfos, NewRClusters),
-	    union(RefsIn, NewRClusters, RefsOut)	    
+	    union(RefsIn, NewRClusters, RefsOut)
 	  ;
 	    RefsOut = RefsIn
 	  )
@@ -1549,13 +1549,13 @@ mk_nonnumeric:-
 	member(A,L),nonnumeric(A),
 	mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem]],[opt_REM_SCH_CONSTS]),fail.
 
-%% Create scheme problems for nonumeric articles 
+%% Create scheme problems for nonumeric articles
 mk_nonnumeric_schemes:-
 	declare_mptp_predicates,load_mml,scheme_articles(L),!,
 	member(A,L),nonnumeric(A),
 	mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[scheme]],[opt_REM_SCH_CONSTS,opt_MK_TPTP_INF]),fail.
 
-%% Create cluster problems for nonumeric articles 
+%% Create cluster problems for nonumeric articles
 mk_nonnumeric_clusters:-
 	declare_mptp_predicates,load_mml,all_articles(L),!,
 	member(A,L),nonnumeric(A),
@@ -1998,19 +1998,19 @@ create_top_infers:-
 	      sort_transform_top(Fla,Fla1),
 	      numbervars(Fla1,0,_),
 	      %% ###TODO: remove this when Geoff allows inferences without parents
-	      (Refs2 = [] ->		  
+	      (Refs2 = [] ->
 		  print(fof(Name,theorem,Fla1,file(A,Name))),
-		  write('.')		  
+		  write('.')
 	      ;
 		  Info1 = inference(mizar_proof,[status(thm)],Refs2),
 		  print(fof(Name,theorem,Fla1,Info1,[file(A,Name)])),
-		  write('.')		  
+		  write('.')
 	      )
 	  ;
 	      sort_transform_top(Fla,Fla1),
-	      numbervars(Fla1,0,_),	      
+	      numbervars(Fla1,0,_),
 	      print(fof(Name,Role,Fla1,file(A,Name))),
-	      write('.')	      
+	      write('.')
 	  ),
 	  nl,
 	  fail
@@ -2459,7 +2459,7 @@ mk_snow_input_for_learning(File,Options):-
 	dynamic(snow_refnr/2),
 	(
 	 member(opt_LEARN_SYMS_SMALL, Options) ->
-	 flag(snow_refnr,_,100000),	 
+	 flag(snow_refnr,_,100000),
 	 flag(snow_symnr,_,0)
 	;
 	 flag(snow_refnr,_,0),
@@ -2485,7 +2485,7 @@ mk_snow_input_for_learning(File,Options):-
 			 member(C,[t,d])), Refs1)
 	  ),
 	 (
-	  member(opt_LEARN_EDGE,Options) ->	  
+	  member(opt_LEARN_EDGE,Options) ->
 	  sort_transform_top(Fla,Fla1),
 	  numbervars(Fla1,0,_),
 	  term2list(Fla1,LL1),
@@ -2500,7 +2500,7 @@ mk_snow_input_for_learning(File,Options):-
 	 ;
 	  collect_symbols_top(Fla, AllSyms),
 	  subtract(AllSyms,LogicSyms,Syms),
-	  Syms = [_|_],		 
+	  Syms = [_|_],
 	  maplist(get_snow_symnr,Syms,SymNrs),
 	  maplist(get_snow_refnr,[Name|Refs1],RefNrs),
 	  append(SymNrs,RefNrs,AllNrs),
@@ -2612,12 +2612,12 @@ parse_snow_specs(File):-
 
 % %% boole.dre
 % req_Empty,               //4
-% req_EmptySet,            //5  
+% req_EmptySet,            //5
 % req_Union,               //16
 % req_Intersection,        //17
 % req_Subtraction,         //18
 % req_SymmetricDifference, //19
-% req_Meets,               //20  
+% req_Meets,               //20
 
 % %% hidden.dre
 % req_Any,                 //1
@@ -2642,7 +2642,7 @@ parse_snow_specs(File):-
 % req_SubDomElem,          //9
 
 
-  
+
 
 %%%%%%%%%%%%%%% generating numerical formulas %%%%%%%%%%%%%%%%%%%%
 
@@ -2670,7 +2670,7 @@ parse_snow_specs(File):-
 %%                       k6_xcmplx_0(B1,B2) ),file(arithm,spc1_arithm),
 %% -(-X) = X  fof(involutiveness_k4_xcmplx_0
 %% X*0 = 0  ARITHM:2
-%% X*1 = X  ARITHM:3 
+%% X*1 = X  ARITHM:3
 %% X*(-1) = -X fof(spc2_arithm,theorem,![B1: v1_xcmplx_0]: ( k3_xcmplx_0(B1,k4_xcmplx_0(1)) =  k4_xcmplx_0(B1)),
 %%                       file(arithm,spc2_arithm),
 %% (X")" = X   (what about 0? - holds) fof(involutiveness_k5_xcmplx_0
@@ -2695,7 +2695,7 @@ parse_snow_specs(File):-
 %% (-X) + (-Y) = -(X + Y)  fof(spc8_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0) ]:
 %%                           ( k2_xcmplx_0(k4_xcmplx_0(B1),k4_xcmplx_0(B2)) =
 %%                       k4_xcmplx_0(k2_xcmplx_0(B1,B2)) ),file(arithm,spc8_arithm),
-%% another strange phrasing of spc1, when + is not there    
+%% another strange phrasing of spc1, when + is not there
 %% (-X) - (-Y) = Y - X    fof(spc9_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0) ]:
 %%                        ( k6_xcmplx_0(k4_xcmplx_0(B1),k4_xcmplx_0(B2))  =
 %%                          k6_xcmplx_0(B2,B1) ),file(arithm,spc9_arithm),
@@ -2707,9 +2707,9 @@ parse_snow_specs(File):-
 %%                          k7_xcmplx_0(B2,B1) ),file(arithm,spc11_arithm),
 %% X*(Y") = X/Y      fof(spc12_arithm,theorem,![(B1: v1_xcmplx_0),(B2: v1_xcmplx_0) ]: ( k3_xcmplx_0(B1,k5_xcmplx_0(B2)) =
 %%                       k7_xcmplx_0(B1,B2) ),file(arithm,spc12_arithm),
-%% -(X - Y) = Y - X    
-%%                     
-%%                     
+%% -(X - Y) = Y - X
+%%
+%%
 
 
 %% (-X) - Y = -(X + Y)
@@ -2766,7 +2766,7 @@ decd_cmplx_nr([r|L1],MmlVersion,MizRes,RatNr,Hole):- decd_rat_nr([r|L1], MmlVers
 decd_rat_nr([r,n|L1],MmlVersion,MizRes,r(SNum,SDen),Hole):- !,
 	decd_signed_nr(L1, MmlVersion, MizNum, SNum1, [d|Rest]),
 	decd_signed_nr(Rest, MmlVersion, MizDen, SDen1, Hole),
-	ratnr_normalize_sgn(r(SNum1,SDen1), r(SNum,SDen)),	
+	ratnr_normalize_sgn(r(SNum1,SDen1), r(SNum,SDen)),
 	req_RealDiv(MmlVersion, Div),
 	MizRes =.. [Div, MizNum, MizDen].
 
@@ -2836,7 +2836,7 @@ create_eval_fla(rqLessOrEqual, Constructor, [MizNr1,MizNr2], [RatNr1,RatNr2], Fl
 create_eval_fla(_Req, Constructor, MizNumbers, _RatNrs, FuncTerm = MizRes):-
 	append(MizArgs, [MizRes], MizNumbers),
 	FuncTerm =.. [Constructor | MizArgs].
-	
+
 %% gen_eval_fof(+Name,-Fof,+Options)
 %%
 %% ##TODO: add a third debugging clause (ensure) if it's ok for callers
@@ -2994,7 +2994,7 @@ get_sym_subst(X,[_|T],Subst):- get_sym_subst(X,T,Subst).
 %% apply_sch_subst0(+SchemeSymbol,+Substitution,-Value)
 %%
 %% Apply one substitution to SchemeSymbol, yielding Value.
-%% 
+%%
 %% SchemeSymbol is assumed to be a scheme functor or predicate,
 %% without any arguments.
 apply_sch_subst0(Sym,Sym/([]:Val),Val):- !.
@@ -3057,12 +3057,12 @@ add_univ_context([H|T], Fla, ( ! [H|T] : ( Fla) )).
 %% Why does generalizing of local constants yield a valid theorem
 %% in this case:
 %% - the constants never appear in the original scheme, and what we
-%%   have is its instance (which involves only type checking, no 
-%%   special knowledge about the constant); therefore any object 
+%%   have is its instance (which involves only type checking, no
+%%   special knowledge about the constant); therefore any object
 %%   (with the same type) can be used at the place of the constant.
-%% 
+%%
 %% ##NOTE: fraenkels in schemes are already deanonymized here, therefore
-%%       we have to check sch_orig_copy/2 for instantiation: incase the 
+%%       we have to check sch_orig_copy/2 for instantiation: incase the
 %%       original scheme contained a fraenkel, we'll use the original.
 %%       This assumes that fraenkels will be abstracted after this (which is true).
 gen_sch_instance(SI_Name,F,Res,Options):-
@@ -3114,8 +3114,8 @@ gen_sch_instance(SI_Name,F,Res,Options):-
 %%   while the "scheme instance article" is loaded;
 %% - solution: when creating article problems ...
 %% - are there problems with computing background?:
-%%   - yes, if we only loaded the 
-%%   "scheme article's BG, then we cannot first instantiate, 
+%%   - yes, if we only loaded the
+%%   "scheme article's BG, then we cannot first instantiate,
 %%   and then compute BG, because the instantiation possibly contains constructors
 %%   which are not in the BG; however, we always load full MML; this leaves
 %%   out BG info only for the "scheme instance article" (if local consts are
@@ -3139,7 +3139,7 @@ gen_sch_instance(SI_Name,F,Res,Options):-
 %% - but in addition to the standard filtering of sublevel references,
 %%   filter also all the typing info for the scheme functors
 %% - compute background for the generalized scheme instance; it needs
-%%   to be done in the context of the instance article 
+%%   to be done in the context of the instance article
 
 %% - add to the top-level symbol set the symbols from the scheme instance
 %%   (actually those from the generalized-consts version should be enough)
@@ -3214,7 +3214,7 @@ get_top_scheme_instances_for1_l([H|T], SchAncestors, DoneThsIn, SchInstances, Do
 
 % mk_rec_sch_instance_problem_from_th(SI_Name,Options, SubstStackIn, NewSubstStack, SchInstsToDo):-
 %	mk_sch_instance_problem_from_th(SI_Name,Options, SubstStackIn, NewSubstStack, SchInstsToDo).
-	
+
 mk_sch_instance_problem_from_th_l(_Ancestors, [], _Options, _SubstStackIn).
 mk_sch_instance_problem_from_th_l(Ancestors, [SI_Name |T], Options, SubstStackIn):-
 	mk_sch_instance_problem_from_th(Ancestors,SI_Name,Options, SubstStackIn, _NewSubstStack,
@@ -3296,7 +3296,7 @@ mk_sch_instance_problem_from_th(Ancestors,SI_Name,Options, SubstStackIn, NewSubs
 	print([SubstStackIn, Fla1_1]),
 	instantiate_and_gen_sch_inst_many(SubstStackIn, Fla1_1, Fla1), write(hehe),nl,
 	print(Fla1),nl,
-	
+
 	collect_symbols_top( Fla1, Syms1),
 	NewSubstStack = [[UnivContext, NewConstSubst, Substs] | SubstStackIn],
 	NewAncestors = [[Problem1,InstArticle] | Ancestors],
@@ -3337,7 +3337,7 @@ mk_sch_instance_problem_from_th(Ancestors,SI_Name,Options, SubstStackIn, NewSubs
 				 Options,_Outfile,_Line,_Col,SchAllRefs),
 	get_sec_info_refs([], SchFuncsAndPreds,
 			  [mptp_info(_,_,functor,_,[scheme,type|_])|_], SchFuncTyps),
-	delete(SchAllRefs, S_Name, SchProperRefs1),	
+	delete(SchAllRefs, S_Name, SchProperRefs1),
 	subtract(SchProperRefs1, ProperRefs1, SchNewProperRefs0),
 	subtract(SchNewProperRefs0, SchFuncTyps, SchNewProperRefs2),
 	subtract(SchNewProperRefs2, SchInstsToDo, SchNewProperRefs1),
@@ -3383,8 +3383,8 @@ mk_sch_inst_name( [H | T], SchInst, SchInstName):-
 	),
 	assert(rec_sch_inst_name(SchInst1,N1)),
 	concat_atom([SchInst1, '__', N1], SchInstName).
-	
-	
+
+
 %% rec_instantiate_and_gen_sch_inst(+SubstStack, +Options, +Ancestors, +SchInst)
 %%
 %% Instantiate a scheme SchInst using the stack of substitutions SubstStack.
@@ -3405,7 +3405,7 @@ rec_instantiate_and_gen_sch_inst(SubstStack, Options, Ancestors, SchInst):-
 	nl.
 
 
-%% perform %% instantiate_and_gen_sch_inst/5 multiple times 
+%% perform %% instantiate_and_gen_sch_inst/5 multiple times
 instantiate_and_gen_sch_inst_many([], FlaIn, FlaIn).
 instantiate_and_gen_sch_inst_many([[UnivContext, NewConstSubst, Substs] | OldSubstStack], FlaIn, FlaOut):-
 	copy_term(FlaIn,Tmp),
@@ -3470,7 +3470,7 @@ assert_henkin_axioms(File,_Options):-
 	      create_henkin_axioms_let_top(Henkin_Refs,T,HaFofs)
 	  ;
 	      Mptp_info = mptp_info(_,_,_,_,[_,_,considered_constants(HC)|_]),
-	      maplist(atom_concat('dh_'),HC,Henkin_Refs),	    
+	      maplist(atom_concat('dh_'),HC,Henkin_Refs),
 	      create_henkin_axioms_consider_top(Henkin_Refs,Ref,HaFofs)
 	  ),
 	  checklist(assert,HaFofs),
@@ -3489,7 +3489,7 @@ assert_henkin_axioms(File,_Options):-
  1. get the ND inference references, i.e. [dh_c1_14,dh_c2_14,i1_14]
  2. look up the used referred thesis, i.e. i1_14
     (cannot use the orig. thesis, i.e. t2_abcmiz_0, because of thesis expansions)
- 3. look up the sort declaration, i.e.  dt_c1_14,dt_c2_14  
+ 3. look up the sort declaration, i.e.  dt_c1_14,dt_c2_14
  4. create henkin axiom for the last constant, i.e.
  4a. replace the last (n-th) constant everywhere with a new variable V_n (V2),
      yielding GenThes_, i.e.:
@@ -3530,7 +3530,7 @@ assert_henkin_axioms(File,_Options):-
      ExRes_1 = ?[c1_25_1_1: ( ~ v3_struct_0 & v3_realset2 & v2_orders_2 & l1_orders_2 )]:
                ?[B2: ( ~ v4_abcmiz_0 & v5_abcmiz_0 & v6_abcmiz_0 & l1_abcmiz_0 )]:
  	      ?[B3: ( v1_funct_1 & v1_funct_2(u1_struct_0(c1_25_1_1),k5_finsub_1(u1_abcmiz_0(B2)))
- 		    & m2_relset_1(u1_struct_0(c1_25_1_1),k5_finsub_1(u1_abcmiz_0(B2))) )]: $true    
+ 		    & m2_relset_1(u1_struct_0(c1_25_1_1),k5_finsub_1(u1_abcmiz_0(B2))) )]: $true
  4b. strip the exist. quantifier, yielding the 1st constant's sort (Srt_1 - note that we do
      not copy it from the sort declaration, to be independent for verification), and Res_1:
      Srt1 = sort(c1_25_1_1: ( ~ v3_struct_0 & v3_realset2 & v2_orders_2 & l1_orders_2 ))
@@ -3600,13 +3600,13 @@ create_henkin_axioms_let([HRef|HRefs],[Const|Consts],[SRef|SRefs],Instance,UnivI
 %% Given the desired name of the new axiom (Henkin_Ref), the new constant (Const),
 %% its sort declaration (Sort_Ref with formula Sort_Fla sort(Const,Sort)), and the instance formula (Instance),
 %% containing the Const, replace Const in Instance with NewVar, and add quantification (! [NewVar : Sort])
-%% yielding UnivGenInst, and 
+%% yielding UnivGenInst, and
 %% create the Henkin_Fof, saying that
 %% (sort(Const,Sort) => Instance) => UnivGenInst
 %%
 %% note that the processing order of constants guarantees
 %% that only the right constants are present in the new quantification
-create_henkin_axiom_let(Henkin_Ref,Const,Sort_Ref,Instance,UnivGenInst,Henkin_Fof):-	
+create_henkin_axiom_let(Henkin_Ref,Const,Sort_Ref,Instance,UnivGenInst,Henkin_Fof):-
 	copy_term(Instance, Tmp0),
 	make_const_var_subst(Const, (Const/NewVar)),
 	apply_const_subst((Const/NewVar), Tmp0, Tmp),
@@ -3645,7 +3645,7 @@ create_henkin_axioms_consider([HRef|HRefs],[Const|Consts],[SRef|SRefs],ExFla,ExI
 %% Given the desired name of the new axiom (Henkin_Ref), the new constant (Const),
 %% its sort declaration (Sort_Ref - this is only used for useful_info of
 %% the new axiom), and the existential formula (ExFla, in the form ? [(ExVar : Sort)] : Body ),
-%% create the Henkin_Fof, saying that 
+%% create the Henkin_Fof, saying that
 %% ExFla => (sort(Const,Sort) & Body),
 %% and also return ExInstance, which is Body with ExVar instantiated to Const.
 %%
@@ -3653,7 +3653,7 @@ create_henkin_axioms_consider([HRef|HRefs],[Const|Consts],[SRef|SRefs],ExFla,ExI
 %% that only the right constants are present in the new quantification.
 %% Also note that the Sort_Ref is only used for getting the  mptp_info
 %% when creating the new fof, not for copying the sort from its formula.
-create_henkin_axiom_consider(Henkin_Ref,Const,Sort_Ref,ExFla,ExInstance,Henkin_Fof):-	
+create_henkin_axiom_consider(Henkin_Ref,Const,Sort_Ref,ExFla,ExInstance,Henkin_Fof):-
 	copy_term(ExFla, Tmp0),
 	%% Sort is without external variables at this point
 	%% (there still can be some inside fraenkels though -
@@ -3689,7 +3689,7 @@ strip_exist(Fla, _, _, _) :- throw(strip_exist(Fla)).
 %% get_consts_and_refs(+RefsIn, +ConstsIn, +AddedConsts, -RefsOut, -ConstsOut)
 %%
 %% Collect all constants together with their type definitions.
-%% Start with a list of references (type defs) and known constants, 
+%% Start with a list of references (type defs) and known constants,
 %% and recursively add all references and constants mentioned in the
 %% type defs.
 get_consts_and_refs(RefsIn, ConstsIn, AddedConsts, RefsOut, ConstsOut):-
@@ -3972,16 +3972,16 @@ constr_type_fla2momm(ConstrKind,MptpFla,MommFla):-
 	 member(ConstrKind,[m,l]),
 	 mode_type_fla2momm(MptpFla, MommFla)
 	).
-	 
+
 %% func_type_fla2momm(+MptpFla, -MommFla)
 %%
 %% Create a MoMM functor type fla from MPTP functor type fla.
 %% This can fail if the sort is trivial or only attributes.
 %% sort(u2_struct_0(_G250), m1_subset_1(u1_struct_0(_G250)))
-%% becomes 
+%% becomes
 %% type(u2_struct_0(A1), m1_subset_1(u2_struct_0(A1),u1_struct_0(A1))).
 func_type_fla2momm(MptpFla, MommFla):-
-	ensure(strip_univ_quant(MptpFla,sort(Term, AttrsAndRadix),_), func_type_fla2momm(MptpFla)), 
+	ensure(strip_univ_quant(MptpFla,sort(Term, AttrsAndRadix),_), func_type_fla2momm(MptpFla)),
 	constr2list('&', Radix, _ , AttrsAndRadix),
 	Radix =.. [ Mode | Args],
 	mptp_mode_sym(Mode),
@@ -3993,29 +3993,29 @@ func_type_fla2momm(MptpFla, MommFla):-
 %% Create a MoMM mode type fla from MPTP mode type fla.
 %% This can fail if the supersort is trivial or only attributes.
 %% (sort(_G250, l2_struct_0)=>sort(_G250, l1_struct_0))
-%% becomes 
+%% becomes
 %% type(l2_struct_0(A1), l1_struct_0(A1)).
 %% and
 %% (sort(_G278, m2_subset_1(_G250, _G258))=>sort(_G278, m1_subset_1(_G250)))
 %% becomes
 %% type(m2_subset_1(A3,A1,A2), m1_subset_1(A3,A1)).
 mode_type_fla2momm(MptpFla, MommFla):-
-	ensure(strip_univ_quant(MptpFla,sort(Var, DefSort) => Sorts,_), mode_type_fla2momm(MptpFla)), 
+	ensure(strip_univ_quant(MptpFla,sort(Var, DefSort) => Sorts,_), mode_type_fla2momm(MptpFla)),
 	constr2list('&', sort(Var1, Radix), _ , Sorts),
 	ensure((Var == Var1), mode_type_fla2momm(MptpFla)),
 	Radix =.. [ Mode | Args],
 	mptp_mode_sym(Mode),
 	DefSort =.. [ DefMode | DefVars],
-	NewDefSort =.. [ DefMode, Var | DefVars], 
+	NewDefSort =.. [ DefMode, Var | DefVars],
 	NewRadix =.. [ Mode, Var | Args],
 	MommFla = type(NewDefSort, NewRadix).
 
 
 %%%%%%%%%%%% end of MoMM export %%%%%%%%%%%%%%%%%%%%%
 
-%% test uniqueness of references inside Article, 
+%% test uniqueness of references inside Article,
 %% creating also scheme instances and abstracting fraenkels
-test_refs(Article):-	
+test_refs(Article):-
 	mml_dir_atom(MMLDir),
 	concat_atom([MMLDir, Article, '.xml2'],File),
 	concat_atom([MMLDir, Article, '.dcl2'],DCL),
@@ -4034,7 +4034,7 @@ test_refs(Article):-
 	install_index,!,
 
 	findall([Fof1,Fof2], (fof_file(Article, Id1),fof_name(X,Id1),fof_name(X,Id2),
-				 Id1 < Id2, 
+				 Id1 < Id2,
 				 clause(Fof1,_,Id1),
 				 clause(Fof2,_,Id2)),S),
 	print(S),nl,length(S,N),print(N),
@@ -4300,7 +4300,7 @@ end;
 inference DAG:
   axioms:    th2 th3 th4 dc_c6 th6  dc_c2   dc_c1 def1 dc_c4 dc_c3 dc_c5 dc_c6
               |   |   /   /     /      /      /    |     /
-      ass:a1  a3 /  a6   /     /      /      /     e2   /        
+      ass:a1  a3 /  a6   /     /      /      /     e2   /
             \ | /  /    /     /      /      /        \ /
               a4  /    /     /      /      /        dt_c4
               | \/    /     /      /      /
@@ -4345,7 +4345,7 @@ needed_environ(Article, AddedNonMML, Articles):-
 
 %% ##TEST: :- first100(L),print_env_deps(mml1,L).
 %% ##TEST: :- print_env_deps(mmldeps).
-%%            
+%%
 print_env_deps(File):-
 	all_articles(L),!,
 	print_env_deps(File,L).
@@ -4507,7 +4507,7 @@ mk_article_nd_problems(Article,_Kinds,Options):-
 	%% create the table of local-to-global names if absolute_locals
 	(absolute_locals -> absolutize_locals(Article); true),
 
-	repeat,(mk_nd_problem(_,Article,Dir,Options),fail; !,true),	
+	repeat,(mk_nd_problem(_,Article,Dir,Options),fail; !,true),
 	retractall(fof(_,_,_,file(Article,_),_)),
 	load_files(PostLoadFiles,[silent(true)]).
 
@@ -4561,9 +4561,9 @@ mk_article_problems(Article,Kinds,Options):-
 	;
 	    Kinds2 = Kinds1
 	),
-		
+
 	repeat,(mk_problem(_,Article,Dir,Kinds2,Options),fail; !,true),
-	
+
 	%% retract current file but return mml parts,
 	retractall(fof(_,_,_,file(Article,_),_)),
 	load_files(PostLoadFiles,[silent(true)]).
@@ -4636,7 +4636,7 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	    Rest_of_info = [Inference_info|_]
 	),
 
-	
+
 	(
 	  member(snow_spec, Rest) ->
 	  snow_spec(P, Refs0),
@@ -4666,7 +4666,7 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	;
 	  true
 	),
-	
+
 	(
 	  member(opt_LINE_COL_NMS, Options) ->
 	  concat_atom([Prefix,F,'__',Line,'_',Col],Outfile)
@@ -4675,7 +4675,7 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	  (
 	    member(opt_CONJECTURE_NMS, Options) ->
 	    concat_atom([Prefix,AbsP],Outfile)
-	  ;	   
+	  ;
 	    concat_atom([Prefix,F,'__',P],Outfile)
 	  )
 	),
@@ -4703,7 +4703,7 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	  told
 	;
 	  true
-	),	 
+	),
 
 	(
 	  member(opt_PROVED_BY_INFO, Options) ->
@@ -4716,7 +4716,7 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	;
 	  true
 	),
-	
+
 	%% Compute references into AllRefs.
 	%% This gets a bit tricky for cluster registrations - we need the original
 	%% formula (P), but use the PLevel for collecting the refs, and finally filter
@@ -4751,7 +4751,7 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	  %% ###TODO: for reconsidered type, following is enough instead of fixpoint
 %	  AllRefs1 = [P|Refs]
 	  once(fixpoint(F, [Pos1, Lev], InfKind1, [P|Refs], [], Syms1, AllRefs1)),
-	  %% if we used the correctness proposition for computing references of cluster 
+	  %% if we used the correctness proposition for computing references of cluster
 	  %% registrations, we have to filter using the cluster's level
 	  (member(MPropKind,[fcluster,ccluster,rcluster]) ->
 	      filter_level_refs(Lev,AllRefs1,AllRefs)
@@ -4783,7 +4783,7 @@ print_problem(P,F,[_InferenceKinds,_PropositionKinds|Rest],Options,
 	    call(Print_Func, P, AllRefs, Options)
 	;
 	    print_refs(P, AllRefs, Options)
-	),	    
+	),
 	told.
 
 
@@ -4794,7 +4794,7 @@ print_ref_as_axiom(Options, Q):-
 	Status = axiom, QQ3 = Q3, QQ4= [],
 	(member(opt_TPTP_SHORT,Options) ->
 	    print(fof(Q,Status,SR2))
-	;		 
+	;
 	    (member(opt_MK_TPTP_INF,Options) ->
 		print(fof(Q,Status,SR2,QQ3,QQ4))
 	    ;
@@ -4944,7 +4944,7 @@ get_preceding_article_refs(Article, Ref, Refs):-
 		  not(member(Id0, BadIds))
 		),
 		Refs0
-	       ),	
+	       ),
 	findall(Ref1,
 		(
 		  member(LA1, LevAtoms),
@@ -5009,7 +5009,7 @@ print_refs_as_tptp_includes(Conjecture, AllRefs, Options):-
 %% the recursion stops for things outside of P's prooflevel,
 %% and for assumptions.
 %% This is a tree traversal, and we want to print every node only once
-%% and at the earliest position. So we proceed depth-first, keep a list 
+%% and at the earliest position. So we proceed depth-first, keep a list
 %% of things that were requested to be printed, and a list of things
 %% that already were printed.
 
@@ -5066,7 +5066,7 @@ mk_nd_tree(F,Lev,PrintedIn,[[P,Assums]|PrintedIn],P,Assums,Options):-
 	  Role = axiom, Assums = [], ! %% for henkins
 	;
 	  %% ###TODO: shouldn't the level of sch. insts. be changed (they do not contain consts anyway now)?
-	  MPropKind = scheme_instance, Assums = [], ! %% hack - their Lev1 is not [] now 
+	  MPropKind = scheme_instance, Assums = [], ! %% hack - their Lev1 is not [] now
 	;
 	  strict_sublevel(Lev,Lev1), Assums = [], !
 	;
@@ -5144,7 +5144,7 @@ mk_nd_tree1(F,Lev,PrintedIn,PrintedOut,P,Assums,Options):-
 	  ;
 	      AllRefs = NDRefs,
 	      RefSlot = let(Sort_Refs, PureTheses1, Henkin_Refs)
-	      
+
 	  )
 	;
 	  member(NDKind, [conclusion, consider, iterative_eq, trivial, percases]),!,
@@ -5233,9 +5233,9 @@ check_redefs_int([[X,Y]|T],RefRedefPairs,FlaSyms,RefSyms):-
 	;
 	  check_redefs_int(T,RefRedefPairs,FlaSyms,RefSyms)
 	).
-	
 
-	
+
+
 
 get_mizar_inf_refs(File, P, Refs, InfKind, AllRefs):-
 	get_ref_fof(P, fof(P,_,Fla,_,[mptp_info(_,Lev,_,_,_)|_])),
@@ -5293,7 +5293,7 @@ print_for_nd(Q,InfKind,Refs,Assums,Options):-
 	  %% this is not totally correct, the def is only partial
 	  Q1 = definition %% plain
 
-	%% these are defs I think, so just remove the commented code after a while 
+	%% these are defs I think, so just remove the commented code after a while
 % 	;
 % 	  Q_1 == definition,
 % 	  MpInfoRest = [EqKind, equality|_],
@@ -5344,7 +5344,7 @@ print_for_nd(Q,InfKind,Refs,Assums,Options):-
 		subtract(Assums, Disch, NewAssums),
 		%% Thes are the proper refs, but Geoff wants also the
 		%% assumptions in the parent slot
-		union(Disch, Thes, UnionRefs), 
+		union(Disch, Thes, UnionRefs),
 		S1 = inference(discharge_asm,[Status, assumptions(NewAssums),
 					      discharge_asm(discharge,Disch)],UnionRefs)
 	      ;
@@ -5352,7 +5352,7 @@ print_for_nd(Q,InfKind,Refs,Assums,Options):-
 		subtract(Assums, Disch, NewAssums),
 		%% Thes are the proper refs of the inner inference,
 		%% but Geoff wants also the assumptions in the parent slot
-		union(Disch, Thes, UnionRefs), 
+		union(Disch, Thes, UnionRefs),
 		DischInfer = inference(discharge_asm,[Status, assumptions(NewAssums),
 						      discharge_asm(discharge,Disch)],UnionRefs),
 		%% have to add the article suffix - absolutize locals will not know about this
@@ -5376,7 +5376,7 @@ print_for_nd(Q,InfKind,Refs,Assums,Options):-
 	      subtract(Assums, Sort_Refs, NewAssums),
 	      %% PureTheses are the proper refs of the inner inference,
 	      %% but Geoff wants also the assumptions in the parent slot
-	      union(Sort_Refs, PureTheses, UnionRefs), 
+	      union(Sort_Refs, PureTheses, UnionRefs),
 	      DischInfer = inference(discharge_asm,[Status, assumptions(NewAssums),
 						    discharge_asm(discharge,Sort_Refs)],UnionRefs),
 	      %% have to add the article suffix - absolutize locals will not know about this
@@ -5417,7 +5417,7 @@ print_for_nd(Q,InfKind,Refs,Assums,Options):-
 	    NewUI = [interesting(Intrst) | UI]
 	;
 	    NewUI = UI
-	),	
+	),
 	print(fof(Q,Role,SR2,S1,NewUI)),
 	write('.'), nl.
 
@@ -5586,7 +5586,7 @@ install_index:-
 	;
 	  true
 	),!.
-	
+
 
 
 assert_level([], Article, RestInfo, Id):- !,
@@ -5598,7 +5598,7 @@ assert_level([H|T],Article, RestInfo, Id):- !,
 	assert_newlevel(RestInfo, Article, Id).
 assert_level(_,_,_,_).
 
-%% this keeps the article, because toplevel theorem from MML 
+%% this keeps the article, because toplevel theorem from MML
 %% have nontrivial newlevels which we want to avoid.
 assert_newlevel([inference(mizar_proof,[proof_level([H|T])|_],_)|_], Article, Id):- !,
 	level_atom([H|T],Lev1),
@@ -5721,7 +5721,7 @@ decrease_fxp_sym_flags(NewSyms, ZeroedRefs):-
 	maplist(decrease_fxp_sym_flags1,NewSyms,Refs_l),
 	append_l(Refs_l,ZeroedRefs).
 
-decrease_fxp_sym_flags1(NewSym, ZeroedRefs):-	
+decrease_fxp_sym_flags1(NewSym, ZeroedRefs):-
 	findall(Ref,
 		(
 		  sym_ref_graph(NewSym,Ref),
@@ -5762,7 +5762,7 @@ dotimes(X,N) :- N1 is N-1, (call(X);true), dotimes(X,N1).
 %
 % Print ccluster as Prolog clauses.
 % Prune from Conseq the things present in Antec
-% ![ArgTypes]: ![LastVar:Typ] : sort(LastVar,(AntecedentConjunct)) => sort(LastVar,ConsequentConjunct) 
+% ![ArgTypes]: ![LastVar:Typ] : sort(LastVar,(AntecedentConjunct)) => sort(LastVar,ConsequentConjunct)
 % ArgTypes non empty followed by loci
 
 
@@ -5801,24 +5801,24 @@ pair_conj_to_clauses(Body, ConseqConjunct):-
 %     $succ = { `count(Cluster[1]/*)`; }
 %     $srt_s; "("; apply[*[$pres + 2]];  ",";
 %     if [$succ = 0] { "$true"; } else {
-%     if [$succ = 1] { apply[Cluster[1]]; } 
+%     if [$succ = 1] { apply[Cluster[1]]; }
 %     else { "( "; apply[Cluster[1]]; " )"; } }
 %     ")"; ",file("; lc(#s=`@aid`); ",";
-%     absk(#el=`.`,#kind="fc"); "),[mptp_info("; `@nr`; 
+%     absk(#el=`.`,#kind="fc"); "),[mptp_info("; `@nr`;
 %     ",[],fcluster,position(0,0),[";
 
 
 
-% "!["; ploci(#nr=$l); " : "; apply[Typ]; "]: ("; 
+% "!["; ploci(#nr=$l); " : "; apply[Typ]; "]: (";
 %     $ante = { `count(*[$pres + 2]/*)`; }
 %     $succ = { `count(*[$pres + 4]/*)`; }
 %     $srt_s; "("; ploci(#nr=$l); ",";
 %     if [$ante = 0] { "$true"; } else {
-%     if [$ante = 1] { apply[*[$pres + 2]]; } 
+%     if [$ante = 1] { apply[*[$pres + 2]]; }
 %     else { "( "; apply[*[$pres + 2]]; " )"; } }
 %     ")"; $imp_s; $srt_s; "("; ploci(#nr=$l); ",";
 %     if [$succ = 0] { "$true"; } else {
-%     if [$succ = 1] { apply[*[$pres + 4]]; } 
+%     if [$succ = 1] { apply[*[$pres + 4]]; }
 %     else { "( "; apply[*[$pres + 4]]; " )"; } }
 %     "))"; ",file("; lc(#s=`@aid`); ",";
 
