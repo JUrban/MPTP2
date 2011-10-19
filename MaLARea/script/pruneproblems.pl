@@ -29,7 +29,7 @@ while($f=shift)
 	open(G1,">$f.out"); 
 	while(<G>) 
 	{
-	    if(m/^fof.((t|s|d|ie|[rcf]c)[0-9]+_[^,]+),/)
+	    if(m/^fof.((d|ie|[rcf]c)[0-9]+_[^,]+),/)
 	    {
 		print G1 $_ if(exists $h{$t}->{$1}); 
 	    }
