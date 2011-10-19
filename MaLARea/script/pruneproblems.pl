@@ -15,7 +15,7 @@ while(<F>)
     foreach my $i (1 .. $#a) { $h{$a[0]}->{$a[$i]} = (); }
 }
 
-close(F)
+close(F);
 
 my $f;
 
