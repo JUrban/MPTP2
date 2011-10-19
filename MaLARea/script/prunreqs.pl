@@ -25,6 +25,7 @@ while(<F>)
 close(F);
 
 my $f;
+my $pruned = 0;
 
 while($f=shift)
 {
@@ -38,15 +39,15 @@ while($f=shift)
 	{
 	    if(m/^fof.t[0-9]+_(boole|subset),/)
 	    {
-		print G1 $_ if(exists $h{$t}->{uc($1)}); 
+		if(exists $h{$t}->{uc($1)}) { print G1 $_; $pruned++; } 
 	    }
 	    elsif(m/^fof.rqReal/)
 	    {
-		print G1 $_ if(exists $h{$t}->{'ARITHM'});
+		if(exists $h{$t}->{'ARITHM'}) { print G1 $_; $pruned++; }
 	    }
 	    elsif(m/^fof.rqLess/)
 	    {
-		print G1 $_ if(exists $h{$t}->{'REAL'}); 
+		if(exists $h{$t}->{'REAL'}); { print G1 $_; $pruned++; }
 	    }
 	    else
 	    {
@@ -55,3 +56,5 @@ while($f=shift)
 	}
     }
 }
+
+print "$pruned\n";
