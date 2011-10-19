@@ -47,7 +47,7 @@ while($f=shift)
 	    }
 	    elsif(m/^fof.rqLess/)
 	    {
-		if(exists $h{$t}->{'REAL'}); { print G1 $_; $pruned++; }
+		if(exists $h{$t}->{'REAL'}) { print G1 $_; $pruned++; }
 	    }
 	    else
 	    {
