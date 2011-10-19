@@ -1,6 +1,8 @@
 #!/usr/bin/perl
 # prune problem specs using an initial dependency table starting with conjecture
-# run like: ./pruneproblems.pl item_mptp_deps `ls`
+# run like: 
+# time  ~/gr/MPTP/SCRIPT/advisor/deps2mpadata.pl item-dependency-table > item_mptp_deps
+# time ./pruneproblems.pl item_mptp_deps `ls`
 use strict;
 
 my %h = ();
