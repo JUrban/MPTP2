@@ -12,6 +12,7 @@ while(<F>)
 {
     chop;
     my @a = split(/ +/);
+    $h{$a[0]} = ();
     foreach my $i (1 .. $#a) { $h{$a[0]}->{$a[$i]} = (); }
 }
 
