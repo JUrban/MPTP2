@@ -21,7 +21,7 @@ my $f;
 
 while($f=shift)
 {
-    $f=~m/.*__(.*)\.pr/ or die $f; 
+    $f=~m/.*__(.*)/ or die $f; 
     my $t = $1; 
     if(exists $h{$t}) 
     {
