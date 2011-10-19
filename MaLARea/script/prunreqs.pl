@@ -31,30 +31,31 @@ while($f=shift)
 {
     $f=~m/.*__(.*)/ or die $f; 
     my $t = $1; 
-    if(exists $h{$t}) 
-    {
+# don't test for existence - non-existent don't need any
+#    if(exists $h{$t}) 
+#    {
 	open(G,$f); 
 	open(G1,">$f.out"); 
 	while(<G>) 
 	{
 	    if(m/^fof.t[0-9]+_(boole|subset),/)
 	    {
-		if(exists $h{$t}->{uc($1)}) { print G1 $_; $pruned++; } 
+		if(exists $h{$t}->{uc($1)}) { print G1 $_;} else { $pruned++; } 
 	    }
 	    elsif(m/^fof.rqReal/)
 	    {
-		if(exists $h{$t}->{'ARITHM'}) { print G1 $_; $pruned++; }
+		if(exists $h{$t}->{'ARITHM'}) { print G1 $_;} else { $pruned++; }
 	    }
 	    elsif(m/^fof.rqLess/)
 	    {
-		if(exists $h{$t}->{'REAL'}) { print G1 $_; $pruned++; }
+		if(exists $h{$t}->{'REAL'}) { print G1 $_; } else { $pruned++; }
 	    }
 	    else
 	    {
 		print G1 $_;
 	    }
 	}
-    }
+#    }
 }
 
 print "$pruned\n";
