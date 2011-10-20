@@ -38,7 +38,7 @@ while($f=shift)
 	open(G1,">$f.out"); 
 	while(<G>) 
 	{
-	    if(m/^fof.t[0-9]+_(boole|subset|numeral),/)
+	    if(m/^fof.t[0-9]+_(boole|subset|numerals),/)
 	    {
 		if(exists $h{$t}->{uc($1)}) { print G1 $_;} else { $pruned++; } 
 	    }
