@@ -458,6 +458,8 @@ while ($client = $server->accept())
     $msg = $1;
     print "[received bytes]\n";
 #    @res  = unpack("a", $msg);
+    $msg =~ s/ *leancop_problem_\d+ *//;
+    $msg =~ s/,,/,/;
     my @res = split(/ *, */, $msg);
     $msgnr++;
     if($msgnr == 1) 
