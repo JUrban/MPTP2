@@ -9,10 +9,16 @@ use HTTP::Request::Common qw(POST);
 use LWP::Simple;
 use LWP::UserAgent;
 
+my $CgiDir = '/home/mptp/public_html/cgi-bin';
+do "$CgiDir/MizARconfig.pl";
+my $MyUrl = MyUrl();
+
+
 # possible SZS statuses
 sub szs_INIT        ()  { 'Initial' } # system was not run on the problem yet
 sub szs_UNKNOWN     ()  { 'Unknown' } # used when system dies
 sub szs_THEOREM     ()  { 'Theorem' }
+sub szs_UNSAT       ()  { 'Unsatisfiable' }
 sub szs_COUNTERSAT  ()  { 'CounterSatisfiable' }
 sub szs_RESOUT      ()  { 'ResourceOut' }
 sub szs_GAVEUP      ()  { 'GaveUp' }   # system exited before the time limit for unknown reason
@@ -45,7 +51,6 @@ my $mmlversion    = $query->param('MMLVersion');
 $mmlversion   = '4.100.1011' unless defined($mmlversion);
 
 # my $MyUrl = 'http://octopi.mizar.org/~mptp';
-my $MyUrl = 'http://mws.cs.ru.nl/~mptp';
 my $PalmTreeUrl = $MyUrl . "/PalmTree.jpg";
 my $TPTPLogoUrl = $MyUrl . "/TPTP.gif";
 my $TSTPLogoUrl = $MyUrl . "/TSTP.gif";
@@ -354,7 +359,7 @@ if(    open(F,$File))
 		{
 		    print "Bad E status line: $status_line, please complain";
 		}
- 		if (!($status eq szs_THEOREM)) { @refs = () }
+ 		if (!($status eq szs_THEOREM) && !($status eq szs_UNSAT)) { @refs = () }
 	    }
 	    else
 	    {
@@ -384,7 +389,7 @@ if(    open(F,$File))
 		{
 		    print "Bad vampire status line: $status_line, please complain";
 		}
- 		if (!($status eq szs_THEOREM)) { @refs = () }
+ 		if (!($status eq szs_THEOREM) && !($status eq szs_UNSAT)) { @refs = () }
 	    }
 
 	    my $hints = $advice | $unification;

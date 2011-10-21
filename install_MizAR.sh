@@ -102,7 +102,7 @@ ln -s $mymml/mptp/utils.pl $mycgi/utils.pl
 
 sed -ie "s/^mml_dir(.*/mml_dir(\"\/home\/mptp\/mizwrk\/$ver\/MPTP2\/pl\/\")./" utils.pl
 sed -ie "s/^bindir=.*/bindir=$bindir/" $mycgi/mizf
-sed -ie "s/^\(my .MyUrl = \).http:..mws.cs.ru.nl.~mptp.;/\1'$myurl';/" $mycgi/MizAR.cgi
+sed -ie "s/^\(.*MyUrl.*\)http:..mws.cs.ru.nl.~mptp.*/\1$myurl\2/" $mycgi/MizARconfig.pl
 
 ## this is needed in the showby.cgi, however showby now seems symlinked to the main dir??
 # sed -ie "s/^\(my .MyUrl = \).http:..mws.cs.ru.nl.~mptp.;/\1'$myurl';/" $mycgi/showby.cgi

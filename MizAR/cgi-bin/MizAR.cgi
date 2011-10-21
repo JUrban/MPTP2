@@ -13,10 +13,15 @@ use LWP::Simple;
 use POSIX qw( WNOHANG );
 use MPTPNames;
 
+my $CgiDir = '/home/mptp/public_html/cgi-bin';
+do "$CgiDir/MizARconfig.pl";
+my $MyUrl = MyUrl();
+
 # possible SZS statuses
 sub szs_INIT        ()  { 'Initial' } # system was not run on the problem yet
 sub szs_UNKNOWN     ()  { 'Unknown' } # used when system dies
 sub szs_THEOREM     ()  { 'Theorem' }
+sub szs_UNSAT       ()  { 'Unsatisfiable' }
 sub szs_COUNTERSAT  ()  { 'CounterSatisfiable' }
 sub szs_RESOUT      ()  { 'ResourceOut' }
 sub szs_GAVEUP      ()  { 'GaveUp' }   # system exited before the time limit for unknown reason
@@ -137,7 +142,6 @@ if (($proveunsolved eq "Positions") && (defined($provepositions)))
 }
 
 # my $MyUrl = 'http://octopi.mizar.org/~mptp';
-my $MyUrl = 'http://mws.cs.ru.nl/~mptp';
 my $PalmTreeUrl = $MyUrl . "/PalmTree.jpg";
 my $Xsl4MizarDir = "/home/mptp/public_html/xsl4mizar";
 my $Mizfiles = "/home/mptp/public_html/mml$mmlversion";
@@ -798,7 +802,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0) || ($gemulate_all_by == 4))
 		{
 		    #print "Bad vampire status line: $status_line, please complain";
 		}
- 		if (!($status eq szs_THEOREM)) 
+ 		if (!($status eq szs_THEOREM) && !($status eq szs_UNSAT)) 
 		{ @refs = (); @mizrefs = (); @simprefs = (); 
 		  print $fhout ($line, "_", $col, ":::", "Unsolved\n"); 
 		}

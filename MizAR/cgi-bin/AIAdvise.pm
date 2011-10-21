@@ -141,7 +141,7 @@ sub CreateProb2Cl
 	    if(m/^dnf. *([^, ]+) *, *([^, ]+) *,/)
 	    {
 		my ($cl, $role) = ($1,$2);
-		exists $grefnr->{$cl} or die "Unknown reference $cl in $_";
+		exists $grefnr->{$cl} or die "1: Unknown reference $cl in $_";
 		my $clnr = $grefnr->{$cl};
 		$prob2cl{$prob}->{$clnr} = ();
 		$prob2conj{$prob}->{$clnr} = () if($role=~m/conjecture/);
@@ -166,12 +166,21 @@ sub CreateProb2Cl
 # get only useful proofchoices info
 sub RunLeancopProblems
 {
-    my ($filestem, $problems, $leancop, $prologdir, $iter, $params, $minimize) = @_;
+    my ($filestem, $problems, $leancop, $prologdir, $iter, $params, $minimize, $parallel) = @_;
+
+    if($parallel > 1)
+    {
+	my $dolist = join(' ', (sort keys %$problems));
+	system("cd $prologdir; echo $dolist | tr \\   \\\\n  | parallel -j$parallel time \" $leancop {} $params > {}.outf_$iter 2> {}.errf_$iter \" ");
+    }
 
     foreach my $problem (sort keys %$problems)
     {
 	print "$problem: ";
-	system("cd $prologdir; time $leancop $problem $params > $problem.outf_$iter 2> $problem.errf_$iter");
+	if($parallel == 1)
+	{
+	    system("cd $prologdir; time $leancop $problem $params > $problem.outf_$iter 2> $problem.errf_$iter");
+	}
 
 	if (system("grep --quiet Proof $problem.outf_$iter") == 0)
 	{
@@ -227,42 +236,53 @@ sub PrintProvedBy0
 # no info from incomplete proofs here (do it in another function)
 ### TODO: a bit funny - the refs are translated but not the syms - should be unified with PrintTrainingFromHash
 ### todo: collect the second number in proof choices for learning big shortcuts on unsuccessful runs
+### $learnflags & 1 ...
 sub  GetLeancopProofData
 {
-    my ($filestem,$filebase,$grefnr,$iter) = @_;
+    my ($filestem,$filebase,$grefnr,$iter,$learnflags) = @_;
     my %clausenrs = ();
     my %path_choices = ();
+    my $res = 0;
+
+    $learnflags = 3 unless(defined($learnflags));
+    my $learnproofs = $learnflags & 1;
+    my $learnchoices = $learnflags & 2;
+
     my $proof = $filebase . '.out_' . $iter;
 
     if((-e $proof) && (system ("grep --quiet Proof $proof") == 0))
     {
+	$res = 1;
 	open(PROOF, $proof);
 	while(<PROOF>)
 	{
 	    if(m/.*Then clause .(\d+).*/) 
 	    {
 		my ($cl) = ($1);
-		exists $grefnr->{$cl} or die "Unknown reference $cl in $_";
+		exists $grefnr->{$cl} or die "2: Unknown reference $cl in $_";
 		my $clnr = $grefnr->{$cl};
-		$clausenrs{$clnr} = ();
+		$clausenrs{$clnr} = () if($learnproofs);
 	    }
 	    elsif(m/^&[^\[]*\[([^\]]*)\] *\>\>\> * (\d+)/)
 	    {
-		my ($syms0, $cl) = ($1,$2);
-		exists $grefnr->{$cl} or die "Unknown reference $cl in $_";
-		my $clnr = $grefnr->{$cl};
-		my $syms = join(',', sort split(/ *, */, $syms0));
-
-		if(!exists $path_choices{$syms})
+		if($learnchoices)
 		{
-		    $path_choices{$syms} = {};
-		}
+		    my ($syms0, $cl) = ($1,$2);
+		    exists $grefnr->{$cl} or die "3: Unknown reference $cl in $_";
+		    my $clnr = $grefnr->{$cl};
+		    my $syms = join(',', sort split(/ *, */, $syms0));
 
-		$path_choices{$syms}->{$clnr} = ();
+		    if(!exists $path_choices{$syms})
+		    {
+			$path_choices{$syms} = {};
+		    }
+
+		    $path_choices{$syms}->{$clnr} = ();
+		}
 	    }
 	}
     }
-    return (\%clausenrs, \%path_choices);
+    return ($res, \%clausenrs, \%path_choices);
 }
 
 
@@ -276,13 +296,14 @@ sub  GetLeancopProofData
 # {hash_of_used_conjectures}, {hash_of_all_used_clauses}, {$path_choices}.
 sub CollectProvedByN
 {
-    my ($symoffset, $filestem, $iter, $grefnr, $prob2conj) = @_;
+    my ($symoffset, $filestem, $iter, $grefnr, $prob2conj,$learnflags) = @_;
     my %proved_byN = ();
     open(PROVED_BY,">$filestem.proved_by_$iter");
     foreach my $i (keys %$prob2conj)
     {
-	my ($clausenrs, $path_choices) = GetLeancopProofData($filestem,$i,$grefnr,$iter);
-	if((scalar (keys %$clausenrs)) > 0)
+	my ($res, $clausenrs, $path_choices) = GetLeancopProofData($filestem,$i,$grefnr,$iter,$learnflags);
+	if($res == 1)
+#	if(((scalar (keys %$clausenrs)) > 0) || ((scalar (keys %$path_choices)) > 0))
 	{
 	    my @conjs = grep { exists $prob2conj->{$i}->{$_} } keys %$clausenrs;
 	    $proved_byN{$i}->[1] = [@conjs];
@@ -405,8 +426,8 @@ sub PrintTrainingFromHash
 	# just a sanity check
 	foreach $ref (@refs)
 	{
-	    exists $grefsyms->{$ref} or die "Unknown reference $ref in refs: @refs";
-	    exists $grefnr->{$ref} or die "Unknown reference $ref in refs: @refs";
+	    exists $grefsyms->{$ref} or die "4: Unknown reference $ref in refs: @refs";
+	    exists $grefnr->{$ref} or die "5: Unknown reference $ref in refs: @refs";
 	}
 
 	# for 0th iteration, we allow small boost of axioms of
@@ -629,7 +650,7 @@ sub TstLoop1
 	$initprobs = \%h;
     }
 
-    RunLeancopProblems($filestem,$initprobs,"./leancop_dnf.sh", $prologdir, $iter, "",1);
+    RunLeancopProblems($filestem,$initprobs,"./leancop_dnf.sh", $prologdir, $iter, "",1,1);
 
     my $proved_byN = CollectProvedByN($symoffset, $filestem, $iter, $grefnr, $prob2conj); 
     PrintTrainingFromClauseHash($filestem,$iter,$proved_byN,$grefnr,$gsymnr,$gsymarity,$grefsyms,$gnrsym,$gnrref,3);
@@ -647,7 +668,7 @@ sub TstLoop1
 
 sub TstLoop2
 {
-    my ($prolog, $filelist, $filestem, $prologdir, $path2snow, $gtimelimit, $initrunfile) = @_;
+    my ($prolog, $filelist, $filestem, $prologdir, $path2snow, $gtimelimit, $learnflags, $parallel, $initrunfile) = @_;
     my $symoffset = 500000;
     my $advisor = "/home/urban/gr/MPTP2/MizAR/cgi-bin/advisor_lean.pl";
     my $advlimit = 64;
@@ -663,29 +684,34 @@ sub TstLoop2
 
     my $iter = 1;
 
-    my $initprobs = $prob2cl;
+    my %initprobs = ();
+    @initprobs{ keys %$prob2cl} = ();
+
     if(defined $initrunfile)
     {
 	open(I,$initrunfile); my %h=();
 	while(<I>) { chop; $h{$_} = (); }
 	close(I);
-	$initprobs = \%h;
+	%initprobs = %h;
     }
 
-    RunLeancopProblems($filestem,$initprobs,"./leancop_dnf.sh", $prologdir, $iter, "",1);
+    RunLeancopProblems($filestem,\%initprobs,"./leancop_dnf.sh", $prologdir, $iter, "",1,$parallel);
 
     while (0==0)
     {
-	my $proved_byN = CollectProvedByN($symoffset, $filestem, $iter, $grefnr, $prob2conj); 
-	PrintTrainingFromClauseHash($filestem,$iter,$proved_byN,$grefnr,$gsymnr,$gsymarity,$grefsyms,$gnrsym,$gnrref,3);
+	# hash of solved problems only, each with learning info
+	my $proved_byN = CollectProvedByN($symoffset, $filestem, $iter, $grefnr, $prob2conj,$learnflags);
+	PrintTrainingFromClauseHash($filestem,$iter,$proved_byN,$grefnr,$gsymnr,$gsymarity,$grefsyms,$gnrsym,$gnrref,$learnflags);
 	Learn($path2snow, $filestem, $targetsnr, $iter);
 
 	my ($aport, $adv_pid) =
 	    StartAdvisor($path2snow, $advisor, $symoffset, $filestem, $advlimit, $iter+1);
 	print "$aport,##\n";
 
+	delete @initprobs{ keys %$proved_byN };   # delete the old ones
+
 	$iter++;
-	RunLeancopProblems($filestem,$initprobs,"./leancopscale1.sh1", $prologdir, $iter, " localhost:$aport $gtimelimit",1);
+	RunLeancopProblems($filestem,\%initprobs,"./leancopscale1.sh1", $prologdir, $iter, " localhost:$aport $gtimelimit",1,1);
 
 	`kill $adv_pid`;
     }
