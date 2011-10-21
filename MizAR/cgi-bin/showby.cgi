@@ -75,7 +75,7 @@ my $UnificationServerUrl = 'http://cds.omdoc.org:8080/:search?mizar';
 my $advhost	  = "localhost";
 my $advlimit	  = 16;
 
-my $debug = 0;
+my $debug = 1;
 
 my $LogFile = '';
 
