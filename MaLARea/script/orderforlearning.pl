@@ -11,9 +11,10 @@
 # for z in `ls`; do cd $z; for j in `ls *$z`; do perl -e '$i=shift; $f=shift; open(F,$f); while(<F>) { if(m/^fof.([^,]+), conjecture,/) {$c=$1} elsif(m/^fof.([^,]+_)$i, axiom,/) {$h{$1.$i}=() }  } open(G,"$f.allowed_local"); $_=<G>; m/^allowed_local.$c, \[(.*)\]/ or die $c; @k=split(/ *, */, $1); foreach $l (@k) {$h{$l} = ();} foreach $l (sort keys %h) {print "$c $l\n"}' $z $j; done > 00uns; tsort 00uns | tac > 00srt; cd /dev/shm/probs; done
 
 
-# run like: 
-# time  ~/gr/MPTP/SCRIPT/advisor/deps2mpadata.pl item-dependency-table > item_mptp_deps
-# time ./pruneproblems.pl item_mptp_deps `ls`
+# then run like: ./orderforlearning.pl > 00res1
+# grep -v warning 00res1 >00res2
+# sort 00res2 >00res2.sorted 
+# diff 00res2.sorted probs2.refnr |less
 use strict;
 
 my %ma = ();
