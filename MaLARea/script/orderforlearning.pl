@@ -69,7 +69,7 @@ foreach my $ref (@refs)
 	my $tmpa = $ma{$a};
 	my $tmph = $mh{$a};
 	print "warning2: adding $ref\n";
-	push(@$tmpa, $_);
+	push(@$tmpa, $ref);
 	$tmph->{$ref} = scalar(@$tmpa)-1;
     }
 }
