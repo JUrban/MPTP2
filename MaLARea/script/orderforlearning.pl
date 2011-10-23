@@ -30,7 +30,7 @@ foreach my $a (@mml)
 	{
 	    chomp;
 	    push(@$tmpa, $_);
-	    $tmph->{$_} = $#{@$tmpa};
+	    $tmph->{$_} = scalar(@$tmpa)-1;
 	}
     }
     else { print "warning1: $a/00srt not found\n"; }
@@ -70,7 +70,7 @@ foreach my $ref (@refs)
 	my $tmph = $mh{$a};
 	print "warning2: adding $ref\n";
 	push(@$tmpa, $_);
-	$tmph->{$ref} = $#{@$tmpa};
+	$tmph->{$ref} = scalar(@$tmpa)-1;
     }
 }
 
@@ -84,7 +84,7 @@ foreach my $a (@mml)
 	{
 	    print ($ref, "\n");
 	}
-	else { print "warning3: $ref not in file refs\n"; }
+	else { print "warning3: $ref not in file refs: $a\n"; }
 
     }
 }
