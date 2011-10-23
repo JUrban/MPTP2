@@ -22,7 +22,7 @@ while(<F>)
     $a[1] =~ m/^(Reflexivity|Commutativity|Symmetry|Connectedness|Irreflexivity|Abstractness|Projectivity|Idempotence|Antisymmetry|Involutiveness)$/ or die "$a[1]:$_";
     $a[2] =~ m/^([a-z0-9_]+):([gklmruv])constructor:(\d+)$/ or die "$_";
 
-    my $mn = lc($a[$1]) . '_' . $2 . $3 . '_' . $1;
+    my $mn = lc($a[1]) . '_' . $2 . $3 . '_' . $1;
     $h{$a[0]}->{$mn} = ();
 }
 
