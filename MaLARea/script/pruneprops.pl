@@ -19,7 +19,7 @@ while(<F>)
     $a[0] =~ m/^([a-z0-9_]+):theorem:(\d+)$/ or die "$_";
     $a[0] = 't' . $2 . '_' . $1;
     $h{$a[0]} = ();
-    $a[1] =~ m/(Reflexivity|Commutativity|Symmetry|Connectedness|Irreflexivity|Abstractness|Projectivity|Idempotence|Antisymmetry|Involutiveness)/ or die $_;
+    $a[1] =~ m/^(Reflexivity|Commutativity|Symmetry|Connectedness|Irreflexivity|Abstractness|Projectivity|Idempotence|Antisymmetry|Involutiveness)$/ or die "$a[1]:$_";
     $a[2] =~ m/^([a-z0-9_]+):([gklmruv])constructor:(\d+)$/ or die "$_";
 
     my $mn = lc($a[$1]) . '_' . $2 . $3 . '_' . $1;
