@@ -30,7 +30,7 @@ foreach my $a (@mml)
 	{
 	    chomp;
 	    push(@$tmpa, $_);
-	    $tmph{$_} = $#{@$tmpa};
+	    $tmph->{$_} = $#{@$tmpa};
 	}
     }
     else { print "warning1: $a/00srt not found\n"; }
@@ -70,7 +70,7 @@ foreach my $ref (@refs)
 	my $tmph = $mh{$a};
 	print "warning2: adding $ref\n";
 	push(@$tmpa, $_);
-	$tmph{$ref} = $#{@$tmpa};
+	$tmph->{$ref} = $#{@$tmpa};
     }
 }
 
