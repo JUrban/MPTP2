@@ -12,10 +12,38 @@
 
 # time sed -e 's/([^)]*)//g' probs3.train_0 >probs3.train_0.noweights
 # then run like: ./orderforlearning.pl > 00res1
+# the main result is probs2.train_0.noweights.out
+# further checking:
+#
 # grep -v warning 00res1 >00res2
 # sort 00res2 >00res2.sorted 
 # diff 00res2.sorted probs3.refnr |less
 
+# running snow incrementally (takes a lot of time with term features, so better parallelize):
+#
+# head -n1 probs2.train_0.noweights.out >  probs2.train_0.noweights0
+# time ./snow -train -I probs2.train_0.noweights0 -F probs2.net_01  -B :0-112421
+# time ./snow -test -i+ -I probs2.train_0.noweights.out -F probs2.net_01  -L 200 -o allboth  -B :0-112421> zzz1
+
+
+# creating problems (typically use 40 and 200)
+
+=begin code1
+
+time perl -e '
+$lim=shift;
+open(F,"probs3.refnr"); while(<F>) {chop; $a[$i]=$_; $h{$_}=$i++;} 
+open(G,"probs3.allasax"); while(<G>) { m/^fof.([^,]+),axiom/ or die $_; $p[$j]=$_; $a[$j]=$1 or die "$a[$j]:$_"; $j++;}
+open(H,"probs3.allconjs"); while(<H>) { m/^fof.([^,]+),conjecture/ or die $_; exists $h{$1} or die "$1:$_"; $c[$h{$1}] = $_; }
+$th = 0;
+$axs=0;
+open(P,"00dummy");
+while(<>) {if(/^Example.*: *([0-9]+) */) { $axs=0; close(P); if(exists $c[$1]) { open(P,">advised/$a[$1]") or die; print P $c[$1]; $th=1;} else {$th=0}}
+elsif (/^([0-9]+):/) { exists $a[$1] or die; if(($th==1) && ($axs++ < $lim)) { print P $p[$1]; }}}' 40 zzz
+
+=end code1
+
+=cut
 
 use strict;
 
