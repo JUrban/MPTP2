@@ -26,7 +26,7 @@
 # time ./snow -test -i+ -I probs2.train_0.noweights.out -F probs2.net_01  -L 200 -o allboth  -B :0-112421> zzz1
 
 
-# creating problems (typically use 40 and 200)
+# creating problems from predictions (typically use 40 and 200)
 
 =begin code1
 
