@@ -38,6 +38,24 @@
 # time ./snow -train -I probs2.train_0.noweights0 -F probs2.net_01  -B :0-112421
 # time ./snow -test -i+ -I probs2.train_0.noweights.out -F probs2.net_01  -L 200 -o allboth  -B :0-112421> zzz1
 
+# paralellized version:
+# head -n1 probs2.train_0.noweights.out >probs2.train_0.noweights.out1
+# head -n 31000 probs2.train_0.noweights.out >probs2.train_0.noweights0
+# tail -n +31001 probs2.train_0.noweights.out >probs2.train_0.noweights80k
+# time ./snow -train -I probs2.train_0.noweights.out1 -F probs2.net_0  -B :0-112421
+# screen -r snow1
+# time ./snow -test -i+ -I probs2.train_0.noweights0 -F probs2.net_0  -L 200 -o allboth  -B :0-112421> /dev/shm/uuu31k
+
+# this splits the training/testing into 24 batches
+# perl -e '$j=shift; $l=shift; $pref=shift; $basis=shift; open(G,$basis) or die; @basis=<G>; @lines=<>; $avrg=int($l/$j); $min=int($avrg/2); $step=2*$min/($j-1); foreach $s (0..$j-1) {$lngth[$s]=int($avrg+$min-$s*$step); if($s==$j-1) {$lngth[$s]=$#lines-$done} open(F,">$pref.test_$s"); print F @lines[$done..$done+$lngth[$s]]; close(F); open(F,">$pref.train_$s"); print F @basis; print F @lines[0..$done-1]; close(F); $z=$lngth[$s]; $done+=$lngth[$s]+1;}'  24 `wc -l probs2.train_0.noweights80k | cut -f1 -d\ ` probs2_batch probs2.train_0.noweights0 probs2.train_0.noweights80k
+
+# now prepare for each comp:
+# mkdir cn45 cn44 mizar
+# perl -e '@a=@ARGV; foreach $d ("cn44","cn45","mizar") { foreach $s (@a[8*$z..8*($z+1)-1]) {`mv probs2_batch.train_$s $d`; `mv probs2_batch.test_$s $d`;} $z++; }' `seq 0 23 |sort -R`
+
+# run inside screen on cn44, cn45, mizar:
+# ls  probs2_batch.train_* | sed -e 's/probs2_batch.train_//' | ./parallel -j8 "time ./snow -train -I probs2_batch.train_{} -F probs2_batch.net_{}  -B :0-112421; time ./snow -test -i+ -I probs2_batch.test_{} -F probs2_batch.net_{}  -L 200 -o allboth  -B :0-112421 > /dev/shm/probs2_batch.res_{}"
+
 
 # creating problems from predictions (typically use 40 and 200)
 
