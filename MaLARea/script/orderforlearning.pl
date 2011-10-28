@@ -1,14 +1,27 @@
 #!/usr/bin/perl
 # generate a reasonable MML-compatible ordering of all premises & conjectures
 # assumes all problems together with corresponding problem.allowed_local files
+# some hard-wired paths below: /dev/shm/probs, each article in its directory, prob2, etc.
+# should be parameterized
+
 # algorithm:
-# 0. all problems for a given article are topologically sorted using their axioms and allowed_local
+# 0. all problems for a given article are topologically sorted using their axioms, their .allowed_local, 
+#    and the order from .xml2 file
 # 1. only article-proper formulas are kept in the result of topological sorting
 # 2. the article-level chunks are concatenated using mml.lar
 
-# creating the 00srt data in /dev/shm/probs:
+# creating the .xml2 ordering:
+# cd /home/mptp/mizwrk/7.11.06_4.150.1103/MPTP2/pl
+# for i in `ls *.xml2| sed -e 's/.xml2//'`; do cut -f1 -d\, $i.xml2 |grep -v '([ie][0-9]' | grep -v  '(d[te]_c'| perl -e 'while(<>) {chop; s/^fof.//; if(defined $prev) { print "$_ $prev\n"} $prev=$_;}' > /dev/shm/probs/$i/01xmldeps; done
 
-# for z in `ls`; do cd $z; for j in `ls *$z`; do perl -e '$i=shift; $f=shift; open(F,$f); while(<F>) { if(m/^fof.([^,]+), conjecture,/) {$c=$1} elsif(m/^fof.([^,]+_)$i, axiom,/) {$h{$1.$i}=() }  } open(G,"$f.allowed_local"); $_=<G>; m/^allowed_local.$c, \[(.*)\]/ or die $c; @k=split(/ *, */, $1); foreach $l (@k) {$h{$l} = ();} foreach $l (sort keys %h) {print "$c $l\n"}' $z $j; done > 00uns; tsort 00uns | tac > 00srt; cd /dev/shm/probs; done
+# then creating the 00srt data in /dev/shm/probs:
+
+# old version allowing for allowed_local, which turned out to be buggy, see e.g. dt_k3_subset_1 in t10_subset_1
+# for z in `cat mml.lar`; do cd $z; for j in `ls *$z`; do perl -e '$i=shift; $f=shift; open(F,$f); while(<F>) { if(m/^fof.([^,]+), conjecture,/) {$c=$1} elsif(m/^fof.([^,]+_)$i, axiom,/) {$h{$1.$i}=() }  } open(G,"$f.allowed_local"); $_=<G>; m/^allowed_local.$c, \[(.*)\]/ or die $c; @k=split(/ *, */, $1); foreach $l (@k) {$h{$l} = ();} foreach $l (sort keys %h) {print "$c $l\n"}' $z $j; done > 00uns; cat 01xmldeps 00uns | tsort | tac > 00srt; cd /dev/shm/probs; done
+
+# new version, using only the problem and 01xmldeps (even then there are several bugs caused by redefs):
+# for z in `cat mml.lar`; do cd $z; for j in `ls *$z`; do perl -e '$i=shift; $f=shift; open(F,$f); while(<F>) { if(m/^fof.([^,]+), conjecture,/) {$c=$1} elsif(m/^fof.([^,]+_)$i, axiom,/) {$h{$1.$i}=() }  } foreach $l (sort keys %h) {print "$c $l\n"}' $z $j; done > 00uns; cat 01xmldeps 00uns | tsort | tac > 00srt; cd /dev/shm/probs; done
+
 
 # time sed -e 's/([^)]*)//g' probs3.train_0 >probs3.train_0.noweights
 # then run like: ./orderforlearning.pl > 00res1
