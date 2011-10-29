@@ -200,7 +200,10 @@ sub RunLeancopProblems
 		system("cp $problem.outf_$iter$problem.out_$iter; cp $problem.errf_$iter $problem.err_$iter");
 	    }
 	}
-	else { print "Unsolved\n"; }
+	else
+	{
+	    print "Unsolved\n";
+	}
     }
 }
 
@@ -242,47 +245,53 @@ sub  GetLeancopProofData
     my ($filestem,$filebase,$grefnr,$iter,$learnflags) = @_;
     my %clausenrs = ();
     my %path_choices = ();
+    my %fail_choices = ();
     my $res = 0;
 
     $learnflags = 3 unless(defined($learnflags));
     my $learnproofs = $learnflags & 1;
     my $learnchoices = $learnflags & 2;
+    my $learnfailchoices = $learnflags & 4;
 
     my $proof = $filebase . '.out_' . $iter;
 
-    if((-e $proof) && (system ("grep --quiet Proof $proof") == 0))
+    if((-e $proof))
     {
-	$res = 1;
-	open(PROOF, $proof);
-	while(<PROOF>)
+	$res = (system("grep --quiet Proof $proof") == 0)? 1 : 0;
+
+	if($learnfailchoices or ($res == 1))
 	{
-	    if(m/.*Then clause .(\d+).*/) 
+	    open(PROOF, $proof);
+	    while(<PROOF>) 
 	    {
-		my ($cl) = ($1);
-		exists $grefnr->{$cl} or die "2: Unknown reference $cl in $_";
-		my $clnr = $grefnr->{$cl};
-		$clausenrs{$clnr} = () if($learnproofs);
-	    }
-	    elsif(m/^&[^\[]*\[([^\]]*)\] *\>\>\> * (\d+)/)
-	    {
-		if($learnchoices)
+		if(m/.*Then clause .(\d+).*/)
 		{
-		    my ($syms0, $cl) = ($1,$2);
-		    exists $grefnr->{$cl} or die "3: Unknown reference $cl in $_";
+		    my ($cl) = ($1);
+		    exists $grefnr->{$cl} or die "2: Unknown reference $cl in $_";
 		    my $clnr = $grefnr->{$cl};
-		    my $syms = join(',', sort split(/ *, */, $syms0));
-
-		    if(!exists $path_choices{$syms})
+		    $clausenrs{$clnr} = () if($learnproofs);
+		}
+		elsif(m/^&[^\[]*\[([^\]]*)\] *\>\>\> * (\d+)/)
+		{
+		    if(($learnchoices && ($res==1)) || $learnfailchoices)
 		    {
-			$path_choices{$syms} = {};
-		    }
+			my $choices = ($learnchoices && ($res==1))? \%path_choices : \%fail_choices;
+			my ($syms0, $cl) = ($1,$2);
+			exists $grefnr->{$cl} or die "3: Unknown reference $cl in $_";
+			my $clnr = $grefnr->{$cl};
+			my $syms = join(',', sort split(/ *, */, $syms0));
 
-		    $path_choices{$syms}->{$clnr} = ();
+			if(!exists $choices->{$syms})
+			{
+			    $choices->{$syms} = {};
+			}
+			$choices->{$syms}->{$clnr} = ();
+		    }
 		}
 	    }
 	}
     }
-    return ($res, \%clausenrs, \%path_choices);
+    return ($res, \%clausenrs, \%path_choices, \%fail_choices);
 }
 
 
@@ -298,10 +307,11 @@ sub CollectProvedByN
 {
     my ($symoffset, $filestem, $iter, $grefnr, $prob2conj,$learnflags) = @_;
     my %proved_byN = ();
+    my %unproved_byN = ();
     open(PROVED_BY,">$filestem.proved_by_$iter");
     foreach my $i (keys %$prob2conj)
     {
-	my ($res, $clausenrs, $path_choices) = GetLeancopProofData($filestem,$i,$grefnr,$iter,$learnflags);
+	my ($res, $clausenrs, $path_choices, $fail_choices) = GetLeancopProofData($filestem,$i,$grefnr,$iter,$learnflags);
 	if($res == 1)
 #	if(((scalar (keys %$clausenrs)) > 0) || ((scalar (keys %$path_choices)) > 0))
 	{
@@ -311,27 +321,33 @@ sub CollectProvedByN
 	    $proved_byN{$i}->[3] = $path_choices;
 	    print PROVED_BY "proved_by([", join(',', @conjs), '],[', join(',', keys %$clausenrs), "]).\n";
 	}
+	elsif(($learnflags & 4) > 0)
+	{
+	    $unproved_byN{$i}->[3] = $fail_choices;
+	}
     }
     close(PROVED_BY);
-    return \%proved_byN;
+    return (\%proved_byN, \%unproved_byN);
 }
 
 
-## test:  perl -e 'use AIAdvise;   my $filestem ="uu"; my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = AIAdvise::CreateTables(500000,$filestem);    my  ($prob2cl, $prob2conj)=AIAdvise::CreateProb2Cl($filestem,$grefnr); my $proved_byN=AIAdvise::CollectProvedByN(500000,$filestem, 1, $grefnr, $prob2conj); AIAdvise::PrintTrainingFromClauseHash($filestem,1,$proved_byN,$grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref,3); '
+## test:  perl -e 'use AIAdvise;   my $filestem ="uu"; my ($grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref) = AIAdvise::CreateTables(500000,$filestem);    my  ($prob2cl, $prob2conj)=AIAdvise::CreateProb2Cl($filestem,$grefnr); my $proved_byN=AIAdvise::CollectProvedByN(500000,$filestem, 1, $grefnr, $prob2conj); AIAdvise::PrintTrainingFromClauseHash($filestem,1,$prob2cl,$proved_byN,$grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref,3); '
 
 
 # Create a .train_$iter file from the %proved_byN hash, where keys are
 # proved problems, and values conjectures and references and pathinfo
 # needed for the proof.  Mode encodes the info printed. If (mode & 1)
-# > 0, print the clauses, if (mode & 2) > 0, print the pathinfo. Thus,
-# use 3 for doing both.
+# > 0, print the clauses, if (mode & 2) > 0, print the pathinfo for proved problems. Thus,
+# use 3 for doing both. if (mode & 4) > 0, print the pathinfo for failed attempts.
 #
 # All the $filestem.train_* files are afterwards cat-ed to $filestem.alltrain_$iter
 # file, on which Learn() works.
 sub PrintTrainingFromClauseHash
 {
-    my ($filestem,$iter,$proved_byN, $grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref, $mode) = @_;
+    my ($filestem,$iter,$unproved_byN,$proved_byN, $grefnr, $gsymnr, $gsymarity, $grefsyms, $gnrsym, $gnrref, $mode) = @_;
     open(TRAIN, ">$filestem.train_$iter") or die "Cannot write train_$iter file";
+    if(($mode & 4) > 0) { open(FAILTRAIN, ">$filestem.failtrain_$iter") or die "Cannot write train_$iter file"; }
+
     foreach my $i (sort keys %$proved_byN)
     {
 	if(($mode & 1) > 0)
@@ -356,14 +372,33 @@ sub PrintTrainingFromClauseHash
 	    my $path_choices = $proved_byN->{$i}->[3];
 	    foreach my $syms (keys %$path_choices)
 	    {
-		 my @clausenrs = keys %{$path_choices->{$syms}};
-		 my @syms_nrs   = map { $gsymnr->{$_} if(exists($gsymnr->{$_})) }  split(/,/, $syms);
-		 my $training_exmpl = join(",", (@syms_nrs, @clausenrs));
-		 print TRAIN "$training_exmpl:\n";
-	     }
+		my @clausenrs = keys %{$path_choices->{$syms}};
+		my @syms_nrs   = map { $gsymnr->{$_} if(exists($gsymnr->{$_})) }  split(/,/, $syms);
+		my $training_exmpl = join(",", (@syms_nrs, @clausenrs));
+		print TRAIN "$training_exmpl:\n";
+	    }
 	}
     }
+
     close TRAIN;
+
+    if(($mode & 4) > 0)
+    {
+	open(FAILTRAIN, ">$filestem.failtrain_$iter") or die "Cannot write train_$iter file";
+	foreach my $i (sort keys %$unproved_byN)
+	{
+	    exists($unproved_byN->{$i}) or die "Problem not unproved: $i\n";
+	    my $path_choices = $unproved_byN->{$i}->[3];
+	    foreach my $syms (keys %$path_choices)
+	    {
+		my @clausenrs = keys %{$path_choices->{$syms}};
+		my @syms_nrs   = map { $gsymnr->{$_} if(exists($gsymnr->{$_})) }  split(/,/, $syms);
+		my $training_exmpl = join(",", (@syms_nrs, @clausenrs));
+		print FAILTRAIN "$training_exmpl:\n";
+	    }
+	}
+	close(FAILTRAIN);
+    }
 }
 
 # Create a .train_$iter file from the %proved_by hash, where keys are proved
@@ -477,7 +512,7 @@ sub Learn
     my ($path2snow, $filestem, $targetsnr, $iter) = @_;
     my $next_iter = 1 + $iter;
     print "LEARNING:$iter\n";
-    `cat $filestem.train_* > $filestem.alltrain_$iter`;
+    `cat $filestem.train_* $filestem.failtrain_$iter > $filestem.alltrain_$iter`;
     `$path2snow -train -I $filestem.alltrain_$iter -F $filestem.net_$next_iter  -B :0-$targetsnr`;
 }
 
@@ -652,8 +687,8 @@ sub TstLoop1
 
     RunLeancopProblems($filestem,$initprobs,"./leancop_dnf.sh", $prologdir, $iter, "",1,1);
 
-    my $proved_byN = CollectProvedByN($symoffset, $filestem, $iter, $grefnr, $prob2conj); 
-    PrintTrainingFromClauseHash($filestem,$iter,$proved_byN,$grefnr,$gsymnr,$gsymarity,$grefsyms,$gnrsym,$gnrref,3);
+    my ($proved_byN, $unproved_byN) = CollectProvedByN($symoffset, $filestem, $iter, $grefnr, $prob2conj); 
+    PrintTrainingFromClauseHash($filestem,$iter,$unproved_byN,$proved_byN,$grefnr,$gsymnr,$gsymarity,$grefsyms,$gnrsym,$gnrref,3);
     Learn($path2snow, $filestem, $targetsnr, $iter);
 
     my ($aport, $adv_pid) =
@@ -702,8 +737,8 @@ sub TstLoop2
     while (0==0)
     {
 	# hash of solved problems only, each with learning info
-	my $proved_byN = CollectProvedByN($symoffset, $filestem, $iter, $grefnr, $prob2conj,$learnflags);
-	PrintTrainingFromClauseHash($filestem,$iter,$proved_byN,$grefnr,$gsymnr,$gsymarity,$grefsyms,$gnrsym,$gnrref,$learnflags);
+	my ($proved_byN, $unproved_byN) = CollectProvedByN($symoffset, $filestem, $iter, $grefnr, $prob2conj,$learnflags);
+	PrintTrainingFromClauseHash($filestem,$iter,$unproved_byN,$proved_byN,$grefnr,$gsymnr,$gsymarity,$grefsyms,$gnrsym,$gnrref,$learnflags);
 	Learn($path2snow, $filestem, $targetsnr, $iter);
 
 	my ($aport, $adv_pid) =
