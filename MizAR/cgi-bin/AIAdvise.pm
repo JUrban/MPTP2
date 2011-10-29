@@ -665,6 +665,8 @@ sub TstLoop1
 
 ## test: 
 ## perl -e 'use AIAdvise;  AIAdvise::TstLoop2("swipl","00allBushy2","uuu",".","/home/urban/ec/Snow_v3.2/snow", 16);'
+##
+## time perl -e 'use AIAdvise;  AIAdvise::TstLoop2("swipl","00allChainy","u2u",".","/home/urban/rsrch/lean3/snow", 900, 3, 12);'
 
 sub TstLoop2
 {
