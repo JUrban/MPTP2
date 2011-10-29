@@ -254,6 +254,7 @@ sub  GetLeancopProofData
     my $learnfailchoices = $learnflags & 4;
 
     my $proof = $filebase . '.out_' . $iter;
+    $proof = $filebase . '.outf_' . $iter unless(-e $proof);
 
     if((-e $proof))
     {
