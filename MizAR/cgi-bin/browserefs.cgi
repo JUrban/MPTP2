@@ -49,11 +49,11 @@ foreach my $ref (@refs)
 	     my ($href1, $title1) = MPTPNames::HTMLizeRef($dep,$MizHtml,'tst1');
 	     if(length($href1)>0)
 	     {
-		 print $query->a({href=>$href1,title=>$title1,target=>"mizpres"}, $dep),",";
+		 print $query->a({href=>$href1,title=>$title1,target=>"mizpres"},$dep),", ";
 	     }
 	     elsif(length($title1)>0) 
 	     {
-		 print $query->font({color=>"Green",title=>$title1}, $dep),", ";
+		 print $query->font({color=>"Green",title=>$title1},$dep),", ";
 	     }
 	     else {print $dep,", ";}
 	}
