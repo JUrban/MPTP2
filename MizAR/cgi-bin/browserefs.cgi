@@ -37,7 +37,7 @@ print $query->start_html(-dtd=>'-//W3C//DTD HTML 3.2//EN');
 print '<div style="height:30%; font-family: monospace; overflow: auto">';
 foreach my $ref (@refs)
 {
-    print '<div style="border: .1em solid blue; margin: 4px 4px 4px 4px;">';
+    print '<div style="border: .1em solid green; margin: 8px 8px 8px 8px; padding: 8px 8px 8px 8px;">';
     my ($href, $title) = MPTPNames::HTMLizeRef($ref,$MizHtml,'tst1');
     print $query->a({href=>$href,title=>$title,target=>"mizpres"}, $ref),":";
     if(open(F,"$atpres_dir/$ref.needed_vampire_orig"))
