@@ -17,7 +17,7 @@ sub print_iframe
 {
     my $url = shift;
     print<<END1
-<iframe name="mizpres" src ="$url" width="95%" height="80%" style="margin:5px" frameborder="1">
+<iframe name="mizpres" src ="$url" width="95%" height="75%" style="margin:5px" frameborder="1">
 <p>Your user agent does not support iframes or is currently configured
   not to display iframes. However, you may visit
   <A href="$url">the related document.</A></p>
