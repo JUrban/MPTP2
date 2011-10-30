@@ -29,7 +29,11 @@ END1
 my @refs = split(/\s/, $input_refs);
 
 print $query->header;
-print $query->start_html();
+print $query->start_html(-dtd=>'-//W3C//DTD HTML 3.2//EN');
+
+# print $query->start_html();
+
+
 
 foreach my $ref (@refs)
 {
@@ -41,7 +45,7 @@ foreach my $ref (@refs)
 	my @deps = <F>;
 	foreach my $dep (@deps)
 	{
-	     my ($href, $title) = MPTPNames::HTMLizeRef($ref,$MizHtml,'tst1');
+	     my ($href, $title) = MPTPNames::HTMLizeRef($dep,$MizHtml,'tst1');
 	     print $query->a({href=>$href,title=>$title,target=>"mizpres"}, $dep),",";
 	}
     }
