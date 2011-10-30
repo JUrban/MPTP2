@@ -17,7 +17,7 @@ sub print_iframe
 {
     my $url = shift;
     print<<END1
-<iframe name="mizpres" src ="$url" width="95%" height="90%" style="margin:5px" frameborder="1">
+<iframe name="mizpres" src ="$url" width="95%" height="80%" style="margin:5px" frameborder="1">
 <p>Your user agent does not support iframes or is currently configured
   not to display iframes. However, you may visit
   <A href="$url">the related document.</A></p>
@@ -34,7 +34,7 @@ print $query->start_html(-dtd=>'-//W3C//DTD HTML 3.2//EN');
 # print $query->start_html();
 
 
-print '<div style="height:30%; font-family: monospace; overflow: auto">';
+print '<div style="height:20%; font-family: monospace; overflow: auto">';
 foreach my $ref (@refs)
 {
     print '<div style="border: .1em solid green; margin: 8px 8px 8px 8px; padding: 8px 8px 8px 8px;">';
