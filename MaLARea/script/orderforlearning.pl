@@ -76,6 +76,13 @@ elsif (/^([0-9]+):/) { exists $a[$1] or die; if(($th==1) && ($axs++ < $lim)) { p
 
 =cut
 
+# proof minimization:
+# for i in `cat 00`; do grep '^ *file(' $i.vout | perl -e '$i=shift; while (<>) {m/.*,([a-z0-9_]*)/ or die; push(@a,$1);} $b= "\\b\\(" . join("\\|",@a) . "\\)\\b"; `grep \"$b\" minim/$i > $i.min`' $i; done
+
+# for i in `ls t*.vout | sed -e 's/\.vout//'`; do grep ' file(' $i.vout | perl -e '$c=shift; while(<>) { m/ +file\([^,]*,([^)]*)\)/ or die; print "$1\n" unless($1 eq $c)}' $i > $i.needed_vampire_orig; done
+
+# for i in `ls t*.needed_vampire_orig | sed -e 's/\.needed_vampire_orig//'`; do perl -e 'while(<>) { if(m/^dt_/) {} elsif(m/^(t|l|d|ie|[rcf]c)\d+/) {print $_; } elsif(m/(reflexivity|commutativity|symmetry|connectedness|irreflexivity|projectivity|idempotence|antisymmetry|involutiveness)_/) {print $_; } elsif(m/^(s\d+_.*)__.*__.*/) {print "$1\n"; } }' $i.needed_vampire_orig > $i.needed_vampire_filtered; done
+
 use strict;
 
 my %ma = ();
