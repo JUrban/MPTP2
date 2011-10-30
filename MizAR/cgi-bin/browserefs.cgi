@@ -34,10 +34,10 @@ print $query->start_html(-dtd=>'-//W3C//DTD HTML 3.2//EN');
 # print $query->start_html();
 
 
-
+print '<div style="height:30%;">';
 foreach my $ref (@refs)
 {
-    print '<dev style="height:30%;">';
+    print '<div>';
     my ($href, $title) = MPTPNames::HTMLizeRef($ref,$MizHtml,'tst1');
     print $query->a({href=>$href,title=>$title,target=>"mizpres"}, $ref),":";
     if(open(F,"$atpres_dir/$ref.needed_vampire_orig"))
@@ -51,6 +51,7 @@ foreach my $ref (@refs)
     }
     print '</div>';
 }
+print '</div>';
 
 my ($href, $title) = MPTPNames::HTMLizeRef($refs[0],$MizHtml,'tst1');
 print_iframe("$href");
