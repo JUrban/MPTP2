@@ -45,6 +45,7 @@ foreach my $ref (@refs)
 	my @deps = <F>;
 	foreach my $dep (@deps)
 	{
+	     chop;
 	     my ($href1, $title1) = MPTPNames::HTMLizeRef($dep,$MizHtml,'tst1');
 	     if(length($href1)>0)
 	     {
