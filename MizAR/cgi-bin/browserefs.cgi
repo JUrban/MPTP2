@@ -34,7 +34,7 @@ print $query->start_html(-dtd=>'-//W3C//DTD HTML 3.2//EN');
 # print $query->start_html();
 
 
-print '<div style="height:30%; overflow: auto">';
+print '<div style="height:30%; font-family: monospace; overflow: auto">';
 foreach my $ref (@refs)
 {
     print '<div>';
