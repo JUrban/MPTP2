@@ -2,7 +2,7 @@ package MPTPNames;
 
 use strict;
 use warnings;
-
+use CGI;
 
 ## provide links and titles to various MPTP references
 sub HTMLizeRef
