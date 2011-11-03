@@ -2,6 +2,7 @@
 # add propoerties to specs from initial dependency table
 # run like: 
 # cat /local/data/alama/mizar-items/data/4.150.1103/properties/one-step/* | grep ':theorem'>/home/mptp/ph/00prop1
+# or cat /local/data/alama/mizar-items/data/4.150.1103/properties/one-step/* >/home/mptp/ph/00propall1
 # time ./addprops.pl /home/mptp/ph/00props1 item_mptp_deps
 #
 # Reflexivity Commutativity Symmetry Connectedness Irreflexivity Abstractness Projectivity Idempotence Antisymmetry Involutiveness
