@@ -47,7 +47,7 @@ while(<F>)
     my @a = split(/[ ]+/);
     $a[0] =~ m/^([a-z0-9_]+):theorem:(\d+)$/ or die "$_";
     my ($k, $frst) = @{j2m($a[0])};
-    if($k ~= m/^(t|s|d|ie|[rcf]c)$/)
+    if($k =~ m/^(t|s|d|ie|[rcf]c)$/)
     {
 	$a[0] = $frst;
 	# $a[0] = 't' . $2 . '_' . $1;
