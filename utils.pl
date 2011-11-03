@@ -4080,7 +4080,7 @@ filter_for_proved_by(_F, _P, Lev, MPropKind, InfKind, Refs0, ProvedByRefs):-
 	  filter_level_refs(Lev, Refs0, Refs1)
 	;
 	  (
-	    member(MPropKind,[fcluster,ccluster,rcluster]) ->
+	    member(MPropKind,[fcluster,ccluster,rcluster,identifyexp]) ->
 	    filter_level_refs(Lev, Refs0, Refs1)
 	  ;
 	    Refs1 = Refs0
@@ -4514,7 +4514,7 @@ mk_article_nd_problems(Article,_Kinds,Options):-
 
 %% Kinds is a list [InferenceKinds, PropositionKinds | Rest]
 %% possible InferenceKinds are now [mizar_by, mizar_from, mizar_proof]
-%% possible PropositionKinds are now [theorem, scheme,cluster,fcluster,ccluster,rcluster,top_level_lemma, sublemma]
+%% possible PropositionKinds are now [theorem, scheme,cluster,fcluster,ccluster,rcluster,identifyexp,top_level_lemma, sublemma]
 %% Rest is a list now only possibly containing snow_spec, problem_list and subproblem_list.
 %%
 %% The fraenkeldef creation for the loaded MML is done on demand,
@@ -4552,11 +4552,11 @@ mk_article_problems(Article,Kinds,Options):-
 	  Kinds1 = Kinds
 	),
 
-	%% expand cluster into fcluster,ccluster,rcluster
+	%% expand cluster into fcluster,ccluster,rcluster,identifyexp
 	Kinds1 = [InferenceKinds,PropositionKinds|Rest],
 	(member(cluster,PropositionKinds) ->
 	    delete(PropositionKinds,cluster,PKinds1),
-	    union([fcluster,ccluster,rcluster],PKinds1,PKinds2),
+	    union([fcluster,ccluster,rcluster,identifyexp],PKinds1,PKinds2),
 	    Kinds2 = [InferenceKinds,PKinds2|Rest]
 	;
 	    Kinds2 = Kinds1
@@ -4579,7 +4579,7 @@ mk_article_problems(Article,Kinds,Options):-
 %% - otherwise change their naming
 %% mk_problem(?P,+F,+Prefix,+Kinds,+Options)
 %% possible InferenceKinds are now [mizar_by, mizar_proof, mizar_from]
-%% possible PropositionKinds are now: [theorem,scheme,fcluster,ccluster,rcluster,
+%% possible PropositionKinds are now: [theorem,scheme,fcluster,ccluster,rcluster,identifyexp,
 %% top_level_lemma, sublemma] (not that just cluster is not allowed here - has to be expanded above).
 %% Rest is now checked for containing snow_refs and problem_list([...]).
 %% The snow_spec of P have to be available in predicate
@@ -4606,10 +4606,10 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	member(InfKind0,InferenceKinds),
 	member(PropKind,PropositionKinds),
 	(
-	  member(PropKind,[theorem,scheme,fcluster,ccluster,rcluster]),
+	  member(PropKind,[theorem,scheme,fcluster,ccluster,rcluster,identifyexp]),
 	  MPropKind = PropKind
 	;
-	  not(member(PropKind,[theorem,scheme,fcluster,ccluster,rcluster])),
+	  not(member(PropKind,[theorem,scheme,fcluster,ccluster,rcluster,identifyexp])),
 	  MPropKind = proposition,
 	  (
 	    PropKind = top_level_lemma,
@@ -4621,7 +4621,7 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	fof(P,_,_Fla,file(F,_),[mptp_info(_Nr,Lev,MPropKind,position(Line0,Col0),Item_Info)
 			       |Rest_of_info]),
 
-	(member(MPropKind,[fcluster,ccluster,rcluster]) ->
+	(member(MPropKind,[fcluster,ccluster,rcluster,identifyexp]) ->
 	    ensure(Item_Info = [proof_level(_), Justification |_], cluster(Item_Info)),
 	    (Justification = correctness_conditions([Correctness_Proposition1|_]) ->
 		Correctness_Proposition1 =.. [_Correctness_Condition_Name1, Corr_Proposition_Ref1],
@@ -4753,7 +4753,7 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	  once(fixpoint(F, [Pos1, Lev], InfKind1, [P|Refs], [], Syms1, AllRefs1)),
 	  %% if we used the correctness proposition for computing references of cluster
 	  %% registrations, we have to filter using the cluster's level
-	  (member(MPropKind,[fcluster,ccluster,rcluster]) ->
+	  (member(MPropKind,[fcluster,ccluster,rcluster,identifyexp]) ->
 	      filter_level_refs(Lev,AllRefs1,AllRefs)
 	  ;
 	      AllRefs = AllRefs1
