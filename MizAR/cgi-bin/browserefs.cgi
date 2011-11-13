@@ -33,7 +33,7 @@ print $query->start_html(-dtd=>'-//W3C//DTD HTML 3.2//EN');
 
 # print $query->start_html();
 
-print 'Green boxes are ATP dependencies, blue box is Mizar code. Clicking on proof will display the Mizar proof.';
+print 'Green box shows ATP dependencies, black box is Mizar code. Clicking on proof will display the Mizar proof.';
 
 print '<div style="height:20%; font-family: monospace; overflow: auto">';
 foreach my $ref (@refs)
