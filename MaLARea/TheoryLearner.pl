@@ -247,8 +247,10 @@ Use --permutetimelimit=0 to switch off fixing of countersatisfiable specs comple
 The similarity measure for formulas. If 1, only vector of symbols
 is used, if 2, only codes of shared terms are used, if 4, the shared terms
 are first normalized by renaming all variables to just one generic variable.
+If 8, all substitution-tree nodes for all subterms are used instead of just shared terms.
+This can be again combined with 4 (normalization). 
 Combinations of these basic methods can be done by summing their codes
-(i.e., value 7 would tell to use all of them).
+(i.e., value 16 would tell to use all of them).
 Default is 1 (symbols only).
 
 
@@ -600,6 +602,10 @@ my $gtimelimit = $maxtimelimit;
 my $gdotrmstd = $gsimilarity & 2;
 my $gdotrmnrm = $gsimilarity & 4;
 my $gdosyms = $gsimilarity & 1;
+my $gdostreedefs = $gsimilarity & 8;
+
+# shared features generating program
+my $gshgenfeatureprg = ($gdostreedefs > 0)? "fof2streedefs" : "fofshared";
 
 my $gusenegmodels = $gusemodels & 1;
 my $guseposmodels = $gusemodels & 2;
@@ -2720,13 +2726,13 @@ sub Iterate
 	`cat $filestem.allasax | bin/GetSymbols -- |sort -u > $filestem.refsyms`;
 
 	# create the trmstd and trmnrm files
-	if ($gdotrmstd > 0) {
-	    `cat $filestem.allasax | bin/fofshared -|sort -u > $filestem.trmstd`;
+	if (($gdotrmstd > 0) || ($gshgenfeatureprg > 0)) {
+	    `cat $filestem.allasax | bin/$gshgenfeatureprg -|sort -u > $filestem.trmstd`;
 	}
 	if ($gdotrmnrm > 0) {
 	    my @lines1 = `cat $filestem.allasax`;
 	    my $line;
-	    my $fofsh_pid = open(FOFSH,"|bin/fofshared -|sort -u > $filestem.trmnrm");
+	    my $fofsh_pid = open(FOFSH,"|bin/$gshgenfeatureprg -|sort -u > $filestem.trmnrm");
 	    foreach $line (@lines1) {
 		$line =~ s/([\(, ])[A-Z][a-zA-Z0-9_]*/$1A/g;
 		print FOFSH $line;
