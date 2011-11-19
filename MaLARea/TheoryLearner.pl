@@ -765,7 +765,7 @@ sub LoadTermTable
 	m/^terms\( *([a-z0-9A-Z_]+) *, *\[(.*)\] *\)\./ 
 	    or die "Bad terms info: $_";
 	my ($ref, $trms) = ($1, $2);
-	my @trms = split(/\,/, $trms);
+	my @trms = split(/\ *,/, $trms);
 	die "Duplicate reference $ref in $_" if exists $$ref2trm_hash{$ref};
 	$$ref2trm_hash{$ref} = [];
 	my ($sym);
