@@ -250,7 +250,7 @@ are first normalized by renaming all variables to just one generic variable.
 If 8, all substitution-tree nodes for all subterms are used instead of just shared terms.
 This can be again combined with 4 (normalization). 
 Combinations of these basic methods can be done by summing their codes
-(i.e., value 16 would tell to use all of them).
+(i.e., value 15 would tell to use all of them).
 Default is 1 (symbols only).
 
 
@@ -2726,7 +2726,7 @@ sub Iterate
 	`cat $filestem.allasax | bin/GetSymbols -- |sort -u > $filestem.refsyms`;
 
 	# create the trmstd and trmnrm files
-	if (($gdotrmstd > 0) || ($gshgenfeatureprg > 0)) {
+	if (($gdotrmstd > 0) || ($gdostreedefs > 0)) {
 	    `cat $filestem.allasax | bin/$gshgenfeatureprg -|sort -u > $filestem.trmstd`;
 	}
 	if ($gdotrmnrm > 0) {
