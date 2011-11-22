@@ -56,7 +56,7 @@ make_numbered_tree(Term,L):- p2tl(Term,L),(!).
 p2tl(X,[]):- (atomic(X);var(X);is_numvar(X)),(!).
 p2tl(X,Out):-
 	X =.. [H|T],
-	number(H,H1),
+	mk_number(H,H1),
 	print_edges_to(H,H1,T,Out1),
 	p2tls(T,Out2),
 	append(Out1,Out2,Out).
@@ -64,13 +64,16 @@ p2tl(X,Out):-
 p2tls([],[]).
 p2tls([H|T],Out):- p2tl(H,Out1),(!),p2tls(T,Out2),append(Out1,Out2,Out).
 
+mk_name(X,N):-
+	name(X,K),name(n,L),append(L,K,M),name(N,M).
+
 %% print_edges_to(+From,+ToTerms)
 print_edges_to(_,_,[],[]).
 print_edges_to(From,FromN,[H|T],[FromN:H1|OutT]):-
 	(
-	 atomic(H) -> number(H,H1)
+	 atomic(H) -> mk_number(H,H1)
 	;
-	 H=.. [H0|_], number(H0,H1)
+	 H=.. [H0|_], mk_number(H0,H1)
 	),
 	print_edges_to(From,FromN,T,OutT).
 
@@ -84,7 +87,10 @@ p2t(X):-
 p2ts([]).
 p2ts([H|T]):- p2t(H),(!),p2ts(T).
 
-number(X,C):-
+mk_number(X,C):-
+	number(X),(!),mk_name(X,N),mk_number(N,C).
+
+mk_number(X,C):-
 	(
 	 g_read(X,0),
 	 g_inc(mmmm_counter,C),
@@ -95,7 +101,7 @@ number(X,C):-
 	).
 	
 nwrite(X):-
-	number(X,C),
+	mk_number(X,C),
 	write(C).
 
 %% print_edges_to(+From,+ToTerms)
