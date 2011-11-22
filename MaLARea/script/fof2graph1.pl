@@ -171,7 +171,7 @@ fof2edge:-
 	repeat,
 	read(F),	
 	(
-	  F = end_of_file -> print_tables,halt;
+	  F = end_of_file -> print_tables,told,halt;
 	  write_fof_as_edge(F),
 	  fail
 	).
