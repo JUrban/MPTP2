@@ -135,7 +135,7 @@ write_fof_as_edge_old(F):-
 	write(']).'),nl.
 
 print_table:-
-	findall(X,(mmmm_arr(X,C), write(X:C),nl),_).
+	tell('.refnr'),findall(X,(mmmm_arr(X,C), write(X:C),nl),_),told.
 
 fof2edge:-
 	set_prolog_flag(char_conversion,on),
