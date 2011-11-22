@@ -7,6 +7,7 @@
 %%  Expects a set of TPTP fof's in input. Outputs the fof's
 %%  as a numbered graph. Compile: gplc fof2graph1.pl
 %%------------------------------------------------------------------------
+:-dynamic(spec/2).
 
     :- op(99,fx,'$').
     :- op(100,fx,++).
@@ -92,7 +93,7 @@ mk_number(X,C):-
 
 mk_number(X,C):-
 	(
-	 g_read(X,0),
+	 g_read(X,0) ->
 	 g_inc(mmmm_counter,C),
 	 assertz(mmmm_arr(X,C)),
 	 g_assign(X,C)
@@ -117,12 +118,34 @@ print_edges_to(From,[H|T]):-
 	nwrite(H1),
 	write(','),
 	print_edges_to(From,T).
- 
+
+% reference numbering
+ref_num(X,C):-
+	(
+	 g_read(X,0) ->
+	 g_inc(ref_counter,C0),
+	 C is 100000 + C0,
+	 assertz(ref_arr(X,C)),
+	 g_assign(X,C)
+	;
+	 g_read(X,C)
+	).
+
+ref_numbers([],[]).
+ref_numbers([H|T],[H1|T1]):- ref_num(H,H1),ref_numbers(T,T1).
+	    
+	    
+
 write_fof_as_edge(F):-
 	F =.. [fof,Name,_,Fla|_],
+	(
+	 spec(Name,Refs) -> ref_numbers([Name|Refs],RefNums)
+	;
+	 ref_numbers([Name],RefNums)
+	),
 	numbervars(Fla,0,_),
 	make_numbered_tree(Fla,L),
-	write(edges(Name,L)),
+	write(edges(Name,L,RefNums)),
 	write('.'),nl.
 
 write_fof_as_edge_old(F):-
@@ -134,16 +157,21 @@ write_fof_as_edge_old(F):-
 	print_as_numbered_tree(Fla),
 	write(']).'),nl.
 
-print_table:-
-	tell('.refnr'),findall(X,(mmmm_arr(X,C), write(X:C),nl),_),told.
+print_tables:-
+	tell('.symnr'),findall(X,(mmmm_arr(X,C), write(X:C),nl),_),told,
+	tell('.refnr'),findall(X,(ref_arr(X,C), write(X:C),nl),_),told.
 
 fof2edge:-
 	set_prolog_flag(char_conversion,on),
 	char_conversion('|','+'),
+	read(SpecFile),
+	read(FofFile),
+	[SpecFile],(!),
+	see(FofFile),
 	repeat,
 	read(F),	
 	(
-	  F = end_of_file -> print_table,halt;
+	  F = end_of_file -> print_tables,halt;
 	  write_fof_as_edge(F),
 	  fail
 	).
