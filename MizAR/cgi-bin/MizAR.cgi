@@ -16,6 +16,7 @@ use MPTPNames;
 my $CgiDir = '/home/mptp/public_html/cgi-bin';
 do "$CgiDir/MizARconfig.pl";
 my $MyUrl = MyUrl();
+my $gloadlimit = GLoadLimit();
 
 # possible SZS statuses
 sub szs_INIT        ()  { 'Initial' } # system was not run on the problem yet
@@ -109,6 +110,7 @@ $atp_mode = 0 unless defined($atp_mode);
 my $gmaster_mode = $atp_mode & 1;
 my $gonly_create_problems = $atp_mode & 2;
 my $gemulate_all_by = $atp_mode & 4;
+my $gwatch_cpu_load = $atp_mode & 8;  # start when cpu load falls below $gloadlimit
 
 # timelimit for swi prolog, only unlimited in master mode, otherwise 120s.
 my $swiulimit = ($gmaster_mode==1)? 100000 : 120;
@@ -116,6 +118,13 @@ my $swiulimit = ($gmaster_mode==1)? 100000 : 120;
 my $starttime = time(); # for measuring the query processing time
 
 $ENV{"PATH"} = $ENV{"PATH"} . ":/home/mptp/bin";
+
+if($gwatch_cpu_load == 1)
+{
+    my $load = `cut -f1 -d \  /proc/loadavg`;
+    while($load > $gloadlimit) { sleep 10; $load = `cut -f1 -d \  /proc/loadavg`; }
+}
+
 
 sub my_warning
 {
