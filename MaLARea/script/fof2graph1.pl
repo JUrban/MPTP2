@@ -91,15 +91,17 @@ p2ts([H|T]):- p2t(H),(!),p2ts(T).
 mk_number(X,C):-
 	number(X),(!),mk_name(X,N),mk_number(N,C).
 
-mk_number(X,C):-
+mk_number(X,C1):-
 	(
 	 g_read(X,0) ->
-	 g_inc(mmmm_counter,C),
+	 g_inc(mmmm_counter,C0),
+	 C is 2000000 + C0,
 	 assertz(mmmm_arr(X,C)),
 	 g_assign(X,C)
 	;
 	 g_read(X,C)
-	).
+	),
+	C1 is C - 1.
 	
 nwrite(X):-
 	mk_number(X,C),
@@ -120,16 +122,16 @@ print_edges_to(From,[H|T]):-
 	print_edges_to(From,T).
 
 % reference numbering
-ref_num(X,C):-
+ref_num(X,C1):-
 	(
 	 g_read(X,0) ->
-	 g_inc(ref_counter,C0),
-	 C is 100000 + C0,
+	 g_inc(ref_counter,C),
 	 assertz(ref_arr(X,C)),
 	 g_assign(X,C)
 	;
 	 g_read(X,C)
-	).
+	),
+	C1 is C - 1.
 
 ref_numbers([],[]).
 ref_numbers([H|T],[H1|T1]):- ref_num(H,H1),ref_numbers(T,T1).
@@ -158,8 +160,8 @@ write_fof_as_edge_old(F):-
 	write(']).'),nl.
 
 print_tables:-
-	tell('.symnr'),findall(X,(mmmm_arr(X,C), write(X:C),nl),_),told,
-	tell('.refnr'),findall(X,(ref_arr(X,C), write(X:C),nl),_),told.
+	tell('.symnr'),findall(X,(mmmm_arr(X,C), C1 is C - 1, write(X:C1),nl),_),told,
+	tell('.refnr'),findall(X,(ref_arr(X,C), C1 is C - 1, write(X:C1),nl),_),told.
 
 fof2edge:-
 	set_prolog_flag(char_conversion,on),
