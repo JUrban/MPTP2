@@ -98,7 +98,12 @@ ln -s /home/mptp/gitrepo/xsl4mizar $ph/xsl4mizar
 
 cp /home/mptp/gitrepo/MPTP2/MizAR/cgi-bin/bin/* $mycgi 
 
+ln -s /home/mptp/gitrepo/MPTP2/MizAR/cgi-bin/showby.cgi $mycgi/showby.cgi
+ln -s /home/mptp/gitrepo/MPTP2/MizAR/cgi-bin/showtmpfile.cgi $mycgi/showtmpfile.cgi
+ln -s /home/mptp/bin/vampire_1.8 $mycgi/vampire_rel2
+
 ln -s $mymml/mptp/utils.pl $mycgi/utils.pl
+
 
 sed -ie "s/^mml_dir(.*/mml_dir(\"\/home\/mptp\/mizwrk\/$ver\/MPTP2\/pl\/\")./" utils.pl
 sed -ie "s/^bindir=.*/bindir=$bindir/" $mycgi/mizf
@@ -120,7 +125,7 @@ cat Axioms/*.ax > 00allmmlax
 # the same for the main html file 
 # xsl4mizar expected in public_html - done
 # ERROR: script_file `/home/mptp/public_html/cgi-bin/bin4.160.1126/utils.pl' does not exist - DONE
-# The requested URL /~mptp/cgi-bin/bin4.160.1126/showby.cgi was not found on this server.
+# Not Found: The requested URL /~mptp/cgi-bin/bin4.160.1126/showby.cgi was not found on this server. - DONE
 
 # The requested URL /~mptp/cgi-bin/tptp/RemoteSOT1.cgi was not found on this server.
 # - one-time symlink from ~/gr/MPTP2/MizAR/cgi-bin/tptp needed in ~ph/cgi-bin/tptp
