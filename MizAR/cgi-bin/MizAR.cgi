@@ -16,7 +16,7 @@ use MPTPNames;
 my $CgiDir = '/home/mptp/public_html/cgi-bin';
 do "$CgiDir/MizARconfig.pl";
 my $MyUrl = MyUrl();
-my $gloadlimit = GLoadLimit();
+my $gloadlimit = 0; # GLoadLimit(); temporary hack!!!!
 
 # possible SZS statuses
 sub szs_INIT        ()  { 'Initial' } # system was not run on the problem yet
