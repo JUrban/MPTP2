@@ -174,6 +174,7 @@ my $mk_derived_mptp_files = "$Bindir/mk_derived.pl";
 my $err2pl = "$Bindir/err2pl.pl";
 my $err2xml = "$Bindir/err2xml.pl";
 my $mizitemize = "$Bindir/MizItemize.pl";
+my $mizitemize = "$Bindir/MizComments.pl";
 my $addabsrefs = "$Xsl4MizarDir/addabsrefs.xsl";
 my $miz2html = "$Xsl4MizarDir/miz.xsl";
 my $mizpl = "$Xsl4MizarDir/mizpl.xsl";
@@ -199,6 +200,8 @@ my $ProblemFileErr1 = $ProblemFileOrig . ".err1";
 my $ProblemFileErr2 = $ProblemFileOrig . ".err2";
 my $ProblemFileErrX = $ProblemFileOrig . ".errx";
 my $ProblemCgiParams = $ProblemFileOrig . ".cgiparams";
+
+my $ProblemFileComments = $ProblemFileOrig . ".cmt";
 
 my $MizOutput = $ProblemFileOrig . ".mizoutput";
 my $MizOutputEmacs = $ProblemFileOrig . ".mizoutputemacs";
@@ -477,6 +480,7 @@ system("cp $ProblemFileErr $ProblemFileErr1");
 system("$err2pl $ProblemFileErr > $ProblemFileErr2");
 system("$err2xml $ProblemFileErr > $ProblemFileErrX");
 system("$mizitemize $ProblemFileOrig");
+system("$mizcomments $ProblemFileOrig > $ProblemFileComments");
 
 my $InferenceNr = `egrep -c '<(Proof|By|From|Now)' $ProblemFileXml`;
 my $errorsnr = `wc -l <$ProblemFileErr`;
@@ -587,7 +591,7 @@ elsif($generatehtml==1)
 
 	system("$mkxmlhead -s $ProblemFile > $ProblemFileOrig.hdr");
 
-	system("time $xsltproc  $genatpparams $ajaxproofparams --param mk_header 1 --param const_links 1  --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
+	system("time $xsltproc  $genatpparams $ajaxproofparams --param mk_comments 1 --param mk_header 1 --param const_links 1  --param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$MizHtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param proof_links 1 $miz2html $ProblemFileXml.abs |tee $ProblemFileHtml 2>$ProblemFileXml.errhtml"); 
     }
 }
 
