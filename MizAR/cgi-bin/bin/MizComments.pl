@@ -39,19 +39,15 @@ foreach my $i (0 .. $#lines)
     $_ = $lines[$i];
     if(m/^ *::+.*/) # inside a comment
     {
-	if($incomment == 1) # inside an already started comments
-	{
-	    push(@curr_comments, $_);
-	    $endcomment = $i+1;
-	}
-	else  # starting a new comment
+	if($incomment != 1) # starting a new comment
 	{
 	    $begcomment = $i+1;
-	    $endcomment = $i+1;
 	    @curr_comments = ();
-	    push(@curr_comments, $_);
 	    $incomment = 1;
 	}
+
+	push(@curr_comments, $_);
+	$endcomment = $i+1;
     }
     elsif(($incomment == 1) && (m/^ *$/)) # continuing a comment by empty line
     {
