@@ -17,6 +17,7 @@ VERIFIER.BFEX = $(MFILES)/bin/verifier.bfex
 MIZPL = $(XSL4MIZAR)/mizpl.xsl
 EVL2PL = $(XSL4MIZAR)/evl2pl.xsl
 MKXMLHEAD = $(XSL4MIZAR)/mkxmlhead.pl
+MKCOMMENTS = $(XSL4MIZAR)/MizComments.pl
 DBENV2 = $(MPTP2)/dbenv2.pl
 MK_DERIVED = $(MPTP2)/mk_derived.pl
 
@@ -58,14 +59,17 @@ MK_DERIVED = $(MPTP2)/mk_derived.pl
 %.hdr: %.miz
 	$(MKXMLHEAD) $*.miz > $*.hdr
 
+%.cmt: %.miz
+	$(MKCOMMENTS) $*.miz > $*.cmt
+
 %.evl1: %.acc
 	$(XSLTPROC) $(EVL2PL) $*.evl > $*.evl1
 
 %.evl2: %.evl1
 	$(DBENV2) $* > $*.evl2
 
-%.htmla1: %.xml1 %.hdr
-	$(XSLTPROC) --param mk_header 1 --param linking \'s\' --param mizhtml \'\' --param ajax_proofs \'1\' --param titles \'1\' --param colored \'1\' --param proof_links \'1\' $(XML2HTML)  $*.xml1 > $*.htmla1 
+%.htmla1: %.xml1 %.hdr %.cmt
+	$(XSLTPROC) --param mk_comments 1 --param mk_header 1 --param linking \'s\' --param mizhtml \'\' --param ajax_proofs \'1\' --param titles \'1\' --param colored \'1\' --param proof_links \'1\' $(XML2HTML)  $*.xml1 > $*.htmla1 
 
 %.htmla2: %.xml1
 	$(XSLTPROC) --param ajax_proofs \'2\' --param proof_links \'1\' $(XML2HTML)  $*.xml1 > $*.htmla2 
@@ -90,5 +94,6 @@ allexp: $(addsuffix .exp, $(STANDARDMIZ))
 #alldco2: $(addsuffix 2, $(shell ls *.dco))
 alldco2: $(addsuffix .dco2, $(STANDARDMIZ))
 allhdr: $(addsuffix .hdr, $(STANDARDMIZ))
+allcmt: $(addsuffix .cmt, $(STANDARDMIZ))
 allevl1: $(addsuffix .evl1, $(SHMIZ))
 allevl2: $(addsuffix .evl2, $(SHMIZ))
