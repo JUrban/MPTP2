@@ -31,7 +31,7 @@ my @curr_comments = ();
 my $begcomment = 0;
 my $endcomment = 0;
 
-while($_=<MIZ>) { push(@lines, $_); }
+while($_=<MIZ>) { s/\r\n/\n/g; push(@lines, $_); }
 close(MIZ);
 
 foreach my $i (0 .. $#lines)
