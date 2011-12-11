@@ -53,6 +53,11 @@ foreach my $i (0 .. $#lines)
 	    $incomment = 1;
 	}
     }
+    elsif(($incomment == 1) && (m/^ *$/)) # continuing a comment by empty line
+    {
+	push(@curr_comments, $_);
+	$endcomment = $i+1;
+    }
     else  # not inside a comment
     {
 	if($incomment == 1) # print the previous comment if any
