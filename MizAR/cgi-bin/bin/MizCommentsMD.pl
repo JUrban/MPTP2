@@ -55,7 +55,7 @@ foreach my $i (0 .. $#lines)
 	{
 	    my ($thname,$thname1) = ($1,$1);
 	    $thname1 =~ s/ +/_/g;
-	    $txt = '<CmtLink><a href="' . $wp . $thname1 . '">' .
+	    $txt = '<CmtLink><a href="' . $wp . HTML::Entities::encode($thname1) . '">' .
 		HTML::Entities::encode($thname) . '</a></CmtLink>';
 	}
 	else { $txt = '<CmtLine>' . HTML::Entities::encode($txt) . '</CmtLine>';}
