@@ -49,6 +49,7 @@ export MIZFILES=`pwd`
 cd miztmp
 make -j $jobs allacc | tee 00acc.log
 make -j $jobs allhdr | tee 00hdr.log
+make -j $jobs allcmt | tee 00cmt.log
 make -j $jobs allxml | tee 00xml.log
 make -j $jobs allxml1 | tee 00xml1.log
 make -j $jobs allhtmla1 | tee 00htmla1.log
@@ -58,12 +59,14 @@ make -j $jobs allevl2 | tee 00evl2.log
 
 make hidden.acc
 make hidden.hdr
+make hidden.cmt
 make hidden.xml
 make hidden.xml1
 make hidden.htmla1
 
 make tarski.acc
 make tarski.hdr
+make tarski.cmt
 make tarski.xml
 make tarski.xml1
 make tarski.htmla1
