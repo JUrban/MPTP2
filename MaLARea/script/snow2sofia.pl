@@ -14,7 +14,7 @@ my %h=();    # hash keeping contiguous numbering for pars of features
 my $z=10000; # max bound for premise numbering - we start the pair numbering here
 
 my @prev = (); # premises already seen
-my $neg = 10; # number of negative examples added
+my $neg = 30; # number of negative examples added
 
 my $tst = 0;
 if(defined $ARGV[1]) { $tst = 1; open(T,">$ARGV[1]") or die; }
