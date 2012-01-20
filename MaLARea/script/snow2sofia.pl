@@ -3,6 +3,10 @@
 # run like:
 #
 # perl -F snow2sofia.pl probs6.train_01 > probs6.softrain
+#
+# or to have a testfile with 10%:
+#
+# ./snow2sofia.pl probs6.train_01 tst1 > probs6.softrain
 
 use strict;
 
@@ -11,6 +15,9 @@ my $z=10000; # max bound for premise numbering - we start the pair numbering her
 
 my @prev = (); # premises already seen
 my $neg = 10; # number of negative examples added
+
+my $tst = 0;
+if(defined $ARGV[1]) { $tst = 1; open(T,">$ARGV[1]") or die; }
 
 while (<>)
 {
@@ -29,6 +36,7 @@ while (<>)
     my $cnt = 0;
     foreach my $j (@t,@p)
     {
+	if(($tst == 1) && ($#t > 0) && (int rand 9 == 1)) { select T } else { select STDOUT }
 	print "$r qid:$q ";
 	$cnt++;
 	if($cnt > $#t) { $r= -1;}
@@ -43,3 +51,4 @@ while (<>)
     }
     push(@prev, $q);
 }
+close(T) if($tst == 1);
