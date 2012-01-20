@@ -19,7 +19,9 @@ my $neg = 10; # number of negative examples added
 my $tst = 0;
 if(defined $ARGV[1]) { $tst = 1; open(T,">$ARGV[1]") or die; }
 
-while (<>)
+open(F,$ARGV[0]);
+
+while (<F>)
 {
     my @l= m/(\d+)/g;
     my $q= $l[0];
