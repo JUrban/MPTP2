@@ -34,9 +34,9 @@ while (<>)
 
     my $r= 1;  # bigger weight for the name of the formula than for the premises
     my $cnt = 0;
+    if(($tst == 1) && ($#t > 0) && (int rand 9 == 1)) { select T } else { select STDOUT }
     foreach my $j (@t,@p)
     {
-	if(($tst == 1) && ($#t > 0) && (int rand 9 == 1)) { select T } else { select STDOUT }
 	print "$r qid:$q ";
 	$cnt++;
 	if($cnt > $#t) { $r= -1;}
