@@ -35,7 +35,7 @@ foreach my $i (0 .. $#ff)
     }
 }
 
-foreach my $v (sort {$r{$a} <=> $r{b}} keys %r)
+foreach my $v (sort {$r{$a} <=> $r{$b}} keys %r)
 {
     print "$v\t$r{$v}\n";
 }
