@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # translate first $lime accessible numeric predictions (from MOR, etc) to formulas names
 # run like: 
-# ./predictions2specs.pl 40 > zzz.advice40-mor
+# ./predictions2specs.pl 40 MORPredictions > zzz.advice40-mor
 #
 # TODO: this is still with hardwired paths in it
 
