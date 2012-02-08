@@ -19,6 +19,8 @@ jobs=8
 
 wget ftp://mizar.uwb.edu.pl/pub/system/i386-linux/mizar-$ver-i386-linux.tar
 mkdir $ver
+
+##WS: unzip mizar-$1-i386-win32.exe -d $ver
 tar xf mizar-$ver-i386-linux.tar -C$ver 
 cd $ver
 cvs -d:pserver:softdev@mizar.uwb.edu.pl:2401/srv/cvsroot co -rver_$cvsver kernel libtools base
@@ -28,6 +30,17 @@ cd ../libtools
 fpc -Sd -Fu../base -Fu../kernel envget.dpr
 cd ..
 ### TODO: fix mizf!!
+
+### TODO: make this conditional instead of commented, compile all binaries in that case
+# doing it with the windows version (not working yet):
+
+##WS: unzip -a -o mmlfull -d mml
+##WS: unzip -a -o mizdoc -d doc
+##WS: unzip -a -o mizbib -d doc
+##WS: unzip -a -o mizxml -d doc/xml
+##WS: unzip -a -o prel -d prel
+##WS: unzip -a -o abstr -d abstr
+##WS: unzip -a -o mizdb1
 
 tar xzf mizshare.tar.gz 
 tar xzf mizdoc.tar.gz 
