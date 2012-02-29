@@ -1,0 +1,1 @@
+tptp2leancop(26).pl

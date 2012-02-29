@@ -10,10 +10,10 @@ sub min { my ($x,$y) = @_; ($x <= $y)? $x : $y }
 # clausifies consistently, assuming that leancop is in the directory $prologdir
 sub LeancopClausify
 {
-    my ($prolog,$filelist,$filestem,$prologdir) = @_;
+    my ($prolog,$filelist,$filestem,$prologdir,$options) = @_;
     my $dollar = '$';
     my $command = "[tptp2leancop], time((read_file_lines('$filelist',L)," .
-	"tptp2leancop(L,[nodef,dumpsyms('$filestem.refsyms'),dumpterms('$filestem.terms')])))," .
+	"tptp2leancop(L,[nodef,dumpsyms('$filestem.refsyms'),dumpterms('$filestem.terms')$options])))," .
 	    "halt. ";
     system("sed -e 's/$dollar/.leancop/' $filelist > $filestem.probs");
     system("cd $prologdir; $prolog -nodebug -L120M -G120M -T100M -q -t \"$command\"");
