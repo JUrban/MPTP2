@@ -1,4 +1,4 @@
-%% File: dnf2fof.pl  -  Version: 1.4  -  Date: 29 February 2012
+%% File: dnf2fof.pl  -  Version: 1.5  -  Date: 1 March 2012
 %%
 %% Purpose: The transformation of Malecop DNF files into TPTP FOF files for a further usage.
 %%
@@ -13,20 +13,23 @@ dnf2fof(Input_File,Output_File) :-
 	dnf_to_one_fof(Cs,C),
 	eliminate_sharp(C,NC),
 	list_dnf2fof(As,FAs),
-	close_fof([NC|FAs],CAs),
-	list_to_file(CAs,Output_File).
+	close_fof(FAs,CAs),
+	list_to_file([NC|CAs],Output_File).
 
 %%%%%%
 close_fof([],[]).
 close_fof([fof(Id,Type,FOF)|Ls],[fof(Id,Type,CFOF)|Cs]) :-
-	term_variables(FOF,Vars),
+        close_formula(FOF,CFOF),
+	close_fof(Ls,Cs).
+
+close_formula(FOF,CFOF) :-
+        term_variables(FOF,Vars),
 	(
 	Vars = [] ->
 	  CFOF=FOF
 	;
 	  CFOF=':'('!'(Vars),FOF)
-	),
-	close_fof(Ls,Cs).
+	).
 
 %%%%%%
 eliminate_sharp(fof(Id,Type,FOF),fof(Id,Type,EFOF)) :- !,
@@ -52,16 +55,22 @@ eliminate_sharp(X,X).
 
 %%%%%%
 dnf_to_one_fof([dnf(Id,Type,DNF,_G,_X)],fof(Id,Type,FOF)) :-
-	!, list_to_conjunction(DNF,FOF).
+	!, list_to_closed_conjunction(DNF,FOF).
 dnf_to_one_fof([dnf(Id,Type,DNF,_G,_X)|Ls],fof(Id,Type,'|'(FOF,RFOF))) :-
-	list_to_conjunction(DNF,FOF),
+	list_to_closed_conjunction(DNF,FOF),
 	dnf_to_one_fof(Ls,fof(_,_,RFOF)).
 
 dnf_to_one_fof([dnf(Id,Type,DNF,_G)],fof(Id,Type,FOF)) :-
-	!, list_to_conjunction(DNF,FOF).
+	!, list_to_closed_conjunction(DNF,FOF).
 dnf_to_one_fof([dnf(Id,Type,DNF,_G)|Ls],fof(Id,Type,'|'(FOF,RFOF))) :-
-	list_to_conjunction(DNF,FOF),
+	list_to_closed_conjunction(DNF,FOF),
 	dnf_to_one_fof(Ls,fof(_,_,RFOF)).
+
+%%%%%%
+
+list_to_closed_conjunction(DNF,CFOF) :-
+	list_to_conjunction(DNF,FOF),
+	close_formula(FOF,CFOF).
 		
 %%%%%%
 
