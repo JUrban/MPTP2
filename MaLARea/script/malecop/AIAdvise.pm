@@ -1,1 +1,1 @@
-/home/urban/gr/MPTP2/MizAR/cgi-bin/AIAdvise.pm
+../../../MizAR/cgi-bin/AIAdvise.pm
