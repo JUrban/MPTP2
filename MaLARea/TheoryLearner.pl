@@ -2341,8 +2341,8 @@ sub RunProblems
 	    print " E: $status";
 	    if ($status eq szs_THEOREM)
 	    {
-		($gtimelimit = $mintimelimit) if ($keep_cpu_limit == 0);
-		my $eproof_pid = open(EP,"bin/$grunner $gcache $gtimelimit bin/eproof -tAuto -xAuto --tstp-format $file | tee $file.out1| grep file|")
+		my $prooftimelimit = $gtimelimit + 60;
+		my $eproof_pid = open(EP,"bin/$grunner $gcache $prooftimelimit bin/eproof -tAuto -xAuto --tstp-format $file | tee $file.out1| grep file|")
 		    or die("Cannot start eproof");
 		$proved_by{$conj} = [];
 		while ($_=<EP>)
@@ -2381,8 +2381,8 @@ sub RunProblems
 	    {
 		$spass_status = szs_THEOREM;
 		$status= szs_THEOREM;
-		($gtimelimit = $mintimelimit) if ($keep_cpu_limit == 0);
-		my $spass_formulae_line = `bin/$grunner $gcache 500 bin/SPASS37 -TPTP -Memory=900000000 -PGiven=0 -PProblem=0 -DocProof $file | tee $file.outdfg1| grep "Formulae used in the proof"`;
+		my $prooftimelimit = $gtimelimit + 60;
+		my $spass_formulae_line = `bin/$grunner $gcache $prooftimelimit bin/SPASS37 -TPTP -Memory=900000000 -PGiven=0 -PProblem=0 -DocProof $file | tee $file.outdfg1| grep "Formulae used in the proof"`;
 		($spass_formulae_line=~m/Formulae used in the proof *: *(.*) */) 
 		    or die "Bad SPASS Formulae line: $file: $spass_formulae_line";
 		my @refs = split(/ +/, $1);
@@ -2430,7 +2430,6 @@ sub RunProblems
 	    {
 		$vamp_status = szs_THEOREM;
 		$status      = szs_THEOREM;
-		($gtimelimit = $mintimelimit) if ($keep_cpu_limit == 0);
 		my $vampire_regexp = ($gvampire_version eq '9') ? '.*, *file\([^\),]+, *([a-z0-9A-Z_]+) *\)' :
 		    ($gvampire_version eq '0.6') ? '.*\bfile\([^\),]+, *([a-z0-9A-Z_]+) *\)' : '';
 		my $vamp_pid = open(VP,"cat $file.vout |grep file|") or die("Cannot start grep");
@@ -2461,6 +2460,7 @@ sub RunProblems
 
 	if($status eq szs_THEOREM)
 	{
+	    ($gtimelimit = $mintimelimit) if ($keep_cpu_limit == 0);
 	    # if the proof is empty, add at least the conjecture so
 	    # that we do not die here
 	    defined($proved_by{$conj}) or push( @{$proved_by{$conj}}, $conj);
