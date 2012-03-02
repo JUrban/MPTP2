@@ -1,4 +1,4 @@
-%% File: dnf2fof.pl  -  Version: 1.7  -  Date: 1 March 2012
+%% File: dnf2fof.pl  -  Version: 1.8  -  Date: 1 March 2012
 %%
 %% Purpose: The transformation of Malecop DNF files into TPTP FOF files for a further usage.
 %%
@@ -50,6 +50,8 @@ eliminate_sharp('&'(A,B), '&'(NA,NB)) :- !,
 	eliminate_sharp(A,NA),
 	eliminate_sharp(B,NB).
 eliminate_sharp('~'(T), '~'(NT)) :- !,
+	eliminate_sharp(T,NT).
+eliminate_sharp(':'(Q,T), ':'(Q,NT)) :- !,
 	eliminate_sharp(T,NT).
 eliminate_sharp(X,X).
 
