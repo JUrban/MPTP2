@@ -2275,7 +2275,7 @@ sub RunProblems
 	    ## it will make a free var B from ~ ! [B] - this is quite frequent in
 	    ## chainy distro
 	    my $mace_status_line = 
-		`bin/tptp_to_ladr < $file | bin/mace4 -t $gtimelimit | bin/interpformat standard | tee $file.mmodel | grep interpretation`;
+		`bin/tptp_to_ladr < $file | bin/runwtlimit $gtimelimit bin/mace4 -t $gtimelimit | bin/interpformat standard | tee $file.mmodel | grep interpretation`;
 
 	    if ($mace_status_line =~ m/interpretation/)
 	    {
@@ -2309,7 +2309,7 @@ sub RunProblems
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 
-	    my $status_line = `bin/eprover -tAuto -xAuto --tstp-format -s --cpu-limit=$gtimelimit $file 2>$file.err | grep "SZS status" |tee $file.out`;
+	    my $status_line = `bin/runwtlimit $gtimelimit bin/eprover -tAuto -xAuto --tstp-format -s --cpu-limit=$gtimelimit $file 2>$file.err | grep "SZS status" |tee $file.out`;
 
 	    if ($status_line=~m/.*SZS status[ :]*(.*)/)
 	    {
@@ -2324,7 +2324,7 @@ sub RunProblems
 	    if ($status eq szs_THEOREM)
 	    {
 		($gtimelimit = $mintimelimit) if ($keep_cpu_limit == 0);
-		my $eproof_pid = open(EP,"bin/eproof -tAuto -xAuto --tstp-format $file | tee $file.out1| grep file|")
+		my $eproof_pid = open(EP,"bin/runwtlimit $gtimelimit bin/eproof -tAuto -xAuto --tstp-format $file | tee $file.out1| grep file|")
 		    or die("Cannot start eproof");
 		$proved_by{$conj} = [];
 		while ($_=<EP>)
