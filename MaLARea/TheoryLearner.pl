@@ -52,6 +52,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --refsbgcheat=<arg>,     -r<arg>
    --alwaysmizrefs=<arg>,   -m<arg>
    --tptpproofs=<arg>,      -z<arg>
+   --cache=<arg>,           -H<arg>
    --help,                  -h
    --man
 
@@ -381,6 +382,16 @@ by other provers. This is mainly used for CASC LTB*, where the
 condition is a TPTP proof with adequate FOF->CNF documentation.
 The default is 0.
 
+=item B<<< --cache=<arg>, -B<H><arg> >>>
+
+If nonempty, global persistent cache of results is used. This is a
+directory with subdirectories named as sha1 of the concatenated
+parameters, in which files are named by their sha1 value, and contain
+the result of the run. If the cache value exists for a combination of
+parameters and file, it is just cat-ed instead of running the
+ATP. This saves a lot of time in experimenting, but it must not be
+used in competitions and benchmarks when time is important.
+
 =item B<<< --help, -h >>>
 
 Print a brief help message and exit.
@@ -412,7 +423,7 @@ Josef Urban (firstname dot lastname at gmail dot com)
 
 =head1 COPYRIGHT
 
-Copyright (C) 2007-2010 Josef Urban (firstname dot lastname at gmail dot com)
+Copyright (C) 2007-2012 Josef Urban (firstname dot lastname at gmail dot com)
 
 =head1 LICENCE
 
@@ -479,6 +490,7 @@ my $gggnewc = 'gggnewc'; # new symbol for generalizing ocnstants; TODO: should c
 
 my %gatpdata;     # for each ATP a hash of its thresholds and other useful data
 my $gsnowport;    # port for snow running as a server of guseserver>0; determined at Learn
+my $grunner = 'runwtlimit'; # the default non-cached atp runner
 
 my $minthreshold = 4;
 my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
@@ -493,7 +505,8 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $giterpolicy,  $ggeneralize,    $glimittargets,
     $gmaceemul,    $gincrmodels,    $giterlimit,
     $guniquify,    $gcountersatcheck, $gproblemsfile,
-    $gsnowserver,  $glearnpolicy,   $gtptpproofs);
+    $gsnowserver,  $glearnpolicy,   $gtptpproofs,
+    $gcache);
 
 my ($help, $man);
 my $gtargetsnr = 1233;
@@ -539,6 +552,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'refsbgcheat|r=i'    => \$grefsbgcheat,
 	   'alwaysmizrefs|m=i'    => \$galwaysmizrefs,
 	   'tptpproofs|z=i'             => \$gtptpproofs,
+	   'cache|H=s'             => \$gcache,
 	   'help|h'          => \$help,
 	   'man'             => \$man)
     or pod2usage(2);
@@ -594,6 +608,7 @@ $maxtimelimit = 64 unless(defined($maxtimelimit));  # should be power of 4
 $mintimelimit = 1 unless(defined($mintimelimit));  # should be power of 4
 $permutetimelimit = $mintimelimit unless(defined($permutetimelimit));
 $maxthreshold = 128 unless(defined($maxthreshold)); # should be power of 2
+$gcache = "" unless(defined($gcache));
 
 # needed for fast grepping
 $ENV{"LANG"}= 'C';
@@ -625,6 +640,9 @@ if($gparallelize > 1) { $gmakefile = 1; } else { $gmakefile = 0; }
 
 $gboostlimit  = $gboostlimit / 100;
 $gboostweight = exp (- $gboostweight);
+
+$grunner = 'runwtlcached' unless($gcache eq "");
+
 
 my $gmizrefsregexp = '^[tldes][0-9]+_';
 my $gisarefsregexp = '^fact_';
@@ -2234,7 +2252,7 @@ sub RunProblems
 	{
 	    my $prdxlimit = min($gtimelimit, $gatpdata{ 'atp_PARADOX' }->[ opt_MAXCPU ]);
 	    my $paradox_status_line =
-		`bin/runwtlimit $prdxlimit bin/paradox --tstp --model --time $prdxlimit $file | tee $file.pout | grep RESULT`;
+		`bin/$grunner $gcache $prdxlimit bin/paradox --tstp --model --time $prdxlimit $file | tee $file.pout | grep RESULT`;
 	    if ($paradox_status_line=~m/CounterSatisfiable/)
 	    {
 		$paradox_status = szs_COUNTERSAT;
@@ -2275,7 +2293,7 @@ sub RunProblems
 	    ## it will make a free var B from ~ ! [B] - this is quite frequent in
 	    ## chainy distro
 	    my $mace_status_line = 
-		`bin/tptp_to_ladr < $file | bin/runwtlimit $gtimelimit bin/mace4 -t $gtimelimit | bin/interpformat standard | tee $file.mmodel | grep interpretation`;
+		`bin/tptp_to_ladr < $file | bin/$grunner $gcache $gtimelimit bin/mace4 -t $gtimelimit | bin/interpformat standard | tee $file.mmodel | grep interpretation`;
 
 	    if ($mace_status_line =~ m/interpretation/)
 	    {
@@ -2309,7 +2327,7 @@ sub RunProblems
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 
-	    my $status_line = `bin/runwtlimit $gtimelimit bin/eprover -tAuto -xAuto --tstp-format -s --cpu-limit=$gtimelimit $file 2>$file.err | grep "SZS status" |tee $file.out`;
+	    my $status_line = `bin/$grunner $gcache $gtimelimit bin/eprover -tAuto -xAuto --tstp-format -s --cpu-limit=$gtimelimit $file 2>$file.err | grep "SZS status" |tee $file.out`;
 
 	    if ($status_line=~m/.*SZS status[ :]*(.*)/)
 	    {
@@ -2324,7 +2342,7 @@ sub RunProblems
 	    if ($status eq szs_THEOREM)
 	    {
 		($gtimelimit = $mintimelimit) if ($keep_cpu_limit == 0);
-		my $eproof_pid = open(EP,"bin/runwtlimit $gtimelimit bin/eproof -tAuto -xAuto --tstp-format $file | tee $file.out1| grep file|")
+		my $eproof_pid = open(EP,"bin/$grunner $gcache $gtimelimit bin/eproof -tAuto -xAuto --tstp-format $file | tee $file.out1| grep file|")
 		    or die("Cannot start eproof");
 		$proved_by{$conj} = [];
 		while ($_=<EP>)
@@ -2346,7 +2364,8 @@ sub RunProblems
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 	    my $spass_status_line =
-		`bin/tptp4X -x -f dfg $file | bin/runwtlimit $gtimelimit bin/SPASS -Stdin -Memory=900000000 -PGiven=0 -PProblem=0 -TimeLimit=$gtimelimit | grep "SPASS beiseite"| tee $file.outdfg`;
+		# `bin/tptp4X -x -f dfg $file | bin/$grunner $gcache $gtimelimit bin/SPASS -Stdin -Memory=900000000 -PGiven=0 -PProblem=0 -TimeLimit=$gtimelimit | grep "SPASS beiseite"| tee $file.outdfg`;
+		`bin/$grunner $gcache $gtimelimit bin/SPASS37 -TPTP -Memory=900000000 -PGiven=0 -PProblem=0 -TimeLimit=$gtimelimit $file | grep "SPASS beiseite"| tee $file.outdfg`;
 
 	    if ($spass_status_line=~m/.*SPASS beiseite *: *([^.]+)[.]/)
 	    {
@@ -2363,7 +2382,7 @@ sub RunProblems
 		$spass_status = szs_THEOREM;
 		$status= szs_THEOREM;
 		($gtimelimit = $mintimelimit) if ($keep_cpu_limit == 0);
-		my $spass_formulae_line = `bin/tptp4X -x -f dfg $file |bin/runwtlimit 500 bin/SPASS -Stdin -Memory=900000000 -PGiven=0 -PProblem=0 -DocProof | tee $file.outdfg1| grep "Formulae used in the proof"`;
+		my $spass_formulae_line = `bin/$grunner $gcache 500 bin/SPASS37 -TPTP -Memory=900000000 -PGiven=0 -PProblem=0 -DocProof $file | tee $file.outdfg1| grep "Formulae used in the proof"`;
 		($spass_formulae_line=~m/Formulae used in the proof *: *(.*) */) 
 		    or die "Bad SPASS Formulae line: $file: $spass_formulae_line";
 		my @refs = split(/ +/, $1);
@@ -2402,9 +2421,9 @@ sub RunProblems
 	{
 	    my $vamp_status_line =
 		($gvampire_version eq '9') ? 
-		`bin/runwtlimit $gtimelimit bin/vampire9 --output_syntax tptp -t $gtimelimit $file 2>$file.errv | tee $file.vout |grep "Refutation"`
+		`bin/$grunner $gcache $gtimelimit bin/vampire9 --output_syntax tptp -t $gtimelimit $file 2>$file.errv | tee $file.vout |grep "Refutation"`
 		: ($gvampire_version eq '0.6') ?
-		`bin/runwtlimit $gtimelimit bin/vampire_rel2 -proof tptp -output_axiom_names on --mode casc -t $gtimelimit -m 1234 -input_file $file 2>$file.errv | tee $file.vout |grep "SZS *[sS]tatus *Theorem"`
+		`bin/$grunner $gcache $gtimelimit bin/vampire_rel2 -proof tptp -output_axiom_names on --mode casc -t $gtimelimit -m 1234 -input_file $file 2>$file.errv | tee $file.vout |grep "SZS *[sS]tatus *Theorem"`
 		: '';
 
 	    if ($vamp_status_line=~m/Refutation|Theorem/)

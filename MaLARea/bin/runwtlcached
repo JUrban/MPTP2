@@ -1,0 +1,35 @@
+#!/usr/bin/perl -w
+my $cache = shift @ARGV;
+my $last = $ARGV[$#ARGV];
+
+if(-r $last) ## only do caching if the last argument is a readable file
+{
+    die unless(-d $cache);
+    $last = pop @ARGV;
+    use Digest::SHA1;
+
+    open(F,$last) or die;
+    my $sh1=Digest::SHA1->new; 
+    $sh1->addfile(F); 
+    my $inputsha1 = $sh1->hexdigest;
+    close(F);
+    my $optsname = Digest::SHA1::sha1_hex(join(':::',@ARGV));
+
+    if(-r "$cache/$optsname/$inputsha1") # we have found the cached result
+    {
+	exec("cat $cache/$optsname/$inputsha1");
+    }
+    else
+    {
+	`mkdir -p $cache/$optsname` unless(-d "$cache/$optsname");
+	my $tl = 1 + shift @ARGV;
+	my $prog = shift @ARGV;    
+	exec("ulimit -t $tl; $prog @ARGV $last | tee $cache/$optsname/$inputsha1");
+    }
+}
+else
+{
+    my $tl = 1 + shift @ARGV;
+    my $prog = shift @ARGV;
+    exec("ulimit -t $tl; $prog @ARGV ");
+}
