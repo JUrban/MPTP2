@@ -1,6 +1,8 @@
 #!/usr/bin/perl -w
 my $cache = shift @ARGV;
 my $last = $ARGV[$#ARGV];
+my $tl = 1 + shift @ARGV;
+my $prog = shift @ARGV;
 
 if(-r $last) ## only do caching if the last argument is a readable file
 {
@@ -12,24 +14,28 @@ if(-r $last) ## only do caching if the last argument is a readable file
     my $sh1=Digest::SHA1->new; 
     $sh1->addfile(F); 
     my $inputsha1 = $sh1->hexdigest;
+    my ($twochars) = $inputsha1 =~ m/^(..).*/;
     close(F);
-    my $optsname = Digest::SHA1::sha1_hex(join(':::',@ARGV));
+    my $optsname = Digest::SHA1::sha1_hex(join(':::',($tl,$prog,@ARGV)));
 
-    if(-r "$cache/$optsname/$inputsha1") # we have found the cached result
+    if(-r "$cache/$optsname/$twochars/$inputsha1") # we have found the cached result
     {
-	exec("cat $cache/$optsname/$inputsha1");
+	exec("cat $cache/$optsname/$twochars/$inputsha1");
     }
     else
     {
-	`mkdir -p $cache/$optsname` unless(-d "$cache/$optsname");
-	my $tl = 1 + shift @ARGV;
-	my $prog = shift @ARGV;    
-	exec("ulimit -t $tl; $prog @ARGV $last | tee $cache/$optsname/$inputsha1");
+	unless(-d "$cache/$optsname")
+	{
+	    `mkdir -p $cache/$optsname`;
+	    open(P,">$cache/$optsname/.params");
+	    print P (join(':::',($tl,$prog,@ARGV)), "\n");
+	    close(P);
+	}
+	`mkdir -p $cache/$optsname/$twochars` unless(-d "$cache/$optsname/$twochars");
+	exec("ulimit -t $tl; $prog @ARGV $last | tee $cache/$optsname/$twochars/$inputsha1");
     }
 }
 else
 {
-    my $tl = 1 + shift @ARGV;
-    my $prog = shift @ARGV;
     exec("ulimit -t $tl; $prog @ARGV ");
 }
