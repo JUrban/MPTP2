@@ -2041,8 +2041,10 @@ sub SetupMaceModel
 	open(CLFILT,"bin/clausefilter $file.mmodel true_in_all < $file.tmpp9 | grep label|");
 	while($_ = <CLFILT>)
 	{
-	    m/[^#]*# *label\(([^)]*)\).*/;
-	    push(@pos_refs, $grefnr{$1});
+	    if(m/[^#]*# *label\(([^)]*)\).*/)
+	    {
+		push(@pos_refs, $grefnr{$1});
+	    }
 	}
 	close(CLFILT);
     }
@@ -2053,8 +2055,10 @@ sub SetupMaceModel
 	open(CLFILT,"bin/clausefilter $file.mmodel false_in_all < $file.tmpp9 | grep label|");
 	while($_ = <CLFILT>)
 	{
-	    m/[^#]*# *label\(([^)]*)\).*/;
-	    push(@neg_refs, $grefnr{$1});
+	    if(m/[^#]*# *label\(([^)]*)\).*/)
+	    {
+		push(@neg_refs, $grefnr{$1});
+	    }
 	}
 	close(CLFILT);
     }
