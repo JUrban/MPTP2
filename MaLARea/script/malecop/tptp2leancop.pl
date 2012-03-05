@@ -1,4 +1,4 @@
-%% File: tptp2leancop.pl  -  Version: 1.31  -  Date: 5 March 2012
+%% File: tptp2leancop.pl  -  Version: 1.33  -  Date: 5 March 2012
 %%
 %% Purpose: The transformation of TPTP files together to DNF files for a further usage.
 %%
@@ -15,7 +15,7 @@
 %% dumpdnf2axioms(DumpFile2)
 %% or MaleCop transformation settings... 
    
-:- dynamic(dnf/6).
+:- dynamic(dnf/5).
 :- dynamic(index_2_axioms/2).
 :- dynamic(skolem/3).
 :- dynamic(matrix_database/2).
@@ -36,7 +36,7 @@ append([Ls|As],Rs) :-
 %%%
 
 tptp2leancop(Files,Settings) :-
-    retractall(dnf(_,_,_,_,_,_)),
+    retractall(dnf(_,_,_,_,_)),
     retractall(index_2_axioms(_,_)),
     retractall(skolem(_,_,_)),
     retractall(matrix_database(_,_)),
@@ -55,29 +55,26 @@ dump_global_info(Settings):-
 	( member(dumpdnf2axioms(DumpFile2),Settings) -> dump_dnf2axioms(DumpFile2); true ). 
 
 tptp2leancop_main(Files,Settings):-
-	findall((File,R),(
-	                   member(File,Files),
-                           tell(user_error),
-	                   write('% '),
-	                   write(File),
-	                   write('...'),
-	                   told,
-	                   tptp2leancop_database(File,Settings,R),
-                           tell(user_error),
-	                   writeln(done),
-	                   told
-	                  ),Rs),
-	told,                  
-	forall(member((File,R),Rs),
-	       (name(File,Ns),append(Ns,".leancop",Fs),name(NewFile,Fs),
-		save_leancop(NewFile,R))
-	      ).
+	   member(File,Files),
+	   tell(user_error),
+	   write('% '),
+	   write(File),
+	   write('...'),
+	   told,
+	   tptp2leancop_database(File,Settings,R),
+	   tell(user_error),
+	   writeln(done),
+	   ( name(File,Ns),append(Ns,".leancop",Fs),name(NewFile,Fs),
+	     save_leancop(NewFile,R) -> true
+	    ),
+	   told,
+	   fail.
 
 
 
 dump_dnf2axioms(DumpFile) :-
 	tell(DumpFile),
-	((dnf(_HC1,_C2,_C1,_G,Index,_),
+	((dnf(_HC1,_C1,_G,Index,_),
 	  findall(I,index_2_axioms(Index,I),Ls),
 	  sort(Ls,IDs),
 	  print(contents(Index,IDs)),
@@ -88,7 +85,8 @@ dump_dnf2axioms(DumpFile) :-
 dump_dnf_symbols(DumpFile) :-
 	tell(DumpFile),
 %	logic_syms(LogicSyms),
-	((dnf(_HC1,C2,_C1,_G,Index,_),
+	((dnf(_HC1,C1,_G,Index,_),
+	  renvars(C1,C2),
 	  collect_symbols_top(C2,PredSyms,Syms),
 %	  subtract(Syms1, LogicSyms, Syms),
 	  print(symbols(Index,PredSyms,Syms)),
@@ -130,7 +128,8 @@ collect_symbols(X1,T2):-
 
 dump_dnf_termhashs(DumpFile) :-
 	tell(DumpFile),
-	((dnf(_HC1,C2,_C1,_G,Index,_),
+	((dnf(_HC1,C1,_G,Index,_),
+	  renvars(C1,C2),
 	  collect_termhashs_top(C2,L,R),
 	  print(terms(Index,L,R)),
 	  write('.'),nl,
@@ -317,13 +316,13 @@ assert_dnf([C|M],[I|D],PRN,Set,[dnf(Index,AX,C1,G,Features)|NM]) :-
 %    (C1=[#|_] -> AX=conjecture ; AX=axiom),
     (Set=conj -> AX=conjecture ; AX=axiom),
     (ground(C) -> G=g ; G=n),
-    assert_renvar(C1,C2), copy_term(C1,CC1),numbervars(CC1,0,_),term_hash(CC1,HC1),
-    (dnf(HC1,C2,C1_,G,Index,Fs),=@@@=(C1_,C1) -> %writeln(Index),
+    /*assert_renvar(C1,C2),*/ copy_term(C1,CC1),numbervars(CC1,0,_),term_hash(CC1,HC1),
+    (dnf(HC1,C1_,G,Index,Fs),=@@@=(C1_,C1) -> %writeln(Index),
         % It is already in database
 %        assert(dnf(HC1,C2,C1,G,Index,Features))
         true
       ; flag(index_of_dnf,Index,Index+1),
-        assert(dnf(HC1,C2,C1,G,Index,Features))
+        assert(dnf(HC1,C1,G,Index,Features))
      ),
      (nonvar(I) ->
          %retract(dnf(_,_,_,_,Index,_)),
