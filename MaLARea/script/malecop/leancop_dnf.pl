@@ -1,4 +1,4 @@
-%% File: leancop_dnf.pl  -  Version: 1.23  -  Date: 2011
+%% File: leancop_dnf.pl  -  Version: 1.25  -  Date: 2011
 %%
 %% Purpose: Call the leanCoP core prover for a given formula with a machine learning server.
 %%
@@ -17,6 +17,7 @@
 :- dynamic(lit/5).
 :- dynamic(advised_lit/5).
 :- dynamic(best_lit_mode/1).
+:- dynamic(machine_learning_of_subtrees/0).
 
 %:- assert(best_lit_mode(original_leancop)). 
 % original_leancop
@@ -95,22 +96,19 @@ leancop_get_result(File,Matrix,Settings,Advisor_In,Advisor_Out,Proof,Result) :-
 
 % :- [def_mm].  % load program for clausal form translation
 
-%%% best_lit
-%%% finds best lit according to a machine learning advisor.
-
-:- best_lit_mode(M), (
-M=original_leancop,
-assert((
-best_lit(_Advisor_In,_Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground) :-
-         lit(NegLit,NegL,Clause,Ground,_IDX),
+assert_mode(original_leancop,Pred) :-
+XXX=((
+best_lit(_Advisor_In,_Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground,IDX) :-
+         lit(NegLit,NegL,Clause,Ground,IDX),
          unify_with_occurs_check(NegL,NegLit)
-))
+)), XXX=(HHH:-BBB), HHH=..[_|REST], QQQ=..[Pred|REST], assert((QQQ :-BBB)).
 
-;
-M=naive_and_complete,
-assert((
-best_lit(Advisor_In,Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground) :-
-         collect_symbols_top([NegLit],Ps,Fs),
+%%%
+
+assert_mode(naive_and_complete,Pred) :-
+XXX=((
+best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLim,_Lem,NegLit,Clause,Ground,I) :-
+         collect_symbols_top([NegLit|Path],Ps,Fs),
          append(Ps,Fs,Ss),
 %         writeln('sending to AI...'),
          write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
@@ -129,26 +127,30 @@ best_lit(Advisor_In,Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground) :
 		   unify_with_occurs_check(NegL,NegLit)
 		 )
          )
-))
+)), XXX=(HHH:-BBB), HHH=..[_|REST], QQQ=..[Pred|REST], assert((QQQ :-BBB)).
 
-;
-M=naive,
-assert((
-best_lit(Advisor_In,Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground) :-
-         collect_symbols_top([NegLit],Ps,Fs),
+
+%%%
+
+assert_mode(naive,Pred) :-
+XXX=((
+best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLim,_Lem,NegLit,Clause,Ground,I) :-
+         collect_symbols_top([NegLit|Path],Ps,Fs),
          append(Ps,Fs,Ss),
          write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
          read(Advisor_In,Indexes),!,
          member(I,Indexes),
 	 lit(NegLit,NegL,Clause,Ground,I),
 	 unify_with_occurs_check(NegL,NegLit)
-))
+)), XXX=(HHH:-BBB), HHH=..[_|REST], QQQ=..[Pred|REST], assert((QQQ :-BBB)).
 
-;
-M=full_caching_and_complete,
-assert((
-best_lit(Advisor_In,Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground) :-
-         collect_symbols_top([NegLit],Ps,Fs),
+
+%%%
+
+assert_mode(full_caching_and_complete,Pred) :-
+XXX=((
+best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLim,_Lem,NegLit,Clause,Ground,IDX) :-
+         collect_symbols_top([NegLit|Path],Ps,Fs),
          append(Ps,Fs,Ss),
          (
            cache_table(Ss,Table) ->
@@ -169,15 +171,18 @@ best_lit(Advisor_In,Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground) :
              assert(cache_table(Ss,Table)),
              assert_clauses(Cs,Table,conj)
          ),!,
-         Query=..[Table,NegLit,NegL,Clause,Ground,_],
+         Query=..[Table,NegLit,NegL,Clause,Ground,IDX],
          call(Query),
          unify_with_occurs_check(NegL,NegLit)
-))
-;
-M=smart_caching_and_complete,
-assert((
-best_lit(Advisor_In,Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground) :-
-         collect_symbols_top([NegLit],Ps,Fs),
+)), XXX=(HHH:-BBB), HHH=..[_|REST], QQQ=..[Pred|REST], assert((QQQ :-BBB)).
+
+
+%%%
+
+assert_mode(smart_caching_and_complete,Pred) :-
+XXX=((
+best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLim,_Lem,NegLit,Clause,Ground,Index) :-
+         collect_symbols_top([NegLit|Path],Ps,Fs),
          append(Ps,Fs,Ss),
          (
            cache_table(Ss,Table) ->
@@ -185,9 +190,9 @@ best_lit(Advisor_In,Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground) :
            ;
              write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
              read(Advisor_In,Indexes),!,
-             findall(dnf(Index,Type,Cla,G),(
-               member(Index,Indexes), 
-               dnf(Index,Type,Cla,G)
+             findall(dnf(IDX,Type,Cla,G),(
+               member(IDX,Indexes), 
+               dnf(IDX,Type,Cla,G)
              ),Cs),
              flag(table_index,I,I+1),
              name(I,Is),name(t,Ts),append(Is,Ts,Ns),
@@ -198,7 +203,7 @@ best_lit(Advisor_In,Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground) :
 	     assert_clauses(Cs,Table,conj)  
          ),!,
          (
-           Query=..[Table,NegLit,NegL,Clause,Ground,_],
+           Query=..[Table,NegLit,NegL,Clause,Ground,Index],
            call(Query)
           ;  
             lit(NegLit,NegL,Clause,Ground,Index),
@@ -206,28 +211,33 @@ best_lit(Advisor_In,Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground) :
             \+ call(Query)
          ),
          unify_with_occurs_check(NegL,NegLit)
-         
-))
 
-;
-M=original_leancop_with_first_advise,
-assert((
-best_lit(_Advisor_In,_Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground) :-
-         advised_lit(NegLit,NegL,Clause,Ground,_IDX),
+)), XXX=(HHH:-BBB), HHH=..[_|REST], QQQ=..[Pred|REST], assert((QQQ :-BBB)).
+
+
+%%%
+
+assert_mode(original_leancop_with_first_advise,Pred) :-
+XXX=((
+best_lit(_Advisor_In,_Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground,IDX) :-
+         advised_lit(NegLit,NegL,Clause,Ground,IDX),
          unify_with_occurs_check(NegL,NegLit)
-         
-))
-;
-M=limited_smart_on_path_and_targets(Limitation),
-assert((
-best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,_Lem,NegLit,Clause,Ground) :-
-         append([NegLit|Cla],Path,Targets),
+
+)), XXX=(HHH:-BBB), HHH=..[_|REST], QQQ=..[Pred|REST], assert((QQQ :-BBB)).
+
+
+%%%
+
+assert_mode(limited_smart_on_path_and_targets(Limitation),Pred) :-
+XXX=((
+best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,_Lem,NegLit,Clause,Ground,Index) :-
+         append([NegLit/*|Cla*/],Path,Targets),
          collect_symbols_top(Targets,Ps,Fs),
          append(Ps,Fs,Ss),!,
          (
              length(Path,K), K > Limitation ->
              %write(user_error,K),nl(user_error),
-             advised_lit(NegLit,NegL,Clause,Ground,_Index)
+             advised_lit(NegLit,NegL,Clause,Ground,Index)
            ;
            (
 		   cache_table(Ss,Table) ->
@@ -235,9 +245,9 @@ best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,_Lem,NegLit,Clause,Ground) :-
 		   ; 
 		     write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
 		     read(Advisor_In,Indexes),!,%write(user_error,Indexes),nl(user_error),
-		     findall(dnf(Index,Type,Cla,G),(
-		       member(Index,Indexes), 
-		       dnf(Index,Type,Cla,G)
+		     findall(dnf(IDX,Type,Cla,G),(
+		       member(IDX,Indexes), 
+		       dnf(IDX,Type,Cla,G)
 		     ),Cs),
 		     flag(table_index,I,I+1),
 		     name(I,Is),name(t,Ts),append(Is,Ts,Ns),
@@ -248,7 +258,7 @@ best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,_Lem,NegLit,Clause,Ground) :-
 		     assert_clauses(Cs,Table,conj)
 		 ),!,
 		 (
-		 Query=..[Table,NegLit,NegL,Clause,Ground,_],
+		 Query=..[Table,NegLit,NegL,Clause,Ground,Index],
 		 call(Query)
 		 ;  
 		 lit(NegLit,NegL,Clause,Ground,Index),
@@ -258,20 +268,28 @@ best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,_Lem,NegLit,Clause,Ground) :-
          ),
          unify_with_occurs_check(NegL,NegLit)
          
-))
+)), XXX=(HHH:-BBB), HHH=..[_|REST], QQQ=..[Pred|REST], assert((QQQ :-BBB)).
 
+
+
+%%% best_lit
+%%% finds best lit according to a machine learning advisor.
+
+:- best_lit_mode(M), (
+assert_mode(M,best_lit)
 ;
-M=scalable_with_first_advise(PreCounting_Threshold,Query_Threshold),
+M=scalable_with_first_advise(PreCounting_Threshold,Query_Threshold,Mode_After_Threshold),
+assert_mode(Mode_After_Threshold,mode_lit),
 assert((
-best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,_Lem,NegLit,Clause,Ground) :-
+best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,Lem,NegLit,Clause,Ground,Index) :-
         length(Path,L), copy_term(NegLit,NegLit1),
         flag(L,_,PreCounting_Threshold),!,
         ( 
-		 advised_lit(NegLit1,NegL1,Clause1,Ground1,_IDX),
+		 advised_lit(NegLit1,NegL1,Clause1,Ground1,Index1),
 		 
 		 flag(L,I,I-1),
 		 %write(user_error,(try(L,I))),nl(user_error),
-		 ((I =< 1) -> !, %write(user_error,(go(L,I))),nl(user_error),
+		 ((I =< 1),!, %write(user_error,(go(L,I))),nl(user_error),
 %	    ;
 		 findall(advised_lit(NegLit,NegL_,Clause_,Ground_,IDX),
 			(advised_lit(NegLit,NegL_,Clause_,Ground_,IDX) %,unify_with_occurs_check(NegL_,NegLit)
@@ -283,64 +301,39 @@ best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,_Lem,NegLit,Clause,Ground) :-
 		 (
 		   N =< Query_Threshold ->
 		         tail_list(PreCounting_Threshold,Gs,Ws),
-			 member(advised_lit(NegLit,NegL,Clause,Ground,IDX),Ws),
-			 advised_lit(NegLit,NegL,Clause,Ground,IDX)
+			 member(advised_lit(NegLit,NegL,Clause,Ground,Index),Ws),
+			 advised_lit(NegLit,NegL,Clause,Ground,Index)
 		     ; 
-			 collect_symbols_top([NegLit|Path],Ps,Fs),
-			 append(Ps,Fs,Ss),
-			 write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
-			 read(Advisor_In,Indexes),!, %write(user_error,(adv(L,I))),nl(user_error),
-			 (
-				 ( member(Ind,Indexes),
-				   advised_lit(NegLit,NegL,Clause,Ground,Ind)
-				 )   
-				  ;
-				 (
-				   advised_lit(NegLit,NegL,Clause,Ground,Ind),
-				   \+ member(Ind,Indexes)
-				 )
-			 )
-		      
-		      
+			 mode_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,Lem,NegLit,Clause,Ground,Index)
+		      		      
 		 )
-          ; (NegLit,NegL,Clause,Ground)=(NegLit1,NegL1,Clause1,Ground1))),
-         unify_with_occurs_check(NegL,NegLit)
-         
+              ; (NegLit,NegL,Clause,Ground,Index)=(NegLit1,NegL1,Clause1,Ground1,Index1),
+                 unify_with_occurs_check(NegL,NegLit)
+            ))
 ))
 
 ;
-M=scalable_with_first_advise(PreCounting_Threshold),
+M=scalable_with_first_advise(PreCounting_Threshold,Mode_After_Threshold),
+assert_mode(Mode_After_Threshold,mode_lit),
 assert((
-best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,_Lem,NegLit,Clause,Ground) :-
+best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,Lem,NegLit,Clause,Ground,Index) :-
         length(Path,L), copy_term(NegLit,NegLit1),
         flag(L,_,PreCounting_Threshold),!,
         ( 
-		 advised_lit(NegLit1,NegL1,Clause1,Ground1,_IDX),
+		 advised_lit(NegLit1,NegL1,Clause1,Ground1,Index1),
 		 
 		 flag(L,I,I-1),
 		 %write(user_error,(try(L,I))),nl(user_error),
-		 ((I =< 1) -> !, %write(user_error,(go(L,I))),nl(user_error),
+		 ((I =< 1) ,!, %write(user_error,(go(L,I))),nl(user_error),
 %	    ;
-		 collect_symbols_top([NegLit|Path],Ps,Fs),
-		 append(Ps,Fs,Ss),
-		 write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
-		 read(Advisor_In,Indexes),!, %write(user_error,(adv(L,I))),nl(user_error),
-		 (
-			 ( member(Ind,Indexes),
-			   advised_lit(NegLit,NegL,Clause,Ground,Ind)
-			 )   
-			  ;
-			 (
-			   advised_lit(NegLit,NegL,Clause,Ground,Ind),
-			   \+ member(Ind,Indexes)
-			 )
-		 )
+                   mode_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,Lem,NegLit,Clause,Ground,Index)
 		      
 		      
 		 
-          ; (NegLit,NegL,Clause,Ground)=(NegLit1,NegL1,Clause1,Ground1))),
-         unify_with_occurs_check(NegL,NegLit)
-         
+                 ; (NegLit,NegL,Clause,Ground,Index)=(NegLit1,NegL1,Clause1,Ground1,Index1),
+                    unify_with_occurs_check(NegL,NegLit)
+                 )
+        )
 ))
 
 ).
@@ -425,13 +418,20 @@ prove([Lit|Cla],Path,PathLim,Lem,Set,Advisor_In,Advisor_Out,Proof) :-
          member(NegL,Path), unify_with_occurs_check(NegL,NegLit),
          Cla1=[], Proof1=[]
          ;
-          writeln('@'),
-          best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,Lem,NegLit,Cla1,Grnd1),
+          writeln('@'), 
+          (machine_learning_of_subtrees -> copy_term([NegLit|Path],Real_Input) ; true),
+          best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,Lem,NegLit,Cla1,Grnd1,IDX),
 %         lit(NegLit,NegL,Cla1,Grnd1,_IDX),
 %         unify_with_occurs_check(NegL,NegLit),
          ( Grnd1=g -> true ; length(Path,K), K<PathLim -> true ;
            \+ pathlim -> assert(pathlim), fail ),
-         prove(Cla1,[Lit|Path],PathLim,Lem,Set,Advisor_In,Advisor_Out,Proof1)
+         prove(Cla1,[Lit|Path],PathLim,Lem,Set,Advisor_In,Advisor_Out,Proof1),
+         (machine_learning_of_subtrees -> 
+              write('& '),
+              collect_symbols_top(Real_Input,Ps,Fs),
+              append(Ps,Fs,Ss),            
+              write(Ss), write(' >>> '), writeln(IDX)
+            ; true)
        ),
        ( member(cut,Set) -> ! ; true ),
        prove(Cla,Path,PathLim,[Lit|Lem],Set,Advisor_In,Advisor_Out,Proof2).
@@ -464,8 +464,54 @@ leancop_proof(Mat,Proof) :-
     proof(compact) -> leancop_compact_proof(Proof) ;
     proof(connect) -> leancop_connect_proof(Mat,Proof) ;
     proof(readable_with_global_index) -> leancop_readable_proof_with_global_index(Mat,Proof) ;
+%    proof(machine_learning_with_global_index) -> leancop_machine_learning_proof_with_global_index(Mat,Proof) ;
     leancop_readable_proof(Mat,Proof).
+/*
+%%% print machine learning proof with global index of clauses
 
+leancop_machine_learning_proof_with_global_index(Mat,Proof) :-
+    print('%------------------------------------------------------'),
+    nl,
+    print_explanations,
+    print('%Proof:'), nl, print('%------'), nl, nl,
+    print('%Translation into (disjunctive) clausal form:'), nl,
+    print_dnf(Mat,Mat1),
+    print_introduction,
+    calc_proof_with_global_index(Mat1,Mat,Proof,Proof1),
+    print_proof(Proof1), nl,
+    print_ending,
+    print('%------------------------------------------------------'),
+    nl, print(Proof), nl,
+    nl, print(Proof1), nl,
+    nl, print_ML_proof(Proof1),
+    nl.
+    
+%%% print machine learning proof and sub-proofs with global index of clauses
+
+print_ML_proof([(Cla,Num,Sub)|Proof]) :-
+%    print_ML_proof_step([],Cla,Num,Sub),
+    print_ML_proof(Proof,[1],[]).
+
+print_ML_proof([],_,_).
+
+print_ML_proof([[(Cla,Num,Sub)|Proof]|Proof2],[I|J],Path) :-
+%   print_ML_proof_step([I|J],Cla,Num,Sub),
+    Cla=[Lit|_],
+    print(Path), nl, print(' >>> '), nl, print(Lit), nl, print(' ::: '), print(Num), nl,
+    print_ML_proof(Proof,[1,I|J],[Lit|Path]), I1 is I+1,
+    print_ML_proof(Proof2,[I1|J],Path).
+
+    
+print_ML_proof_step(I,Cla,Num,Sub) :-
+    append(I,[1],I1), print_step(I1), print('  '), print(Cla),
+    ( Num=(R:N) -> append(_,[H|T],I1), N1 is N+1, length([H|T],N1),
+      ( R=r -> print('   (reduction:'), print_step(T) ;
+               print('   (lemmata:'), print_step(T) ) ;
+      print('   ('), print(Num) ), print(')  '),
+    ( Sub=[[],_] -> true ; print('substitution:'), print(Sub) ), nl.
+*/
+
+    
 %%% print readable proof with global index of clauses
 
 leancop_readable_proof_with_global_index(Mat,Proof) :-
@@ -531,5 +577,11 @@ clause_num_sub_with_global_index(Cla,Path,Lem,[Cla1|Mat],DNF_Mat,I,Num,Sub) :-
 
 nth_element(1,[E|_],E) :- !.
 nth_element(I,[_|Ls],E) :- I1 is I - 1, nth_element(I1,Ls,E).
-      
-      
+
+/*
+append([],[]).
+append([Ls],Ls).
+append([As,Bs|Cs],Ls) :-
+	append(As,Bs,Ds),
+	append([Ds|Cs],Ls).
+*/	
