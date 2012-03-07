@@ -38,6 +38,8 @@ PRINT_PROOF=yes
 SAVE_PROOF=no
 # proof layout [readable_with_global_index]
 PROOF_LAYOUT=readable_with_global_index
+# ai clauses advisor 
+AI_ADVISOR=localhost:9999
 
 # set TPTP library path
 # TPTP=.
@@ -53,6 +55,7 @@ leancop()
   $PROLOG_PATH $PROLOG_OPTIONS \
   "assert(prolog('$PROLOG')),\
    assert(proof('$PROOF_LAYOUT')),\
+   assert(ai_advisor('$AI_ADVISOR')),\
    ['$PROVER_PATH/leancop_dnf.pl'],\
    leancop_dnf('$FILE',$SET,_),\
    halt."\
@@ -99,8 +102,8 @@ leancop()
 #-------------
 # Main Program
 
-if [ $# -eq 0 -o $# -gt 2 ]; then
- echo "Usage: $0 <problem file> [<time limit>]"
+if [ $# -eq 0 -o $# -gt 3 ]; then
+ echo "Usage: $0 <problem file> [<ai_advisor_server_domain:port> [<time limit>]]"
  exit 2
 fi
 
@@ -109,14 +112,18 @@ if [ ! -r "$1" ]; then
  exit 2
 fi
 
-if [ -n "`echo "$2" | grep '[^0-9]'`" ]; then
- echo "Error: Time $2 is not a number" >&2
+if [ -n "`echo "$3" | grep '[^0-9]'`" ]; then
+ echo "Error: Time $3 is not a number" >&2
  exit 2
 fi
 
-if [ $# -eq 1 ]
+if [ $# -le 2 ]
  then TIMELIMIT=600
- else TIMELIMIT=$2
+ else TIMELIMIT=$3
+fi
+
+if [ $# -ge 2 ]
+ then AI_ADVISOR=$2
 fi
 
 FILE=$1
@@ -128,7 +135,7 @@ set +m
 # invoke leanCoP core prover with different settings SET
 # for time TIME_PC [%]; COMP=y iff settings are complete
 
-SET="[conj,def,cut]";                 COMP=n; TIME_PC=10000; leancop
+SET="[conj,def,cut]";                COMP=n; TIME_PC=15; leancop
 SET="[cut,comp(7)]";                 COMP=y; TIME_PC=10; leancop
 SET="[conj,def,cut]";                COMP=n; TIME_PC=15; leancop
 SET="[nodef,scut,cut]";              COMP=n; TIME_PC=15; leancop
