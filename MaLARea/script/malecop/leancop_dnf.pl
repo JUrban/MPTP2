@@ -1,4 +1,4 @@
-%% File: leancop_dnf.pl  -  Version: 1.27  -  Date: 2011
+%% File: leancop_dnf.pl  -  Version: 1.28  -  Date: 2011
 %%
 %% Purpose: Call the leanCoP core prover for a given formula with a machine learning server.
 %%
@@ -437,9 +437,12 @@ prove([Lit|Cla],Path,PathLength,PathLim,Lem,Set,Advisor_In,Advisor_Out,Proof) :-
               write('& '),
               flag(best_lit_attempts,NOW,NOW),
               ATT is NOW-PAST,
+              UATT is TRY-PAST,
               collect_symbols_top(Real_Input,Ps,Fs),
               append(Ps,Fs,Ss),            
-              write(best_lit_attempts=ATT),write(' ; '),write(Ss), write(' >>> '), writeln(IDX)
+              write(best_lit_attempts=ATT),write('; '),
+              write(best_lit_unsuccessful_attempts=UATT),write('; '),
+              write(Ss), write(' >>> '), writeln(IDX)
             ; true)
        ),
        ( member(cut,Set) -> ! ; true ),
@@ -587,10 +590,10 @@ clause_num_sub_with_global_index(Cla,Path,Lem,[Cla1|Mat],DNF_Mat,I,Num,Sub) :-
 nth_element(1,[E|_],E) :- !.
 nth_element(I,[_|Ls],E) :- I1 is I - 1, nth_element(I1,Ls,E).
 
-/*
+
 append([],[]).
 append([Ls],Ls).
 append([As,Bs|Cs],Ls) :-
 	append(As,Bs,Ds),
 	append([Ds|Cs],Ls).
-*/	
+	
