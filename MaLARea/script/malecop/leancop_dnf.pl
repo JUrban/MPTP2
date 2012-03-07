@@ -1,4 +1,4 @@
-%% File: leancop_dnf.pl  -  Version: 1.20  -  Date: 2011
+%% File: leancop_dnf.pl  -  Version: 1.21  -  Date: 2011
 %%
 %% Purpose: Call the leanCoP core prover for a given formula with a machine learning server.
 %%
@@ -15,6 +15,7 @@
 :- dynamic(dnf/4).         % dnf table with format: dnf(Index,Type,Clause,Ground)
 :- flag(table_index,_,1).  % index of the last created table
 :- dynamic(lit/5).
+:- dynamic(advised_lit/5).
 :- dynamic(best_lit_mode/1).
 
 %:- assert(best_lit_mode(original_leancop)). 
@@ -100,8 +101,7 @@ leancop_get_result(File,Matrix,Settings,Advisor_In,Advisor_Out,Proof,Result) :-
 :- best_lit_mode(M), (
 M=original_leancop,
 assert((
-best_lit(Advisor_In,Advisor_Out,NegLit,Clause,Ground) :-
-%         writeln('query.'),
+best_lit(_Advisor_In,_Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground) :-
          lit(NegLit,NegL,Clause,Ground,_IDX),
          unify_with_occurs_check(NegL,NegLit)
 ))
@@ -109,7 +109,7 @@ best_lit(Advisor_In,Advisor_Out,NegLit,Clause,Ground) :-
 ;
 M=naive_and_complete,
 assert((
-best_lit(Advisor_In,Advisor_Out,NegLit,Clause,Ground) :-
+best_lit(Advisor_In,Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground) :-
          collect_symbols_top([NegLit],Ps,Fs),
          append(Ps,Fs,Ss),
 %         writeln('sending to AI...'),
@@ -134,7 +134,7 @@ best_lit(Advisor_In,Advisor_Out,NegLit,Clause,Ground) :-
 ;
 M=naive,
 assert((
-best_lit(Advisor_In,Advisor_Out,NegLit,Clause,Ground) :-
+best_lit(Advisor_In,Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground) :-
          collect_symbols_top([NegLit],Ps,Fs),
          append(Ps,Fs,Ss),
          write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
@@ -147,7 +147,7 @@ best_lit(Advisor_In,Advisor_Out,NegLit,Clause,Ground) :-
 ;
 M=full_caching_and_complete,
 assert((
-best_lit(Advisor_In,Advisor_Out,NegLit,Clause,Ground) :-
+best_lit(Advisor_In,Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground) :-
          collect_symbols_top([NegLit],Ps,Fs),
          append(Ps,Fs,Ss),
          (
@@ -176,7 +176,7 @@ best_lit(Advisor_In,Advisor_Out,NegLit,Clause,Ground) :-
 ;
 M=smart_caching_and_complete,
 assert((
-best_lit(Advisor_In,Advisor_Out,NegLit,Clause,Ground) :-
+best_lit(Advisor_In,Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground) :-
          collect_symbols_top([NegLit],Ps,Fs),
          append(Ps,Fs,Ss),
          (
@@ -198,7 +198,54 @@ best_lit(Advisor_In,Advisor_Out,NegLit,Clause,Ground) :-
          (  Query=..[Table,NegLit,NegL,Clause,Ground,_],
             call(Query)
           ;  
-            lit(NegLit,NegL,Clause,Ground,_)
+            lit(NegLit,NegL,Clause,Ground,Index),
+            \+ member(Index,Indexes)
+         ),
+         unify_with_occurs_check(NegL,NegLit)
+         
+))
+
+;
+M=original_leancop_with_first_advise,
+assert((
+best_lit(_Advisor_In,_Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground) :-
+         advised_lit(NegLit,NegL,Clause,Ground,_IDX),
+         unify_with_occurs_check(NegL,NegLit)
+         
+))
+;
+M=limited_smart_on_path_and_targets(Limitation),
+assert((
+best_lit(Advisor_In,Advisor_Out,Cla,_Path,PathLim,_Lem,NegLit,Clause,Ground) :-
+         append([NegLit|Cla],Path,Targets),
+         collect_symbols_top(Targets,Ps,Fs),
+         append(Ps,Fs,Ss),
+         (
+           PathLim > Limitation ->
+             advised_lit(NegLit,NegL,Clause,Ground,_Index)
+           ;
+           (
+		   cache_table(Ss,Table) ->
+		     true
+		   ;
+		     write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
+		     read(Advisor_In,Indexes),!,
+		     findall(dnf(Index,Type,Cla,G),(
+		       member(Index,Indexes), 
+		       dnf(Index,Type,Cla,G)
+		     ),Cs),
+		     flag(table_index,I,I+1),
+		     name(I,Is),name(t,Ts),append(Is,Ts,Ns),
+		     name(Table,Ns),
+		     assert(cache_table(Ss,Table)),
+		     assert_clauses(Cs,Table,conj)
+		 ),!,
+		 (  Query=..[Table,NegLit,NegL,Clause,Ground,_],
+		    call(Query)
+		  ;  
+		    lit(NegLit,NegL,Clause,Ground,Index),
+		    \+ member(Index,Indexes)
+		 )
          ),
          unify_with_occurs_check(NegL,NegLit)
          
@@ -237,7 +284,24 @@ prove(F,Advisor_In,Advisor_Out,Proof) :- prove2(F,[cut,comp(7)],Advisor_In,Advis
 
 prove2(M,Set,Advisor_In,Advisor_Out,Proof) :-
     retractall(lit(_,_,_,_,_)), (member(dnf(_,_,[-(#)],_),M) -> S=conj ; S=pos),
-    assert_clauses(M,lit,/*S*/conj), 
+    assert_clauses(M,lit,/*S*/conj),
+    best_lit_mode(M),
+    ( member(M,[limited_smart_on_path_and_targets(_),original_leancop_with_first_advise]) ->
+         findall(C,dnf(_,_,[#|C],_),Cs),
+         append(Cs,Qs),
+         collect_symbols_top(Qs,Ps,Fs),
+         append(Ps,Fs,Ss),             
+         write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
+         read(Advisor_In,Indexes),!,
+         findall(advised_lit(L1,L2,Cla,G,Index),(
+               ( member(Index,Indexes), 
+                 lit(L1,L2,Cla,G,Index)
+               ; lit(L1,L2,Cla,G,Index), 
+                 \+ member(Index,Indexes)
+               )
+         ),Cs),
+         forall(member(Q,Cs),assertz(Q))
+    ),
     prove(1,Set,Advisor_In,Advisor_Out,Proof).
 
 prove(PathLim,Set,Advisor_In,Advisor_Out,Proof) :-
@@ -263,7 +327,7 @@ prove([Lit|Cla],Path,PathLim,Lem,Set,Advisor_In,Advisor_Out,Proof) :-
          Cla1=[], Proof1=[]
          ;
           writeln('@'),
-          best_lit(Advisor_In,Advisor_Out,NegLit,Cla1,Grnd1),
+          best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,Lem,NegLit,Cla1,Grnd1),
 %         lit(NegLit,NegL,Cla1,Grnd1,_IDX),
 %         unify_with_occurs_check(NegL,NegLit),
          ( Grnd1=g -> true ; length(Path,K), K<PathLim -> true ;
