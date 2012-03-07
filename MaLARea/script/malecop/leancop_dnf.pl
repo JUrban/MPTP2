@@ -1,4 +1,4 @@
-%% File: leancop_dnf.pl  -  Version: 1.17  -  Date: 2011
+%% File: leancop_dnf.pl  -  Version: 1.20  -  Date: 2011
 %%
 %% Purpose: Call the leanCoP core prover for a given formula with a machine learning server.
 %%
@@ -166,11 +166,42 @@ best_lit(Advisor_In,Advisor_Out,NegLit,Clause,Ground) :-
              flag(table_index,I,I+1),
              name(I,Is),name(t,Ts),append(Is,Ts,Ns),
              name(Table,Ns),
+             assert(cache_table(Ss,Table)),
              assert_clauses(Cs,Table,conj)
          ),!,
          Query=..[Table,NegLit,NegL,Clause,Ground,_],
          call(Query),
          unify_with_occurs_check(NegL,NegLit)
+))
+;
+M=smart_caching_and_complete,
+assert((
+best_lit(Advisor_In,Advisor_Out,NegLit,Clause,Ground) :-
+         collect_symbols_top([NegLit],Ps,Fs),
+         append(Ps,Fs,Ss),
+         (
+           cache_table(Ss,Table) ->
+             true
+           ;
+             write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
+             read(Advisor_In,Indexes),!,
+             findall(dnf(Index,Type,Cla,G),(
+               member(Index,Indexes), 
+               dnf(Index,Type,Cla,G)
+             ),Cs),
+             flag(table_index,I,I+1),
+             name(I,Is),name(t,Ts),append(Is,Ts,Ns),
+             name(Table,Ns),
+             assert(cache_table(Ss,Table)),
+             assert_clauses(Cs,Table,conj)
+         ),!,
+         (  Query=..[Table,NegLit,NegL,Clause,Ground,_],
+            call(Query)
+          ;  
+            lit(NegLit,NegL,Clause,Ground,_)
+         ),
+         unify_with_occurs_check(NegL,NegLit)
+         
 ))
 
 ).
@@ -231,7 +262,8 @@ prove([Lit|Cla],Path,PathLim,Lem,Set,Advisor_In,Advisor_Out,Proof) :-
          member(NegL,Path), unify_with_occurs_check(NegL,NegLit),
          Cla1=[], Proof1=[]
          ;
-         best_lit(Advisor_In,Advisor_Out,NegLit,Cla1,Grnd1),
+          writeln('@'),
+          best_lit(Advisor_In,Advisor_Out,NegLit,Cla1,Grnd1),
 %         lit(NegLit,NegL,Cla1,Grnd1,_IDX),
 %         unify_with_occurs_check(NegL,NegLit),
          ( Grnd1=g -> true ; length(Path,K), K<PathLim -> true ;
