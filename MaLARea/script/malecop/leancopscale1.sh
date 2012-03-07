@@ -1,7 +1,7 @@
 #!/bin/sh
 #-----------
 # File:      leancop_dnf.sh
-# Version:   1.3
+# Version:   1.4
 # Date:      25 January 2011
 #-----------
 # Purpose:   Invokes the leanCoP prover
@@ -41,6 +41,8 @@ SAVE_PROOF=no
 PROOF_LAYOUT=readable_with_global_index
 # ai clauses advisor
 AI_ADVISOR=localhost:9999
+# machine learning of subtrees output
+MACHINE_LEARNING_OF_SUBTREES=yes
 # best lit mode
 #BEST_LIT_MODE=original_leancop_with_first_advise
 #BEST_LIT_MODE=original_leancop
@@ -49,8 +51,8 @@ AI_ADVISOR=localhost:9999
 #BEST_LIT_MODE=full_caching_and_complete
 #BEST_LIT_MODE=smart_caching_and_complete
 #BEST_LIT_MODE="limited_smart_on_path_and_targets(2)"
-BEST_LIT_MODE="scalable_with_first_advise(40)"
-#BEST_LIT_MODE="scalable_with_first_advise(2,20)"
+#BEST_LIT_MODE="scalable_with_first_advise(40,smart_caching_and_complete)"
+BEST_LIT_MODE="scalable_with_first_advise(2,20,smart_caching_and_complete)"
 
 # set TPTP library path
 # TPTP=.
@@ -73,6 +75,7 @@ leancop()
    assert(proof('$PROOF_LAYOUT')),\
    assert(best_lit_mode("$BEST_LIT_MODE")),\
    assert(ai_advisor('$AI_ADVISOR_LOCATION':$AI_ADVISOR_PORT)),\
+   ( '$MACHINE_LEARNING_OF_SUBTREES'=yes -> assert(machine_learning_of_subtrees);true),\
    ['$PROVER_PATH/leancop_dnf.pl'],\
    leancop_dnf('$FILE',$SET,_),\
    halt." > $OUTPUT.fifo &
