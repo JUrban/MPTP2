@@ -1,4 +1,4 @@
-%% File: leancop_dnf.pl  -  Version: 1.24  -  Date: 2011
+%% File: leancop_dnf.pl  -  Version: 1.21  -  Date: 2011
 %%
 %% Purpose: Call the leanCoP core prover for a given formula with a machine learning server.
 %%
@@ -292,8 +292,8 @@ collect_symbols(X1,T2):-
 prove(F,Advisor_In,Advisor_Out,Proof) :- prove2(F,[cut,comp(7)],Advisor_In,Advisor_Out,Proof).
 
 prove2(M,Set,Advisor_In,Advisor_Out,Proof) :-
-    retractall(lit(_,_,_,_,_)), (member(dnf(_,_,[-(#)],_),M) -> S=conj ; S=pos),
-    assert_clauses(M,lit,/*S*/conj),
+    retractall(lit(_,_,_,_,_)), (member(conj,Set) -> S=conj;S=pos)/*(member(dnf(_,_,[-(#)],_),M) -> S=conj ; S=pos)*/,
+    assert_clauses(M,lit,S),
     best_lit_mode(Mode),
     ( member(Mode,[limited_smart_on_path_and_targets(_),original_leancop_with_first_advise]) ->
          retractall(advised_lit(_,_,_,_,_)),
@@ -354,7 +354,8 @@ prove([Lit|Cla],Path,PathLim,Lem,Set,Advisor_In,Advisor_Out,Proof) :-
 %%% write clauses into Prolog's database
 
 assert_clauses([],_,_).
-assert_clauses([dnf(Index,_,C,G)|M],Functor,Set) :-
+assert_clauses([dnf(Index,_,Cla,G)|M],Functor,Set) :-
+    (Set\=conj, select(#,Cla,C) -> true ; Cla=C),
     (Set\=conj, \+member(-_,C) -> C1=[#|C] ; C1=C),
 %    copy_term(C1,X),numbervars(X,1,_), print(X), nl,
     assert_clauses2(C1,[],G,Index,Functor),
