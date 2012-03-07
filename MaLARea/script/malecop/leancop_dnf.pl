@@ -1,4 +1,4 @@
-%% File: leancop_dnf.pl  -  Version: 1.23  -  Date: 2011
+%% File: leancop_dnf.pl  -  Version: 1.24  -  Date: 2011
 %%
 %% Purpose: Call the leanCoP core prover for a given formula with a machine learning server.
 %%
@@ -192,14 +192,18 @@ best_lit(Advisor_In,Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground) :
              flag(table_index,I,I+1),
              name(I,Is),name(t,Ts),append(Is,Ts,Ns),
              name(Table,Ns),
-             assert(cache_table(Ss,Table)),
-             assert_clauses(Cs,Table,conj)
+	     Shape=..[Table,_,_,_,_,_],
+	     dynamic(Shape),
+   	     assert(cache_table(Ss,Table)),
+	     assert_clauses(Cs,Table,conj)  
          ),!,
-         (  Query=..[Table,NegLit,NegL,Clause,Ground,_],
-            call(Query)
+         (
+           Query=..[Table,NegLit,NegL,Clause,Ground,_],
+           call(Query)
           ;  
             lit(NegLit,NegL,Clause,Ground,Index),
-            \+ member(Index,Indexes)
+            Query=..[Table,_,_,_,_,Index],
+            \+ call(Query)
          ),
          unify_with_occurs_check(NegL,NegLit)
          
@@ -216,20 +220,21 @@ best_lit(_Advisor_In,_Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground)
 ;
 M=limited_smart_on_path_and_targets(Limitation),
 assert((
-best_lit(Advisor_In,Advisor_Out,Cla,_Path,PathLim,_Lem,NegLit,Clause,Ground) :-
+best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,_Lem,NegLit,Clause,Ground) :-
          append([NegLit|Cla],Path,Targets),
          collect_symbols_top(Targets,Ps,Fs),
-         append(Ps,Fs,Ss),
+         append(Ps,Fs,Ss),!,
          (
-           PathLim > Limitation ->
+             length(Path,K), K > Limitation ->
+             %write(user_error,K),nl(user_error),
              advised_lit(NegLit,NegL,Clause,Ground,_Index)
            ;
            (
 		   cache_table(Ss,Table) ->
 		     true
-		   ;
+		   ; 
 		     write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
-		     read(Advisor_In,Indexes),!,
+		     read(Advisor_In,Indexes),!,%write(user_error,Indexes),nl(user_error),
 		     findall(dnf(Index,Type,Cla,G),(
 		       member(Index,Indexes), 
 		       dnf(Index,Type,Cla,G)
@@ -237,14 +242,18 @@ best_lit(Advisor_In,Advisor_Out,Cla,_Path,PathLim,_Lem,NegLit,Clause,Ground) :-
 		     flag(table_index,I,I+1),
 		     name(I,Is),name(t,Ts),append(Is,Ts,Ns),
 		     name(Table,Ns),
+		     Shape=..[Table,_,_,_,_,_],
+		     dynamic(Shape),
 		     assert(cache_table(Ss,Table)),
 		     assert_clauses(Cs,Table,conj)
 		 ),!,
-		 (  Query=..[Table,NegLit,NegL,Clause,Ground,_],
-		    call(Query)
-		  ;  
-		    lit(NegLit,NegL,Clause,Ground,Index),
-		    \+ member(Index,Indexes)
+		 (
+		 Query=..[Table,NegLit,NegL,Clause,Ground,_],
+		 call(Query)
+		 ;  
+		 lit(NegLit,NegL,Clause,Ground,Index),
+                 Query=..[Table,_,_,_,_,Index],
+                 \+ call(Query)
 		 )
          ),
          unify_with_occurs_check(NegL,NegLit)
@@ -288,10 +297,11 @@ prove2(M,Set,Advisor_In,Advisor_Out,Proof) :-
     best_lit_mode(Mode),
     ( member(Mode,[limited_smart_on_path_and_targets(_),original_leancop_with_first_advise]) ->
          retractall(advised_lit(_,_,_,_,_)),
-         findall(C,dnf(_,_,[#|C],_),Cs),
+         %findall(C,(dnf(_,_,X,_),select(#,X,C)),Cs),
+         findall(C,dnf(_,conjecture,C,_),Cs),
          append(Cs,Qs),
          collect_symbols_top(Qs,Ps,Fs),
-         append(Ps,Fs,Ss),             
+         append(Ps,Fs,Ss),            
          write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
          read(Advisor_In,Indexes),!,
          findall(advised_lit(L1,L2,Cla,G,Index),(
@@ -300,8 +310,8 @@ prove2(M,Set,Advisor_In,Advisor_Out,Proof) :-
                ; lit(L1,L2,Cla,G,Index), 
                  \+ member(Index,Indexes)
                )
-         ),Cs),
-         forall(member(Q,Cs),assertz(Q))
+         ),Rs),
+         forall(member(Q,Rs),assert(Q))
       ;
       true
     ),
