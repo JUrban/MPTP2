@@ -1,4 +1,4 @@
-%% File: leancop_dnf.pl  -  Version: 1.33  -  Date: 2011
+%% File: leancop_dnf.pl  -  Version: 1.34 -  Date: 2011
 %%
 %% Purpose: Call the leanCoP core prover for a given formula with a machine learning server.
 %%
@@ -14,10 +14,11 @@
 :- dynamic(cache_table/2). % format: cache_table(<query>,<table_functor_name>)
 :- dynamic(dnf/4).         % dnf table with format: dnf(Index,Type,Clause,Ground)
 :- flag(table_index,_,1).  % index of the last created table
-:- dynamic(lit/5).
 :- dynamic(advised_lit/5).
+:- dynamic(conjecture_lit/5).
 :- dynamic(best_lit_mode/1).
 :- dynamic(machine_learning_of_subtrees/0).
+:- dynamic(lit/5).
 :- dynamic(problem_id/1).
 
 %:- assert(best_lit_mode(original_leancop)). 
@@ -135,7 +136,7 @@ best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLength,_PathLim,_Lem,NegLit,Claus
          )
 )), XXX=(HHH:-BBB), HHH=..[_|REST], QQQ=..[Pred|REST], assert((QQQ :-BBB)).
 
-
+ 
 %%%
 
 assert_mode(naive,Pred) :-
@@ -145,8 +146,12 @@ best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLength,_PathLim,_Lem,NegLit,Claus
          append(Ps,Fs,Ss),
          write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
          read(Advisor_In,Indexes),!,
-         member(I,Indexes),
-	 lit(NegLit,NegL,Clause,Ground,I),
+         
+	 ( 
+	   member(I,Indexes),lit(NegLit,NegL,Clause,Ground,I)
+	 ; conjecture_lit(NegLit,NegL,Clause,Ground,I)
+	 ),
+	 
 	 unify_with_occurs_check(NegL,NegLit)
 )), XXX=(HHH:-BBB), HHH=..[_|REST], QQQ=..[Pred|REST], assert((QQQ :-BBB)).
 
@@ -249,6 +254,7 @@ best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLength,_PathLim,_Lem,NegLit,Claus
          (
            Query=..[Table,NegLit,NegL,Clause,Ground,Index],
            call(Query)
+	 ; conjecture_lit(NegLit,NegL,Clause,Ground,Index)
          ),
          unify_with_occurs_check(NegL,NegLit)
 
@@ -257,6 +263,17 @@ best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLength,_PathLim,_Lem,NegLit,Claus
 %%%
 
 assert_mode(original_leancop_with_first_advise,Pred) :-
+XXX=((
+best_lit(_Advisor_In,_Advisor_Out,_Cla,_Path,_PathLength,_PathLim,_Lem,NegLit,Clause,Ground,IDX) :-
+         advised_lit(NegLit,NegL,Clause,Ground,IDX),
+         unify_with_occurs_check(NegL,NegLit)
+
+)), XXX=(HHH:-BBB), HHH=..[_|REST], QQQ=..[Pred|REST], assert((QQQ :-BBB)).
+
+
+%%%
+
+assert_mode(leancop_ala_malarea,Pred) :-
 XXX=((
 best_lit(_Advisor_In,_Advisor_Out,_Cla,_Path,_PathLength,_PathLim,_Lem,NegLit,Clause,Ground,IDX) :-
          advised_lit(NegLit,NegL,Clause,Ground,IDX),
@@ -337,8 +354,11 @@ best_lit(Advisor_In,Advisor_Out,_Cla,Path,PathLength,_PathLim,_Lem,NegLit,Clause
              (
                cache_table(Ss,Table) ->
                   !,
-		  Query=..[Table,NegLit,NegL,Clause,Ground,Index],
-		  call(Query) 
+                  (
+		    Query=..[Table,NegLit,NegL,Clause,Ground,Index],
+		    call(Query)
+   	          ; conjecture_lit(NegLit,NegL,Clause,Ground,Index)
+		  )  
                  ;
                  advised_lit(NegLit,NegL,Clause,Ground,Index)
              )
@@ -361,10 +381,11 @@ best_lit(Advisor_In,Advisor_Out,_Cla,Path,PathLength,_PathLim,_Lem,NegLit,Clause
 		     assert(cache_table(Ss,Table)),
 		     assert_clauses(Cs,Table,conj)
 		 ),!,
-		 
-		 Query=..[Table,NegLit,NegL,Clause,Ground,Index],
-		 call(Query)
-		 
+		 (
+		   Query=..[Table,NegLit,NegL,Clause,Ground,Index],
+		   call(Query)
+  	         ; conjecture_lit(NegLit,NegL,Clause,Ground,Index)
+		 )
          ),
          unify_with_occurs_check(NegL,NegLit)
          
@@ -479,12 +500,14 @@ prove2(M,Set,Advisor_In,Advisor_Out,Proof) :-
     %problem_id(PRN),
     retractall(lit(_,_,_,_,_)), (member(conj,Set) -> S=conj;S=pos)/*(member(dnf(_,_,[-(#(PRN))],_),M) -> S=conj ; S=pos)*/,
     assert_clauses(M,lit,S),
-    best_lit_mode(Mode),
+    forall((dnf(CIDX,conjecture,_,_),lit(CL1,CL2,CCla,CG,CIDX)),assert(conjecture_lit(CL1,CL2,CCla,CG,CIDX))),
+    best_lit_mode(Mode),    
     ( member(Mode,[scalable_with_first_advise(_,_,_),
                    scalable_with_first_advise(_,_),
                    limited_smart_with_first_advise(_),
                    limited_smart_and_complete_with_first_advise(_),
-                   original_leancop_with_first_advise]) ->
+                   original_leancop_with_first_advise,
+                   leancop_ala_malarea]) ->
          retractall(advised_lit(_,_,_,_,_)),
          %findall(C,(dnf(_,_,X,_),select(#(PRN),X,C)),Cs),
          findall(C,dnf(_,conjecture,C,_),Cs),
@@ -493,13 +516,23 @@ prove2(M,Set,Advisor_In,Advisor_Out,Proof) :-
          append(Ps,Fs,Ss),            
          write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
          read(Advisor_In,Indexes),!,
-         findall(advised_lit(L1,L2,Cla,G,Index),(
-               ( member(Index,Indexes), 
-                 lit(L1,L2,Cla,G,Index)
-               ; lit(L1,L2,Cla,G,Index), 
-                 \+ member(Index,Indexes)
-               )
-         ),Rs),
+         ( Mode = leancop_ala_malarea ->
+		 findall(advised_lit(L1,L2,Cla,G,Index),(
+		       ( member(Index,Indexes), 
+			 lit(L1,L2,Cla,G,Index)
+		       ; conjecture_lit(L1,L2,Cla,G,Index), 
+			 \+ member(Index,Indexes)
+		       )
+		 ),Rs)
+	  ;		 
+		 findall(advised_lit(L1,L2,Cla,G,Index),(
+		       ( member(Index,Indexes), 
+			 lit(L1,L2,Cla,G,Index)
+		       ; lit(L1,L2,Cla,G,Index), 
+			 \+ member(Index,Indexes)
+		       )
+		 ),Rs)		 
+	 ),	 
          forall(member(Q,Rs),assert(Q))
       ;
       true
