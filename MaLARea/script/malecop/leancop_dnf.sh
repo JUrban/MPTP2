@@ -1,14 +1,12 @@
 #!/bin/sh
 #-----------
-# File:      leancop.sh
-# Version:   2.1
-# Date:      3 July 2009
+# File:      leancop_dnf.sh
+# Version:   1.1
+# Date:      18 July 2011
 #-----------
 # Purpose:   Invokes the leanCoP prover
-# Usage:     ./leancop.sh <problem file> [<time limit>]
-# Author:    Jens Otten
-# Web:       www.leancop.de
-# Copyright: (c) 2007-2009 by Jens Otten
+# Usage:     ./leancop_dnf.sh <problem file> [ <Server_location:Port_Number> [<time limit>]]
+# Author:    Jiri Vyskocil
 # License:   GNU General Public License
 #-----------
 
@@ -25,7 +23,7 @@ PROVER_PATH=.
 #PROLOG_OPTIONS='-e'
 
 PROLOG=swi
-PROLOG_PATH=/usr/bin/pl
+PROLOG_PATH=/usr/bin/swipl
 PROLOG_OPTIONS='-nodebug -L120M -G120M -T100M -q -t'
 
 #PROLOG=sicstus
@@ -40,6 +38,12 @@ SAVE_PROOF=no
 PROOF_LAYOUT=readable_with_global_index
 # ai clauses advisor 
 AI_ADVISOR=localhost:9999
+# best lit mode
+BEST_LIT_MODE=original_leancop
+# original_leancop
+# naive_and_complete
+# naive
+# full_caching_and_complete   
 
 # set TPTP library path
 # TPTP=.
@@ -52,10 +56,13 @@ leancop()
 # Input: $SET, $COMP, $TIME_PC
   TLIMIT=`expr $TIME_PC '*' $TIMELIMIT / 111`
   if [ $TLIMIT -eq 0 ]; then TLIMIT=1; fi
+  AI_ADVISOR_LOCATION=`echo $AI_ADVISOR | sed "s/\(.*\)\:.*/\\1/"`
+  AI_ADVISOR_PORT=`echo $AI_ADVISOR | sed "s/.*\:\(.*\)/\\1/"`
   $PROLOG_PATH $PROLOG_OPTIONS \
   "assert(prolog('$PROLOG')),\
    assert(proof('$PROOF_LAYOUT')),\
-   assert(ai_advisor('$AI_ADVISOR')),\
+   assert(best_lit_mode('$BEST_LIT_MODE')),\
+   assert(ai_advisor('$AI_ADVISOR_LOCATION':$AI_ADVISOR_PORT)),\
    ['$PROVER_PATH/leancop_dnf.pl'],\
    leancop_dnf('$FILE',$SET,_),\
    halt."\
@@ -135,7 +142,6 @@ set +m
 # invoke leanCoP core prover with different settings SET
 # for time TIME_PC [%]; COMP=y iff settings are complete
 
-SET="[conj,def,cut]";                COMP=n; TIME_PC=15; leancop
 SET="[cut,comp(7)]";                 COMP=y; TIME_PC=10; leancop
 SET="[conj,def,cut]";                COMP=n; TIME_PC=15; leancop
 SET="[nodef,scut,cut]";              COMP=n; TIME_PC=15; leancop
@@ -165,7 +171,7 @@ SET="[reo(76),def,scut,cut]";        COMP=n; TIME_PC=1;  leancop
 SET="[reo(74),nodef,cut]";           COMP=n; TIME_PC=1;  leancop
 SET="[reo(14),nodef,cut]";           COMP=n; TIME_PC=1;  leancop
 SET="[reo(37),nodef,scut]";          COMP=n; TIME_PC=1;  leancop
-SET="[def]";                         COMP=y; TIME_PC=99; leancop
+SET="[def]";                         COMP=y; TIME_PC=99; leancop 
 
 echo Timeout
 exit 2
