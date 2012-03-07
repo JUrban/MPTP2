@@ -1,4 +1,4 @@
-%% File: leancop_dnf.pl  -  Version: 1.21  -  Date: 2011
+%% File: leancop_dnf.pl  -  Version: 1.23  -  Date: 2011
 %%
 %% Purpose: Call the leanCoP core prover for a given formula with a machine learning server.
 %%
@@ -260,7 +260,93 @@ best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,_Lem,NegLit,Clause,Ground) :-
          
 ))
 
+;
+M=scalable_with_first_advise(PreCounting_Threshold,Query_Threshold),
+assert((
+best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,_Lem,NegLit,Clause,Ground) :-
+        length(Path,L), copy_term(NegLit,NegLit1),
+        flag(L,_,PreCounting_Threshold),!,
+        ( 
+		 advised_lit(NegLit1,NegL1,Clause1,Ground1,_IDX),
+		 
+		 flag(L,I,I-1),
+		 %write(user_error,(try(L,I))),nl(user_error),
+		 ((I =< 1) -> !, %write(user_error,(go(L,I))),nl(user_error),
+%	    ;
+		 findall(advised_lit(NegLit,NegL_,Clause_,Ground_,IDX),
+			(advised_lit(NegLit,NegL_,Clause_,Ground_,IDX) %,unify_with_occurs_check(NegL_,NegLit)
+			)
+			,Gs),
+		 length(Gs,N),
+%		 write(user_error,(NegLit-->N)),nl(user_error),
+%		 write(user_error,N),nl(user_error),
+		 (
+		   N =< Query_Threshold ->
+		         tail_list(PreCounting_Threshold,Gs,Ws),
+			 member(advised_lit(NegLit,NegL,Clause,Ground,IDX),Ws),
+			 advised_lit(NegLit,NegL,Clause,Ground,IDX)
+		     ; 
+			 collect_symbols_top([NegLit|Path],Ps,Fs),
+			 append(Ps,Fs,Ss),
+			 write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
+			 read(Advisor_In,Indexes),!, %write(user_error,(adv(L,I))),nl(user_error),
+			 (
+				 ( member(Ind,Indexes),
+				   advised_lit(NegLit,NegL,Clause,Ground,Ind)
+				 )   
+				  ;
+				 (
+				   advised_lit(NegLit,NegL,Clause,Ground,Ind),
+				   \+ member(Ind,Indexes)
+				 )
+			 )
+		      
+		      
+		 )
+          ; (NegLit,NegL,Clause,Ground)=(NegLit1,NegL1,Clause1,Ground1))),
+         unify_with_occurs_check(NegL,NegLit)
+         
+))
+
+;
+M=scalable_with_first_advise(PreCounting_Threshold),
+assert((
+best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,_Lem,NegLit,Clause,Ground) :-
+        length(Path,L), copy_term(NegLit,NegLit1),
+        flag(L,_,PreCounting_Threshold),!,
+        ( 
+		 advised_lit(NegLit1,NegL1,Clause1,Ground1,_IDX),
+		 
+		 flag(L,I,I-1),
+		 %write(user_error,(try(L,I))),nl(user_error),
+		 ((I =< 1) -> !, %write(user_error,(go(L,I))),nl(user_error),
+%	    ;
+		 collect_symbols_top([NegLit|Path],Ps,Fs),
+		 append(Ps,Fs,Ss),
+		 write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
+		 read(Advisor_In,Indexes),!, %write(user_error,(adv(L,I))),nl(user_error),
+		 (
+			 ( member(Ind,Indexes),
+			   advised_lit(NegLit,NegL,Clause,Ground,Ind)
+			 )   
+			  ;
+			 (
+			   advised_lit(NegLit,NegL,Clause,Ground,Ind),
+			   \+ member(Ind,Indexes)
+			 )
+		 )
+		      
+		      
+		 
+          ; (NegLit,NegL,Clause,Ground)=(NegLit1,NegL1,Clause1,Ground1))),
+         unify_with_occurs_check(NegL,NegLit)
+         
+))
+
 ).
+
+tail_list(0,Ls,Ls).
+tail_list(N,[_|Ls],Rs) :- M is N-1, !, tail_list(M,Ls,Rs).
 
 %%% collect nonvar symbols from term
 
@@ -295,7 +381,7 @@ prove2(M,Set,Advisor_In,Advisor_Out,Proof) :-
     retractall(lit(_,_,_,_,_)), (member(conj,Set) -> S=conj;S=pos)/*(member(dnf(_,_,[-(#)],_),M) -> S=conj ; S=pos)*/,
     assert_clauses(M,lit,S),
     best_lit_mode(Mode),
-    ( member(Mode,[limited_smart_on_path_and_targets(_),original_leancop_with_first_advise]) ->
+    ( member(Mode,[scalable_with_first_advise(_,_),scalable_with_first_advise(_),limited_smart_on_path_and_targets(_),original_leancop_with_first_advise]) ->
          retractall(advised_lit(_,_,_,_,_)),
          %findall(C,(dnf(_,_,X,_),select(#,X,C)),Cs),
          findall(C,dnf(_,conjecture,C,_),Cs),
