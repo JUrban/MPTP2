@@ -1,9 +1,8 @@
-%% File: leancop_dnf.pl  -  Version: 1.1  -  Date: 2010
+%% File: leancop_dnf.pl  -  Version: 1.15  -  Date: 2011
 %%
-%% Purpose: Call the leanCoP core prover for a given formula
+%% Purpose: Call the leanCoP core prover for a given formula with a machine learning server.
 %%
-%% Authors: Jiri Vyskocil & Jens Otten
-%% Web:     www.leancop.de
+%% Authors: Jiri Vyskocil
 %%
 %% Usage:   leancop_dnf(X,S,R). % proves formula in file X with
 %%                               %  settings S and returns result R
@@ -11,8 +10,11 @@
 %% Copyright: (c) 2010 by Jiri Vyskocil
 %% License:   GNU General Public License
 
+:- dynamic(ai_advisor/0). % with format: ai_advisor(server_location:port)
 
 :- [leancop_main].
+
+:- [tcp_client].
 
 :- op(100,fy,-). % due to problems with -3^[] as (-3)^[] instead of -(3^[])
 	
@@ -32,10 +34,14 @@ leancop_dnf(File,Settings,Result) :-
 %    make_matrix(Problem2,Matrix,Settings),
     Conj=non_empty,
     load_dnf(File,Matrix),
-    ( prove2(Matrix,Settings,Proof) ->
+    ai_advisor(DNS:PORT),
+    create_client(DNS:PORT,Advisor_In,Advisor_Out),
+    
+    ( prove2(Matrix,Settings,Advisor_In,Advisor_Out,Proof) ->
       ( Conj\=[] -> Result='Theorem' ; Result='Unsatisfiable' ) ;
       ( Conj\=[] -> Result='Non-Theorem' ; Result='Satisfiable' )
     ),
+    close_connection(Advisor_In,Advisor_Out),
     output_result(File,Matrix,Proof,Result,Conj).
 
 %% File: leancop21_swi.pl  -  Version: 2.1  -  Date: 30 Aug 2008
@@ -68,29 +74,78 @@ leancop_dnf(File,Settings,Result) :-
 % :- [def_mm].  % load program for clausal form translation
 :- dynamic(lit/5).
 
+%%% best_lit
+%%% finds best lit according to a machine learning advisor.
+/*best_lit(Advisor_In,Advisor_Out,NegLit,Clause,Ground) :-
+         lit(NegLit,NegL,Clause,Ground,_IDX),
+         unify_with_occurs_check(NegL,NegLit).
+*/
+best_lit(Advisor_In,Advisor_Out,NegLit,Clause,Ground) :-
+         collect_symbols_top([NegLit],Ps,Fs),
+         append(Ps,Fs,Ss),
+         write(Advisor_Out,Ss),nl(Advisor_Out),
+         read(Advisor_In,Indexes),!,
+         (
+		 ( member(I,Indexes),
+		   lit(NegLit,NegL,Clause,Ground,I),
+		   unify_with_occurs_check(NegL,NegLit)
+		 )
+/*		  ;
+		 (
+		   lit(NegLit,NegL,Clause,Ground,I),
+		   \+ member(I,Indexes),
+		   unify_with_occurs_check(NegL,NegLit)
+		 )
+*/         ).
+
+%%% collect nonvar symbols from term
+
+collect_symbols_top(Xs,Ps,Ls):-
+        maplist(collect_predicate_symbols,Xs,Qs,LRs),
+        sort(Qs,Ps),
+        append(LRs,Rs),
+	maplist(collect_symbols,Rs,L1),!,
+	append(L1,L2),
+	flatten(L2,L3),
+	sort(L3,Ls).
+
+collect_predicate_symbols(-X,P,As) :- X=..[P|As].
+collect_predicate_symbols(X,P,As)  :- X=..[P|As].
+
+collect_predicate_symbols([],[]).
+
+collect_symbols(X,[]):- var(X),!.
+collect_symbols(X,[X]):- atomic(X),!.
+collect_symbols(X1,T2):-
+	X1 =.. [H1|T1],
+	maplist(collect_symbols,T1,T3),
+	append(T3,T4),
+	flatten(T4,T5),
+	sort([H1|T5],T2).
+
 %%% prove matrix M / formula F
 
-prove(F,Proof) :- prove2(F,[cut,comp(7)],Proof).
+prove(F,Advisor_In,Advisor_Out,Proof) :- prove2(F,[cut,comp(7)],Advisor_In,Advisor_Out,Proof).
 
-prove2(M,Set,Proof) :-
+prove2(M,Set,Advisor_In,Advisor_Out,Proof) :-
     retractall(lit(_,_,_,_,_)), (member(dnf(_,_,[-(#)],_),M) -> S=conj ; S=pos),
     assert_clauses(M,/*S*/conj), 
-    prove(1,Set,Proof).
+    prove(1,Set,Advisor_In,Advisor_Out,Proof).
 
-prove(PathLim,Set,Proof) :-
-    \+member(scut,Set) -> prove([-(#)],[],PathLim,[],Set,[Proof]) ;
-    lit(#,_,C,_,_) -> prove(C,[-(#)],PathLim,[],Set,Proof1),
+prove(PathLim,Set,Advisor_In,Advisor_Out,Proof) :-
+    \+member(scut,Set) -> prove([-(#)],[],PathLim,[],Set,Advisor_In,Advisor_Out,[Proof]) ;
+    lit(#,_,C,_,_) -> prove(C,[-(#)],PathLim,[],Set,Advisor_In,Advisor_Out,Proof1),
     Proof=[C|Proof1].
-prove(PathLim,Set,Proof) :-
-    member(comp(Limit),Set), PathLim=Limit -> prove(1,[],Proof) ;
+prove(PathLim,Set,Advisor_In,Advisor_Out,Proof) :-
+    member(comp(Limit),Set), PathLim=Limit -> prove(1,[],Advisor_In,Advisor_Out,Proof) ;
     (member(comp(_),Set);retract(pathlim)) ->
-    PathLim1 is PathLim+1, prove(PathLim1,Set,Proof).
+    PathLim1 is PathLim+1, prove(PathLim1,Set,Advisor_In,Advisor_Out,Proof).
 
 %%% leanCoP core prover
 
-prove([],_,_,_,_,[]).
+prove([],_,_,_,_,_,_,[]).
 
-prove([Lit|Cla],Path,PathLim,Lem,Set,Proof) :-
+prove([Lit|Cla],Path,PathLim,Lem,Set,Advisor_In,Advisor_Out,Proof) :-
     Proof=[[[NegLit|Cla1]|Proof1]|Proof2],
     \+ (member(LitC,[Lit|Cla]), member(LitP,Path), LitC==LitP),
     (-NegLit=Lit;-Lit=NegLit) ->
@@ -99,14 +154,15 @@ prove([Lit|Cla],Path,PathLim,Lem,Set,Proof) :-
          member(NegL,Path), unify_with_occurs_check(NegL,NegLit),
          Cla1=[], Proof1=[]
          ;
-         lit(NegLit,NegL,Cla1,Grnd1,_IDX),
-         unify_with_occurs_check(NegL,NegLit),
+         best_lit(Advisor_In,Advisor_Out,NegLit,Cla1,Grnd1),
+%         lit(NegLit,NegL,Cla1,Grnd1,_IDX),
+%         unify_with_occurs_check(NegL,NegLit),
          ( Grnd1=g -> true ; length(Path,K), K<PathLim -> true ;
            \+ pathlim -> assert(pathlim), fail ),
-         prove(Cla1,[Lit|Path],PathLim,Lem,Set,Proof1)
+         prove(Cla1,[Lit|Path],PathLim,Lem,Set,Advisor_In,Advisor_Out,Proof1)
        ),
        ( member(cut,Set) -> ! ; true ),
-       prove(Cla,Path,PathLim,[Lit|Lem],Set,Proof2).
+       prove(Cla,Path,PathLim,[Lit|Lem],Set,Advisor_In,Advisor_Out,Proof2).
 
 
 %%% write clauses into Prolog's database
