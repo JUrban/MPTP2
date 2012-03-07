@@ -2065,6 +2065,8 @@ sub SetupMaceModel
 
     if($gusemodels > 0) { unlink "$file.tmpp9"; }
 
+    # TODO: do not die here, clausefilter can get killed quite easily
+    #       just do something sensible with the partial model
     if((($guseposmodels > 0) || ($gcountersatcheck == 2)) && ($gusenegmodels > 0))
     {
 	die "bad clausefilter output: $file,:,@allowed_refs,:, @pos_refs,: @neg_refs,:"
