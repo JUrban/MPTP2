@@ -1,8 +1,8 @@
 #!/bin/sh
 #-----------
 # File:      leancop_dnf.sh
-# Version:   1.1
-# Date:      18 July 2011
+# Version:   1.2
+# Date:      23 January 2011
 #-----------
 # Purpose:   Invokes the leanCoP prover
 # Usage:     ./leancop_dnf.sh <problem file> [ <Server_location:Port_Number> [<time limit>]]
@@ -45,6 +45,8 @@ BEST_LIT_MODE=original_leancop
 # naive
 # full_caching_and_complete
 # smart_caching_and_complete
+# original_leancop_with_first_advise
+# limited_smart_on_path_and_targets(Limitation)
 
 # set TPTP library path
 # TPTP=.
