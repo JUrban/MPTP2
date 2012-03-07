@@ -1,4 +1,4 @@
-%% File: leancop_dnf.pl  -  Version: 1.32  -  Date: 2011
+%% File: leancop_dnf.pl  -  Version: 1.33  -  Date: 2011
 %%
 %% Purpose: Call the leanCoP core prover for a given formula with a machine learning server.
 %%
@@ -18,6 +18,7 @@
 :- dynamic(advised_lit/5).
 :- dynamic(best_lit_mode/1).
 :- dynamic(machine_learning_of_subtrees/0).
+:- dynamic(problem_id/1).
 
 %:- assert(best_lit_mode(original_leancop)). 
 % original_leancop
@@ -34,8 +35,12 @@
 load_dnf(File,Ls) :-
     open(File,read,Stream), 
     ( findall(dnf(Index,Type,Cla,G),(repeat,read(Stream,T),(T \== end_of_file -> T=dnf(Index,Type,Cla,G) ; (!,fail))),Ls)
-    -> close(Stream) ; close(Stream), fail ).
+    -> close(Stream),assert_problem_id(Ls) ; close(Stream), fail ).
 
+assert_problem_id([dnf(_,_,C,_)|_]) :- member(#(ID),C), retractall(problem_id(_)), assert(problem_id(ID)), !.
+assert_problem_id([dnf(_,_,C,_)|_]) :- member(-(#(ID)),C), retractall(problem_id(_)), assert(problem_id(ID)), !.
+assert_problem_id([_|Ls]) :- !, assert_problem_id(Ls).
+assert_problem_id(_) :- !, write(user_error,'Clause (probably conjecture) with #(<PROBLEM_ID>) is missing!'), nl(user_error).
 
 leancop_dnf(File,Settings,Result) :-
 %    axiom_path(AxPath), ( AxPath='' -> AxDir='' ;
@@ -48,20 +53,20 @@ leancop_dnf(File,Settings,Result) :-
     flag(best_lit_attempts,_,0),
     Conj=non_empty,
     load_dnf(File,M),
-    ( member(reo(I),Set) -> mreorder(M,Matrix,I) ; Matrix=M ),
+    ( member(reo(I),Settings) -> mreorder(M,Matrix,I) ; Matrix=M ),
     forall(member(X,Matrix),assertz(X)),
     (
       best_lit_mode(original_leancop),!,
-      leancop_get_result(File,Matrix,Settings,Advisor_In,Advisor_Out,Proof,Result)    
+      leancop_get_result(File,Conj,Matrix,Settings,Advisor_In,Advisor_Out,Proof,Result)    
      ;
       ai_advisor(DNS:PORT),
       create_client(DNS:PORT,Advisor_In,Advisor_Out),
       write(Advisor_Out,[File,16]),nl(Advisor_Out),flush_output(Advisor_Out),
-      leancop_get_result(File,Matrix,Settings,Advisor_In,Advisor_Out,Proof,Result),    
+      leancop_get_result(File,Conj,Matrix,Settings,Advisor_In,Advisor_Out,Proof,Result),    
       close_connection(Advisor_In,Advisor_Out)
      ). 
 
-leancop_get_result(File,Matrix,Settings,Advisor_In,Advisor_Out,Proof,Result) :-    
+leancop_get_result(File,Conj,Matrix,Settings,Advisor_In,Advisor_Out,Proof,Result) :-
     ( prove2(Matrix,Settings,Advisor_In,Advisor_Out,Proof) ->
       ( Conj\=[] -> Result='Theorem' ; Result='Unsatisfiable' ) ;
       ( Conj\=[] -> Result='Non-Theorem' ; Result='Satisfiable' )
@@ -264,9 +269,10 @@ best_lit(_Advisor_In,_Advisor_Out,_Cla,_Path,_PathLength,_PathLim,_Lem,NegLit,Cl
 
 assert_mode(limited_smart_and_complete_with_first_advise(Limitation),Pred) :-
 XXX=((
-best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,_Lem,NegLit,Clause,Ground,Index) :-
-         append([NegLit/*|Cla*/],Path,Targets),
-         collect_symbols_top(Targets,Ps,Fs),
+best_lit(Advisor_In,Advisor_Out,_Cla,Path,PathLength,_PathLim,_Lem,NegLit,Clause,Ground,Index) :-
+%         append([NegLit/*|Cla*/],Path,Targets),
+%         collect_symbols_top(Targets,Ps,Fs),
+         collect_symbols_top([NegLit|Path],Ps,Fs),
          append(Ps,Fs,Ss),!,
          (
              /*length(Path,K), K*/ PathLength > Limitation ->
@@ -291,9 +297,9 @@ best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,_Lem,NegLit,Clause,G
 		   ; 
 		     write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
 		     read(Advisor_In,Indexes),!,%write(user_error,Indexes),nl(user_error),
-		     findall(dnf(IDX,Type,Cla,G),(
+		     findall(dnf(IDX,Type,Cl,G),(
 		       member(IDX,Indexes), 
-		       dnf(IDX,Type,Cla,G)
+		       dnf(IDX,Type,Cl,G)
 		     ),Cs),
 		     flag(table_index,I,I+1),
 		     name(I,Is),name(t,Ts),append(Is,Ts,Ns),
@@ -321,45 +327,44 @@ best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,_Lem,NegLit,Clause,G
 
 assert_mode(limited_smart_with_first_advise(Limitation),Pred) :-
 XXX=((
-best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,_Lem,NegLit,Clause,Ground,Index) :-
-         append([NegLit/*|Cla*/],Path,Targets),
-         collect_symbols_top(Targets,Ps,Fs),
-         append(Ps,Fs,Ss),!,
+best_lit(Advisor_In,Advisor_Out,_Cla,Path,PathLength,_PathLim,_Lem,NegLit,Clause,Ground,Index) :-
+         % append([NegLit/*|Cla*/],Path,Targets),
+         collect_symbols_top([NegLit|Path],Ps,Fs),
+         append(Ps,Fs,Ss),!, %write(user_error,(:- NegLit)),nl(user_error), fail,
          (
              /*length(Path,K), K*/ PathLength > Limitation ->
              %write(user_error,K),nl(user_error),
              (
                cache_table(Ss,Table) ->
-                  !,(
-		   Query=..[Table,NegLit,NegL,Clause,Ground,Index],
-		   call(Query)
-                  ) 
+                  !,
+		  Query=..[Table,NegLit,NegL,Clause,Ground,Index],
+		  call(Query) 
                  ;
                  advised_lit(NegLit,NegL,Clause,Ground,Index)
              )
            ;
-           (
+                 (
 		   cache_table(Ss,Table) ->
 		     true
 		   ; 
 		     write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
 		     read(Advisor_In,Indexes),!,%write(user_error,Indexes),nl(user_error),
-		     findall(dnf(IDX,Type,Cla,G),(
+		     findall(dnf(IDX,Type,Cl,G),(
 		       member(IDX,Indexes), 
-		       dnf(IDX,Type,Cla,G)
-		     ),Cs),
+		       dnf(IDX,Type,Cl,G)
+		     ),Cs), 
 		     flag(table_index,I,I+1),
 		     name(I,Is),name(t,Ts),append(Is,Ts,Ns),
 		     name(Table,Ns),
 		     Shape=..[Table,_,_,_,_,_],
-		     dynamic(Shape),
+		     dynamic(Shape), 
 		     assert(cache_table(Ss,Table)),
 		     assert_clauses(Cs,Table,conj)
 		 ),!,
-		 (
+		 
 		 Query=..[Table,NegLit,NegL,Clause,Ground,Index],
 		 call(Query)
-		 )
+		 
          ),
          unify_with_occurs_check(NegL,NegLit)
          
@@ -471,7 +476,8 @@ collect_symbols(X1,T2):-
 prove(F,Advisor_In,Advisor_Out,Proof) :- prove2(F,[cut,comp(7)],Advisor_In,Advisor_Out,Proof).
 
 prove2(M,Set,Advisor_In,Advisor_Out,Proof) :-
-    retractall(lit(_,_,_,_,_)), (member(conj,Set) -> S=conj;S=pos)/*(member(dnf(_,_,[-(#)],_),M) -> S=conj ; S=pos)*/,
+    %problem_id(PRN),
+    retractall(lit(_,_,_,_,_)), (member(conj,Set) -> S=conj;S=pos)/*(member(dnf(_,_,[-(#(PRN))],_),M) -> S=conj ; S=pos)*/,
     assert_clauses(M,lit,S),
     best_lit_mode(Mode),
     ( member(Mode,[scalable_with_first_advise(_,_,_),
@@ -480,7 +486,7 @@ prove2(M,Set,Advisor_In,Advisor_Out,Proof) :-
                    limited_smart_and_complete_with_first_advise(_),
                    original_leancop_with_first_advise]) ->
          retractall(advised_lit(_,_,_,_,_)),
-         %findall(C,(dnf(_,_,X,_),select(#,X,C)),Cs),
+         %findall(C,(dnf(_,_,X,_),select(#(PRN),X,C)),Cs),
          findall(C,dnf(_,conjecture,C,_),Cs),
          append(Cs,Qs),
          collect_symbols_top(Qs,Ps,Fs),
@@ -501,8 +507,9 @@ prove2(M,Set,Advisor_In,Advisor_Out,Proof) :-
     prove(1,Set,Advisor_In,Advisor_Out,Proof).
 
 prove(PathLim,Set,Advisor_In,Advisor_Out,Proof) :-
-    \+member(scut,Set) -> prove([-(#)],[],0,PathLim,[],Set,Advisor_In,Advisor_Out,[Proof]) ;
-    lit(#,_,C,_,_) -> prove(C,[-(#)],0,PathLim,[],Set,Advisor_In,Advisor_Out,Proof1),
+    problem_id(PRN),
+    \+member(scut,Set) -> prove([-(#(PRN))],[],0,PathLim,[],Set,Advisor_In,Advisor_Out,[Proof]) ;
+    lit(#(PRN),_,C,_,_) -> prove(C,[-(#(PRN))],0,PathLim,[],Set,Advisor_In,Advisor_Out,Proof1),
     Proof=[C|Proof1].
 prove(PathLim,Set,Advisor_In,Advisor_Out,Proof) :-
     member(comp(Limit),Set), PathLim=Limit -> prove(1,[],Advisor_In,Advisor_Out,Proof) ;
@@ -552,8 +559,8 @@ prove([Lit|Cla],Path,PathLength,PathLim,Lem,Set,Advisor_In,Advisor_Out,Proof) :-
 
 assert_clauses([],_,_).
 assert_clauses([dnf(Index,_,Cla,G)|M],Functor,Set) :-
-    (Set\=conj, select(#,Cla,C) -> true ; Cla=C),
-    (Set\=conj, \+member(-_,C) -> C1=[#|C] ; C1=C),
+    (Set\=conj, select(#(_),Cla,C) -> true ; Cla=C),
+    (Set\=conj, \+member(-_,C) -> problem_id(PRN),C1=[#(PRN)|C] ; C1=C),
 %    copy_term(C1,X),numbervars(X,1,_), print(X), nl,
     assert_clauses2(C1,[],G,Index,Functor),
     assert_clauses(M,Functor,Set).
@@ -642,9 +649,9 @@ leancop_readable_proof_with_global_index(Mat,Proof) :-
 %%% print dnf clauses, print index number, print spaces
 
 print_dnf([],[]) :- nl.
-print_dnf([[dnf(_,_,-(#),_)]|Mat],Mat1) :- !, print_dnf(Mat,Mat1).
+print_dnf([[dnf(_,_,-(#(_)),_)]|Mat],Mat1) :- !, print_dnf(Mat,Mat1).
 print_dnf([dnf(I,Type,Cla,G)|Mat],Mat1) :-
-    append(Cla2,[#|Cla3],Cla),append(Cla2,Cla3,Cla1),
+    append(Cla2,[#(_)|Cla3],Cla),append(Cla2,Cla3,Cla1),
     print_dnf([dnf(I,Type,Cla1,G)|Mat],Mat1).
 print_dnf([dnf(I,_Type,Cla,_G)|Mat],[Cla|Mat1]) :-
     print(' ('), print(I), print(')  '),
@@ -653,15 +660,15 @@ print_dnf([dnf(I,_Type,Cla,_G)|Mat],[Cla|Mat1]) :-
 %%% calculate leanCoP proof
 
 calc_proof_with_global_index(Mat,DNF_Mat,[Cla|Proof],[(Cla1,Num,Sub)|Proof1]) :-
-    ((Cla=[#|Cla1];Cla=[-!|Cla1]) -> true ; Cla1=Cla),
+    ((Cla=[#(_)|Cla1];Cla=[-!|Cla1]) -> true ; Cla1=Cla),
     clause_num_sub_with_global_index(Cla1,[],[],Mat,DNF_Mat,1,Num,Sub),
     calc_proof_with_global_index(Cla1,[],[],Mat,DNF_Mat,Proof,Proof1).
 
 calc_proof_with_global_index(_,_,_,_,_,[],[]).
 
 calc_proof_with_global_index(Cla,Path,Lem,Mat,DNF_Mat,[[Cla1|Proof]|Proof2],Proof1) :-
-    append(Cla2,[#|Cla3],Cla1), !, append(Cla2,Cla3,Cla4),
-    append(Pro1,[[[-(#)]]|Pro2],Proof), append(Pro1,Pro2,Proof3),
+    append(Cla2,[#(_)|Cla3],Cla1), !, append(Cla2,Cla3,Cla4),
+    append(Pro1,[[[-(#(_))]]|Pro2],Proof), append(Pro1,Pro2,Proof3),
     calc_proof_with_global_index(Cla,Path,Lem,Mat,DNF_Mat,[[Cla4|Proof3]|Proof2],Proof1).
 
 calc_proof_with_global_index([Lit|Cla],Path,Lem,Mat,DNF_Mat,[[Cla1|Proof]|Proof2],Proof1) :-
