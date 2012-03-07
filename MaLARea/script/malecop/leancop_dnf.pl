@@ -1,4 +1,4 @@
-%% File: leancop_dnf.pl  -  Version: 1.22  -  Date: 2011
+%% File: leancop_dnf.pl  -  Version: 1.23  -  Date: 2011
 %%
 %% Purpose: Call the leanCoP core prover for a given formula with a machine learning server.
 %%
@@ -285,8 +285,9 @@ prove(F,Advisor_In,Advisor_Out,Proof) :- prove2(F,[cut,comp(7)],Advisor_In,Advis
 prove2(M,Set,Advisor_In,Advisor_Out,Proof) :-
     retractall(lit(_,_,_,_,_)), (member(dnf(_,_,[-(#)],_),M) -> S=conj ; S=pos),
     assert_clauses(M,lit,/*S*/conj),
-    best_lit_mode(M),
-    ( member(M,[limited_smart_on_path_and_targets(_),original_leancop_with_first_advise]) ->
+    best_lit_mode(Mode),
+    ( member(Mode,[limited_smart_on_path_and_targets(_),original_leancop_with_first_advise]) ->
+         retractall(advised_lit(_,_,_,_,_)),
          findall(C,dnf(_,_,[#|C],_),Cs),
          append(Cs,Qs),
          collect_symbols_top(Qs,Ps,Fs),
