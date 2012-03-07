@@ -1,4 +1,4 @@
-%% File: leancop_dnf.pl  -  Version: 1.15  -  Date: 2011
+%% File: leancop_dnf.pl  -  Version: 1.17  -  Date: 2011
 %%
 %% Purpose: Call the leanCoP core prover for a given formula with a machine learning server.
 %%
@@ -10,7 +10,18 @@
 %% Copyright: (c) 2010 by Jiri Vyskocil
 %% License:   GNU General Public License
 
-:- dynamic(ai_advisor/0). % with format: ai_advisor(server_location:port)
+:- dynamic(ai_advisor/0).  % with format: ai_advisor(server_location:port)
+:- dynamic(cache_table/2). % format: cache_table(<query>,<table_functor_name>)
+:- dynamic(dnf/4).         % dnf table with format: dnf(Index,Type,Clause,Ground)
+:- flag(table_index,_,1).  % index of the last created table
+:- dynamic(lit/5).
+:- dynamic(best_lit_mode/1).
+
+%:- assert(best_lit_mode(original_leancop)). 
+% original_leancop
+% naive_and_complete
+% naive
+% full_caching_and_complete
 
 :- [leancop_main].
 
@@ -33,17 +44,27 @@ leancop_dnf(File,Settings,Result) :-
 %    leancop_equal(Problem1,Problem2),
 %    make_matrix(Problem2,Matrix,Settings),
     Conj=non_empty,
-    load_dnf(File,Matrix),
-    ai_advisor(DNS:PORT),
-    create_client(DNS:PORT,Advisor_In,Advisor_Out),
-    
+    load_dnf(File,M),
+    ( member(reo(I),Set) -> mreorder(M,Matrix,I) ; Matrix=M ),
+    forall(member(X,Matrix),assertz(X)),
+    (
+      best_lit_mode(original_leancop),
+      leancop_get_result(File,Matrix,Settings,Advisor_In,Advisor_Out,Proof,Result)    
+     ;
+      ai_advisor(DNS:PORT),
+      create_client(DNS:PORT,Advisor_In,Advisor_Out),
+      write(Advisor_Out,[File,16]),nl(Advisor_Out),flush_output(Advisor_Out),
+      leancop_get_result(File,Matrix,Settings,Advisor_In,Advisor_Out,Proof,Result),    
+      close_connection(Advisor_In,Advisor_Out)
+     ). 
+
+leancop_get_result(File,Matrix,Settings,Advisor_In,Advisor_Out,Proof,Result) :-    
     ( prove2(Matrix,Settings,Advisor_In,Advisor_Out,Proof) ->
       ( Conj\=[] -> Result='Theorem' ; Result='Unsatisfiable' ) ;
       ( Conj\=[] -> Result='Non-Theorem' ; Result='Satisfiable' )
     ),
-    close_connection(Advisor_In,Advisor_Out),
     output_result(File,Matrix,Proof,Result,Conj).
-
+    
 %% File: leancop21_swi.pl  -  Version: 2.1  -  Date: 30 Aug 2008
 %%
 %%         "Make everything as simple as possible, but not simpler."
@@ -72,31 +93,87 @@ leancop_dnf(File,Settings,Result) :-
 
 
 % :- [def_mm].  % load program for clausal form translation
-:- dynamic(lit/5).
 
 %%% best_lit
 %%% finds best lit according to a machine learning advisor.
-/*best_lit(Advisor_In,Advisor_Out,NegLit,Clause,Ground) :-
+
+:- best_lit_mode(M), (
+M=original_leancop,
+assert((
+best_lit(Advisor_In,Advisor_Out,NegLit,Clause,Ground) :-
+%         writeln('query.'),
          lit(NegLit,NegL,Clause,Ground,_IDX),
-         unify_with_occurs_check(NegL,NegLit).
-*/
+         unify_with_occurs_check(NegL,NegLit)
+))
+
+;
+M=naive_and_complete,
+assert((
 best_lit(Advisor_In,Advisor_Out,NegLit,Clause,Ground) :-
          collect_symbols_top([NegLit],Ps,Fs),
          append(Ps,Fs,Ss),
-         write(Advisor_Out,Ss),nl(Advisor_Out),
+%         writeln('sending to AI...'),
+         write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
+%         writeln('reading from AI...'),
          read(Advisor_In,Indexes),!,
+%         writeln('done'),
          (
 		 ( member(I,Indexes),
 		   lit(NegLit,NegL,Clause,Ground,I),
 		   unify_with_occurs_check(NegL,NegLit)
-		 )
-/*		  ;
+		 )   
+		  ;
 		 (
 		   lit(NegLit,NegL,Clause,Ground,I),
 		   \+ member(I,Indexes),
 		   unify_with_occurs_check(NegL,NegLit)
 		 )
-*/         ).
+         )
+))
+
+;
+M=naive,
+assert((
+best_lit(Advisor_In,Advisor_Out,NegLit,Clause,Ground) :-
+         collect_symbols_top([NegLit],Ps,Fs),
+         append(Ps,Fs,Ss),
+         write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
+         read(Advisor_In,Indexes),!,
+         member(I,Indexes),
+	 lit(NegLit,NegL,Clause,Ground,I),
+	 unify_with_occurs_check(NegL,NegLit)
+))
+
+;
+M=full_caching_and_complete,
+assert((
+best_lit(Advisor_In,Advisor_Out,NegLit,Clause,Ground) :-
+         collect_symbols_top([NegLit],Ps,Fs),
+         append(Ps,Fs,Ss),
+         (
+           cache_table(Ss,Table) ->
+             true
+           ;
+             write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
+             read(Advisor_In,Indexes),!,
+             findall(dnf(Index,Type,Cla,G),(
+               ( member(Index,Indexes), 
+                 dnf(Index,Type,Cla,G)
+               ; dnf(Index,Type,Cla,G), 
+                 \+ member(Index,Indexes)
+               )
+             ),Cs),
+             flag(table_index,I,I+1),
+             name(I,Is),name(t,Ts),append(Is,Ts,Ns),
+             name(Table,Ns),
+             assert_clauses(Cs,Table,conj)
+         ),!,
+         Query=..[Table,NegLit,NegL,Clause,Ground,_],
+         call(Query),
+         unify_with_occurs_check(NegL,NegLit)
+))
+
+).
 
 %%% collect nonvar symbols from term
 
@@ -129,7 +206,7 @@ prove(F,Advisor_In,Advisor_Out,Proof) :- prove2(F,[cut,comp(7)],Advisor_In,Advis
 
 prove2(M,Set,Advisor_In,Advisor_Out,Proof) :-
     retractall(lit(_,_,_,_,_)), (member(dnf(_,_,[-(#)],_),M) -> S=conj ; S=pos),
-    assert_clauses(M,/*S*/conj), 
+    assert_clauses(M,lit,/*S*/conj), 
     prove(1,Set,Advisor_In,Advisor_Out,Proof).
 
 prove(PathLim,Set,Advisor_In,Advisor_Out,Proof) :-
@@ -167,17 +244,18 @@ prove([Lit|Cla],Path,PathLim,Lem,Set,Advisor_In,Advisor_Out,Proof) :-
 
 %%% write clauses into Prolog's database
 
-assert_clauses([],_).
-assert_clauses([dnf(Index,_,C,G)|M],Set) :-
+assert_clauses([],_,_).
+assert_clauses([dnf(Index,_,C,G)|M],Functor,Set) :-
     (Set\=conj, \+member(-_,C) -> C1=[#|C] ; C1=C),
 %    copy_term(C1,X),numbervars(X,1,_), print(X), nl,
-    assert_clauses2(C1,[],G,Index),
-    assert_clauses(M,Set).
+    assert_clauses2(C1,[],G,Index,Functor),
+    assert_clauses(M,Functor,Set).
 
-assert_clauses2([],_,_,_).
-assert_clauses2([L|C],C1,G,Index) :-
+assert_clauses2([],_,_,_,_).
+assert_clauses2([L|C],C1,G,Index,Functor) :-
     assert_renvar([L],[L2]), append(C1,C,C2), append(C1,[L],C3),
-    assert(lit(L2,L,C2,G,Index)), assert_clauses2(C,C3,G,Index).
+    X=..[Functor,L2,L,C2,G,Index],assert(X), 
+    assert_clauses2(C,C3,G,Index,Functor).
 
 assert_renvar([],[]).
 assert_renvar([F|FunL],[F1|FunL1]) :-
