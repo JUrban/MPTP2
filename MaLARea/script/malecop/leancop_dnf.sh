@@ -1,8 +1,8 @@
 #!/bin/sh
 #-----------
 # File:      leancop_dnf.sh
-# Version:   1.2
-# Date:      23 January 2011
+# Version:   1.3
+# Date:      25 January 2011
 #-----------
 # Purpose:   Invokes the leanCoP prover
 # Usage:     ./leancop_dnf.sh <problem file> [ <Server_location:Port_Number> [<time limit>]]
@@ -15,6 +15,9 @@
 
 # set leanCoP prover path
 PROVER_PATH=.
+
+# TMP OUTPUT PATH - inherited
+# TMPOUTPATH=
 
 # set Prolog system, path, and options
 
@@ -57,8 +60,10 @@ BEST_LIT_MODE="limited_smart_on_path_and_targets(2)"
 leancop()
 {
 # Input: $SET, $COMP, $TIME_PC
+  echo $SET
   TLIMIT=`expr $TIME_PC '*' $TIMELIMIT / 111`
   if [ $TLIMIT -eq 0 ]; then TLIMIT=1; fi
+  echo "$SET,$TIME_PC,$TLIMIT" >> $OUTPUT.perm
   AI_ADVISOR_LOCATION=`echo $AI_ADVISOR | sed "s/\(.*\)\:.*/\\1/"`
   AI_ADVISOR_PORT=`echo $AI_ADVISOR | sed "s/.*\:\(.*\)/\\1/"`
   $PROLOG_PATH $PROLOG_OPTIONS \
@@ -69,10 +74,10 @@ leancop()
    ['$PROVER_PATH/leancop_dnf.pl'],\
    leancop_dnf('$FILE',$SET,_),\
    halt."\
-   > $OUTPUT &
+   |tee -a $OUTPUT.perm > $OUTPUT &
   PID=$!
   CPU_SEC=0
-  trap "rm $OUTPUT; kill $PID >/dev/null 2>&1; exit 2"\
+  trap "rm $OUTPUT; kill $PID >/dev/null 2>&1; gzip $OUTPUT.perm; exit 2"\
    ALRM XCPU INT QUIT TERM
   while [ $CPU_SEC -lt $TLIMIT ]
   do
@@ -102,8 +107,8 @@ leancop()
       fi
       if [ $SAVE_PROOF != yes -o -n "$RESULT2" -a $COMP = n ]
       then rm $OUTPUT; else mv $OUTPUT $PROOF_FILE; fi
-      if [ -n "$RESULT1" ]; then exit 0; fi
-      if [ -n "$RESULT2" -a $COMP = y ]; then exit 1; fi
+      if [ -n "$RESULT1" ]; then gzip $OUTPUT.perm; exit 0; fi
+      if [ -n "$RESULT2" -a $COMP = y ]; then gzip $OUTPUT.perm; exit 1; fi
     else rm $OUTPUT
     fi
   fi
@@ -128,7 +133,7 @@ if [ -n "`echo "$3" | grep '[^0-9]'`" ]; then
 fi
 
 if [ $# -le 2 ]
- then TIMELIMIT=600
+ then TIMELIMIT=10
  else TIMELIMIT=$3
 fi
 
@@ -138,7 +143,8 @@ fi
 
 FILE=$1
 PROOF_FILE=$FILE.proof
-OUTPUT=TMP_OUTPUT_leancop_`date +%F_%T_%N`
+OUTPUT="$TMPOUTPATH"TMP_OUTPUT_leancop_`date +%F_%T_%N`
+echo $FILE > $OUTPUT.perm
 
 set +m
 
@@ -177,4 +183,5 @@ SET="[reo(37),nodef,scut]";          COMP=n; TIME_PC=1;  leancop
 SET="[def]";                         COMP=y; TIME_PC=99; leancop 
 
 echo Timeout
+gzip $OUTPUT.perm
 exit 2
