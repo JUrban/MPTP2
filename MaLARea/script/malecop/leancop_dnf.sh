@@ -43,7 +43,8 @@ BEST_LIT_MODE=original_leancop
 # original_leancop
 # naive_and_complete
 # naive
-# full_caching_and_complete   
+# full_caching_and_complete
+# smart_caching_and_complete
 
 # set TPTP library path
 # TPTP=.
