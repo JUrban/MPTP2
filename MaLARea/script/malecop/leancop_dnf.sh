@@ -36,17 +36,17 @@ PRINT_PROOF=yes
 SAVE_PROOF=no
 # proof layout [readable_with_global_index]
 PROOF_LAYOUT=readable_with_global_index
-# ai clauses advisor 
+# ai clauses advisor
 AI_ADVISOR=localhost:9999
 # best lit mode
-BEST_LIT_MODE=original_leancop
+#BEST_LIT_MODE=original_leancop_with_first_advise
 # original_leancop
 # naive_and_complete
 # naive
 # full_caching_and_complete
-# smart_caching_and_complete
-# original_leancop_with_first_advise
-# limited_smart_on_path_and_targets(Limitation)
+#BEST_LIT_MODE=smart_caching_and_complete
+#BEST_LIT_MODE=original_leancop_with_first_advise
+BEST_LIT_MODE="limited_smart_on_path_and_targets(2)"
 
 # set TPTP library path
 # TPTP=.
@@ -64,7 +64,7 @@ leancop()
   $PROLOG_PATH $PROLOG_OPTIONS \
   "assert(prolog('$PROLOG')),\
    assert(proof('$PROOF_LAYOUT')),\
-   assert(best_lit_mode('$BEST_LIT_MODE')),\
+   assert(best_lit_mode("$BEST_LIT_MODE")),\
    assert(ai_advisor('$AI_ADVISOR_LOCATION':$AI_ADVISOR_PORT)),\
    ['$PROVER_PATH/leancop_dnf.pl'],\
    leancop_dnf('$FILE',$SET,_),\
