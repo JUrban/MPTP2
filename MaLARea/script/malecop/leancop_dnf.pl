@@ -1,4 +1,4 @@
-%% File: leancop_dnf.pl  -  Version: 1.30  -  Date: 2011
+%% File: leancop_dnf.pl  -  Version: 1.31  -  Date: 2011
 %%
 %% Purpose: Call the leanCoP core prover for a given formula with a machine learning server.
 %%
@@ -218,6 +218,39 @@ best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLength,_PathLim,_Lem,NegLit,Claus
 
 %%%
 
+assert_mode(smart_caching,Pred) :-
+XXX=((
+best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLength,_PathLim,_Lem,NegLit,Clause,Ground,Index) :-
+         collect_symbols_top([NegLit|Path],Ps,Fs),
+         append(Ps,Fs,Ss),
+         (
+           cache_table(Ss,Table) ->
+             true
+           ;
+             write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
+             read(Advisor_In,Indexes),!,
+             findall(dnf(IDX,Type,Cla,G),(
+               member(IDX,Indexes), 
+               dnf(IDX,Type,Cla,G)
+             ),Cs),
+             flag(table_index,I,I+1),
+             name(I,Is),name(t,Ts),append(Is,Ts,Ns),
+             name(Table,Ns),
+	     Shape=..[Table,_,_,_,_,_],
+	     dynamic(Shape),
+   	     assert(cache_table(Ss,Table)),
+	     assert_clauses(Cs,Table,conj)  
+         ),!,
+         (
+           Query=..[Table,NegLit,NegL,Clause,Ground,Index],
+           call(Query)
+         ),
+         unify_with_occurs_check(NegL,NegLit)
+
+)), XXX=(HHH:-BBB), HHH=..[_|REST], QQQ=..[Pred|REST], assert((QQQ :-BBB)).
+
+%%%
+
 assert_mode(original_leancop_with_first_advise,Pred) :-
 XXX=((
 best_lit(_Advisor_In,_Advisor_Out,_Cla,_Path,_PathLength,_PathLim,_Lem,NegLit,Clause,Ground,IDX) :-
@@ -229,7 +262,7 @@ best_lit(_Advisor_In,_Advisor_Out,_Cla,_Path,_PathLength,_PathLim,_Lem,NegLit,Cl
 
 %%%
 
-assert_mode(limited_smart_on_path_and_targets(Limitation),Pred) :-
+assert_mode(limited_smart_and_complete_with_first_advise(Limitation),Pred) :-
 XXX=((
 best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,_Lem,NegLit,Clause,Ground,Index) :-
          append([NegLit/*|Cla*/],Path,Targets),
@@ -238,7 +271,19 @@ best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,_Lem,NegLit,Clause,G
          (
              /*length(Path,K), K*/ PathLength > Limitation ->
              %write(user_error,K),nl(user_error),
-             advised_lit(NegLit,NegL,Clause,Ground,Index)
+             (
+               cache_table(Ss,Table) ->
+                  !,(
+		   Query=..[Table,NegLit,NegL,Clause,Ground,Index],
+		   call(Query)
+		   ;
+		   advised_lit(NegLit,NegL,Clause,Ground,Index),
+                   Query=..[Table,_,_,_,_,Index],
+                   \+ call(Query)
+                  ) 
+                 ;
+                 advised_lit(NegLit,NegL,Clause,Ground,Index)
+             )
            ;
            (
 		   cache_table(Ss,Table) ->
@@ -262,9 +307,58 @@ best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,_Lem,NegLit,Clause,G
 		 Query=..[Table,NegLit,NegL,Clause,Ground,Index],
 		 call(Query)
 		 ;  
-		 lit(NegLit,NegL,Clause,Ground,Index),
+		 advised_lit(NegLit,NegL,Clause,Ground,Index),
                  Query=..[Table,_,_,_,_,Index],
                  \+ call(Query)
+		 )
+         ),
+         unify_with_occurs_check(NegL,NegLit)
+         
+)), XXX=(HHH:-BBB), HHH=..[_|REST], QQQ=..[Pred|REST], assert((QQQ :-BBB)).
+
+
+%%%
+
+assert_mode(limited_smart_with_first_advise(Limitation),Pred) :-
+XXX=((
+best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,_Lem,NegLit,Clause,Ground,Index) :-
+         append([NegLit/*|Cla*/],Path,Targets),
+         collect_symbols_top(Targets,Ps,Fs),
+         append(Ps,Fs,Ss),!,
+         (
+             /*length(Path,K), K*/ PathLength > Limitation ->
+             %write(user_error,K),nl(user_error),
+             (
+               cache_table(Ss,Table) ->
+                  !,(
+		   Query=..[Table,NegLit,NegL,Clause,Ground,Index],
+		   call(Query)
+                  ) 
+                 ;
+                 advised_lit(NegLit,NegL,Clause,Ground,Index)
+             )
+           ;
+           (
+		   cache_table(Ss,Table) ->
+		     true
+		   ; 
+		     write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
+		     read(Advisor_In,Indexes),!,%write(user_error,Indexes),nl(user_error),
+		     findall(dnf(IDX,Type,Cla,G),(
+		       member(IDX,Indexes), 
+		       dnf(IDX,Type,Cla,G)
+		     ),Cs),
+		     flag(table_index,I,I+1),
+		     name(I,Is),name(t,Ts),append(Is,Ts,Ns),
+		     name(Table,Ns),
+		     Shape=..[Table,_,_,_,_,_],
+		     dynamic(Shape),
+		     assert(cache_table(Ss,Table)),
+		     assert_clauses(Cs,Table,conj)
+		 ),!,
+		 (
+		 Query=..[Table,NegLit,NegL,Clause,Ground,Index],
+		 call(Query)
 		 )
          ),
          unify_with_occurs_check(NegL,NegLit)
