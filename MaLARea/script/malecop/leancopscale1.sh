@@ -45,14 +45,18 @@ AI_ADVISOR=localhost:9999
 MACHINE_LEARNING_OF_SUBTREES=yes
 # best lit mode
 #BEST_LIT_MODE=original_leancop_with_first_advise
-#BEST_LIT_MODE=original_leancop
+BEST_LIT_MODE=original_leancop
+#BEST_LIT_MODE=leancop_ala_malarea
 #BEST_LIT_MODE=naive_and_complete
 #BEST_LIT_MODE=naive
 #BEST_LIT_MODE=full_caching_and_complete
 #BEST_LIT_MODE=smart_caching_and_complete
-#BEST_LIT_MODE="limited_smart_on_path_and_targets(2)"
+#BEST_LIT_MODE=smart_caching
+#BEST_LIT_MODE="limited_smart_with_first_advise(3)"
+BEST_LIT_MODE="limited_smart_and_complete_with_first_advise(2)"
 #BEST_LIT_MODE="scalable_with_first_advise(40,smart_caching_and_complete)"
-BEST_LIT_MODE="scalable_with_first_advise(2,20,smart_caching_and_complete)"
+#BEST_LIT_MODE="scalable_with_first_advise(2,20,smart_caching_and_complete)"
+#BEST_LIT_MODE="scalable_with_first_advise(3,20,original_leancop)"
 
 # set TPTP library path
 # TPTP=.
