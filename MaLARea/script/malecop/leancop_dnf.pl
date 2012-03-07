@@ -1,4 +1,4 @@
-%% File: leancop_dnf.pl  -  Version: 1.21  -  Date: 2011
+%% File: leancop_dnf.pl  -  Version: 1.22  -  Date: 2011
 %%
 %% Purpose: Call the leanCoP core prover for a given formula with a machine learning server.
 %%
@@ -301,6 +301,8 @@ prove2(M,Set,Advisor_In,Advisor_Out,Proof) :-
                )
          ),Cs),
          forall(member(Q,Cs),assertz(Q))
+      ;
+      true
     ),
     prove(1,Set,Advisor_In,Advisor_Out,Proof).
 
