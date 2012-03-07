@@ -39,7 +39,6 @@ SAVE_PROOF=no
 # proof layout [readable_with_global_index]
 PROOF_LAYOUT=readable_with_global_index
 
-
 # set TPTP library path
 # TPTP=.
 
@@ -51,7 +50,7 @@ leancop()
 # Input: $SET, $COMP, $TIME_PC
   TLIMIT=`expr $TIME_PC '*' $TIMELIMIT / 111`
   if [ $TLIMIT -eq 0 ]; then TLIMIT=1; fi
-  "$PROLOG_PATH" $PROLOG_OPTIONS \
+  $PROLOG_PATH $PROLOG_OPTIONS \
   "assert(prolog('$PROLOG')),\
    assert(proof('$PROOF_LAYOUT')),\
    ['$PROVER_PATH/leancop_dnf.pl'],\
@@ -65,7 +64,8 @@ leancop()
   while [ $CPU_SEC -lt $TLIMIT ]
   do
     sleep 1
-    CPUTIME=`ps -p $PID -o time | grep :`
+    CPUTIME=`ps -p $PID | sed "s/.*\(..\:..\:..\).*/\\1/" | grep ..:..:..` 
+#    CPUTIME=`ps -p $PID -o time | grep :`
     if [ ! -n "$CPUTIME" ]; then break; fi
     CPU_H=`expr 1\`echo $CPUTIME | cut -d':' -f1\` - 100`
     CPU_M=`expr 1\`echo $CPUTIME | cut -d':' -f2\` - 100`
@@ -128,6 +128,7 @@ set +m
 # invoke leanCoP core prover with different settings SET
 # for time TIME_PC [%]; COMP=y iff settings are complete
 
+SET="[conj,def,cut]";                 COMP=n; TIME_PC=10000; leancop
 SET="[cut,comp(7)]";                 COMP=y; TIME_PC=10; leancop
 SET="[conj,def,cut]";                COMP=n; TIME_PC=15; leancop
 SET="[nodef,scut,cut]";              COMP=n; TIME_PC=15; leancop
