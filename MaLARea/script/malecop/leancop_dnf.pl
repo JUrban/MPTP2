@@ -1,4 +1,4 @@
-%% File: leancop_dnf.pl  -  Version: 1.28  -  Date: 2011
+%% File: leancop_dnf.pl  -  Version: 1.29  -  Date: 2011
 %%
 %% Purpose: Call the leanCoP core prover for a given formula with a machine learning server.
 %%
@@ -305,7 +305,8 @@ best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,Lem,NegLit,Clause,Gr
 		   N =< Query_Threshold ->
 		         tail_list(PreCounting_Threshold,Gs,Ws),
 			 member(advised_lit(NegLit,NegL,Clause,Ground,Index),Ws),
-			 advised_lit(NegLit,NegL,Clause,Ground,Index)
+			 advised_lit(NegLit,NegL,Clause,Ground,Index),
+			 unify_with_occurs_check(NegL,NegLit)
 		     ; 
 			 mode_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,Lem,NegLit,Clause,Ground,Index)
 		      		      
@@ -590,10 +591,10 @@ clause_num_sub_with_global_index(Cla,Path,Lem,[Cla1|Mat],DNF_Mat,I,Num,Sub) :-
 nth_element(1,[E|_],E) :- !.
 nth_element(I,[_|Ls],E) :- I1 is I - 1, nth_element(I1,Ls,E).
 
-
+/*
 append([],[]).
 append([Ls],Ls).
 append([As,Bs|Cs],Ls) :-
 	append(As,Bs,Ds),
 	append([Ds|Cs],Ls).
-	
+*/	
