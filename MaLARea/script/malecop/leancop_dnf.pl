@@ -1,4 +1,4 @@
-%% File: leancop_dnf.pl  -  Version: 1.34 -  Date: 2011
+%% File: leancop_dnf.pl  -  Version: 1.39 -  Date: 2012
 %%
 %% Purpose: Call the leanCoP core prover for a given formula with a machine learning server.
 %%
@@ -18,7 +18,9 @@
 :- dynamic(conjecture_lit/5).
 :- dynamic(best_lit_mode/1).
 :- dynamic(machine_learning_of_subtrees/0).
+:- dynamic(generating_lemmas/0).
 :- dynamic(lit/5).
+:- dynamic(unshared_skolem_lit/5).
 :- dynamic(problem_id/1).
 
 %:- assert(best_lit_mode(original_leancop)). 
@@ -35,7 +37,7 @@
 	
 load_dnf(File,Ls) :-
     open(File,read,Stream), 
-    ( findall(dnf(Index,Type,Cla,G),(repeat,read(Stream,T),(T \== end_of_file -> T=dnf(Index,Type,Cla,G) ; (!,fail))),Ls)
+    ( findall(dnf(Index,Type,Cla,G),(repeat,read(Stream,T),(T \== end_of_file -> T=..[dnf,Index,Type,Cla,G|_] ; (!,fail))),Ls)
     -> close(Stream),assert_problem_id(Ls) ; close(Stream), fail ).
 
 assert_problem_id([dnf(_,_,C,_)|_]) :- member(#(ID),C), retractall(problem_id(_)), assert(problem_id(ID)), !.
@@ -57,6 +59,7 @@ leancop_dnf(File,Settings,Result) :-
     ( member(reo(I),Settings) -> mreorder(M,Matrix,I) ; Matrix=M ),
     forall(member(X,Matrix),assertz(X)),
     (
+%      best_lit_mode(_/*original_leancop*/),!,
       best_lit_mode(original_leancop),!,
       leancop_get_result(File,Conj,Matrix,Settings,Advisor_In,Advisor_Out,Proof,Result)    
      ;
@@ -102,6 +105,25 @@ leancop_get_result(File,Conj,Matrix,Settings,Advisor_In,Advisor_Out,Proof,Result
 
 
 % :- [def_mm].  % load program for clausal form translation
+
+new_mode_name(Name,New_Name) :-
+    name(Name,Ls),
+    name(1,Ps),
+    append(Ls,Ps,Ns),
+    name(New_Name,Ns).
+
+% Parameters of best_lit(
+%   Advisor_In, Advisor_Out,
+%   +Cla,       -- the rest of clause for the future to-be-proved
+%   +Path,      -- the list of the current litrals on the tableaux branch 
+%   +PathLength,-- a length (=number) of the current tableaux branch
+%   +PathLim,   -- a limit (=number) for a maximum length of the tableaux branch 
+%   +Lem,       -- an input list of current lemmas
+%   +NegLit,    -- an input negated literal
+%   -Clause,    -- a new goal (= clause) from resulting database 
+%   -Ground,    -- a ground flag (g or n) of the resulting clause from database.  
+%   -IDX,       -- an index of the resulting clause from database
+% )
 
 assert_mode(original_leancop,Pred) :-
 XXX=((
@@ -391,17 +413,13 @@ best_lit(Advisor_In,Advisor_Out,_Cla,Path,PathLength,_PathLim,_Lem,NegLit,Clause
          
 )), XXX=(HHH:-BBB), HHH=..[_|REST], QQQ=..[Pred|REST], assert((QQQ :-BBB)).
 
+%%%
 
-
-%%% best_lit
-%%% finds best lit according to a machine learning advisor.
-
-:- best_lit_mode(M), (
-assert_mode(M,best_lit)
-;
-M=scalable_with_first_advise(PreCounting_Threshold,Query_Threshold,Mode_After_Threshold),
-assert_mode(Mode_After_Threshold,mode_lit),
-assert((
+assert_mode(scalable_with_first_advise(PreCounting_Threshold,Query_Threshold,Mode_After_Threshold),Pred) :-
+new_mode_name(Pred,New_Mode),
+assert_mode(Mode_After_Threshold,New_Mode),
+Call_Mode=..[New_Mode,Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,Lem,NegLit,Clause,Ground,Index],
+XXX=((
 best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,Lem,NegLit,Clause,Ground,Index) :-
 %        length(Path,L), 
         copy_term(NegLit,NegLit1),
@@ -428,18 +446,21 @@ best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,Lem,NegLit,Clause,Gr
 			 advised_lit(NegLit,NegL,Clause,Ground,Index),
 			 unify_with_occurs_check(NegL,NegLit)
 		     ; 
-			 mode_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,Lem,NegLit,Clause,Ground,Index)
+			 Call_Mode
 		      		      
 		 )
               ; (NegLit,NegL,Clause,Ground,Index)=(NegLit1,NegL1,Clause1,Ground1,Index1),
                  unify_with_occurs_check(NegL,NegLit)
             ))
-))
+)), XXX=(HHH:-BBB), HHH=..[_|REST], QQQ=..[Pred|REST], assert((QQQ :-BBB)).
 
-;
-M=scalable_with_first_advise(PreCounting_Threshold,Mode_After_Threshold),
-assert_mode(Mode_After_Threshold,mode_lit),
-assert((
+%%%
+
+assert_mode(scalable_with_first_advise(PreCounting_Threshold,Mode_After_Threshold),Pred) :-
+new_mode_name(Pred,New_Mode),
+assert_mode(Mode_After_Threshold,New_Mode),
+Call_Mode=..[New_Mode,Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,Lem,NegLit,Clause,Ground,Index],
+XXX=((
 best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,Lem,NegLit,Clause,Ground,Index) :-
         %length(Path,L), 
         copy_term(NegLit,NegLit1),
@@ -452,7 +473,7 @@ best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,Lem,NegLit,Clause,Gr
 		 %write(user_error,(try(L,I))),nl(user_error),
 		 ((I =< 1) ,!, %write(user_error,(go(L,I))),nl(user_error),
 %	    ;
-                   mode_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,Lem,NegLit,Clause,Ground,Index)
+                   Call_Mode
 		      
 		      
 		 
@@ -460,12 +481,87 @@ best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,Lem,NegLit,Clause,Gr
                     unify_with_occurs_check(NegL,NegLit)
                  )
         )
-))
+)), XXX=(HHH:-BBB), HHH=..[_|REST], QQQ=..[Pred|REST], assert((QQQ :-BBB)).
 
-).
+%%%
+
+assert_mode(closing_clause_first(Mode),Pred) :-
+new_mode_name(Pred,New_Mode),
+assert_mode(Mode,New_Mode),
+Call_Mode=..[New_Mode,Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,Lem,NegLit,Clause,Ground,Index],
+XXX=((
+best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,Lem,NegLit,Clause,Ground,Index) :-
+         lit(NegLit,NegL,Clause,Ground,Index),
+%         advised_lit(NegLit,NegL,Clause,Ground,Index),
+         unify_with_occurs_check(NegL,NegLit),
+         (NegLit=(-Lit);(-NegLit)=Lit),
+%         copy_term(Clause,C),
+         C=Clause,
+         forall(member(L,C),(
+		(member(X,Lem),X==L)
+	    ;	((L=(-NL);(-L)=NL),member(X,[Lit|Path]),unify_with_occurs_check(X,NL))
+         ))
+         ;
+         Call_Mode
+)), XXX=(HHH:-BBB), HHH=..[_|REST], QQQ=..[Pred|REST], assert((QQQ :-BBB)).
+
+
+%%%
+
+assert_mode(unshared_skolem(Mode),Pred) :-
+new_mode_name(Pred,New_Mode),
+assert_mode(Mode,New_Mode),
+Call_Mode=..[New_Mode,Advisor_In,Advisor_Out,UCla,UPath,PathLength,PathLim,Lem,UNegLit,_Clause,_Ground,Index],
+XXX=((
+best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,Lem,NegLit,Clause,Ground,Index) :-
+         copy_term(NegLit,CNeglit),
+         translate_from_unshared_to_shared_skolem([Cla,Path,CNeglit],[UCla,UPath,UNegLit]),
+         Call_Mode,
+         %lit(NegLit,NegL,Clause,Ground,Index),
+         unshared_skolem_lit(NegLit,NegL,Clause,Ground,Index),
+/*         writeln(Mode),
+         writeln(NegLit),
+         writeln(_Clause),
+         writeln(Clause),
+         writeln('---------'),
+*/         unify_with_occurs_check(NegL,NegLit)
+)), XXX=(HHH:-BBB), HHH=..[_|REST], QQQ=..[Pred|REST], assert((QQQ :-BBB)).
+
+
+translate_from_unshared_to_shared_skolem(A,A)   :- atomic(A),!.
+translate_from_unshared_to_shared_skolem(V,V)   :- var(V),!.
+translate_from_unshared_to_shared_skolem(_N^X,Y) :- !,
+	translate_from_unshared_to_shared_skolem(X,Y).
+translate_from_unshared_to_shared_skolem([H|Ls],[NH|NLs]) :- !,
+	translate_from_unshared_to_shared_skolem(H,NH),
+	translate_from_unshared_to_shared_skolem(Ls,NLs).
+translate_from_unshared_to_shared_skolem(X,Y)   :-
+	X=..[F|As],
+	translate_from_unshared_to_shared_skolem(As,Bs),
+	Y=..[F|Bs].
+	
+%%% best_lit
+%%% finds best lit according to a machine learning advisor.
+
+:- best_lit_mode(M), assert_mode(M,best_lit).
 
 tail_list(0,Ls,Ls).
 tail_list(N,[_|Ls],Rs) :- M is N-1, !, tail_list(M,Ls,Rs).
+
+%%% modes_to_list
+modes_to_list(M,Ls) :- modes_to_list(M,[],Ls).
+
+modes_to_list(X,Ls,Ls) :- (var(X) ; number(X); X=[]),!.
+modes_to_list(A,Ls,[A/0|Ls]) :- atom(A),!.
+modes_to_list([H|Ts],Ls,Rs) :- 
+        !,
+	modes_to_list(H,Ls,Ls1),
+	modes_to_list(Ts,Ls1,Rs).
+modes_to_list(C,Ls,Rs) :- 
+        !,
+	C =.. [Mode|Ps],
+	length(Ps,Arity),
+	modes_to_list(Ps,[Mode/Arity|Ls],Rs).
 
 %%% collect nonvar symbols from term
 
@@ -501,13 +597,15 @@ prove2(M,Set,Advisor_In,Advisor_Out,Proof) :-
     retractall(lit(_,_,_,_,_)), (member(conj,Set) -> S=conj;S=pos)/*(member(dnf(_,_,[-(#(PRN))],_),M) -> S=conj ; S=pos)*/,
     assert_clauses(M,lit,S),
     forall((dnf(CIDX,conjecture,_,_),lit(CL1,CL2,CCla,CG,CIDX)),assert(conjecture_lit(CL1,CL2,CCla,CG,CIDX))),
-    best_lit_mode(Mode),    
-    ( member(Mode,[scalable_with_first_advise(_,_,_),
-                   scalable_with_first_advise(_,_),
-                   limited_smart_with_first_advise(_),
-                   limited_smart_and_complete_with_first_advise(_),
-                   original_leancop_with_first_advise,
-                   leancop_ala_malarea]) ->
+    best_lit_mode(Mode),
+    modes_to_list(Mode,Modes_List),
+    (  member(One_Mode,Modes_List),
+       member(One_Mode,[scalable_with_first_advise/3,
+                   scalable_with_first_advise/2,
+                   limited_smart_with_first_advise/1,
+                   limited_smart_and_complete_with_first_advise/1,
+                   original_leancop_with_first_advise/0,
+                   leancop_ala_malarea/0]) ->
          retractall(advised_lit(_,_,_,_,_)),
          %findall(C,(dnf(_,_,X,_),select(#(PRN),X,C)),Cs),
          findall(C,dnf(_,conjecture,C,_),Cs),
@@ -536,7 +634,19 @@ prove2(M,Set,Advisor_In,Advisor_Out,Proof) :-
          forall(member(Q,Rs),assert(Q))
       ;
       true
-    ),
+    ), 
+    (  member(One_Mode,Modes_List),
+       member(One_Mode,[unshared_skolem/1]),
+         retractall(unshared_skolem_lit(_,_,_,_,_)),
+	 findall(unshared_skolem_lit(UL1,UL2,UCla,G,Index),(
+	               lit(L1,L2,Cla,G,Index),writeln(lit(L1,L2,Cla,G,Index)),
+	               translate_from_shared_to_unshared_skolem([L1,L2,Cla],Index,0,_,
+	                                                        [UL1,UL2,UCla])
+	 ),Rs),		 
+         forall(member(Q,Rs),(writeln(Q),assert(Q)))
+      ;
+      true
+    ),     
     prove(1,Set,Advisor_In,Advisor_Out,Proof).
 
 prove(PathLim,Set,Advisor_In,Advisor_Out,Proof) :-
@@ -549,6 +659,34 @@ prove(PathLim,Set,Advisor_In,Advisor_Out,Proof) :-
     (member(comp(_),Set);retract(pathlim)) ->
     PathLim1 is PathLim+1, prove(PathLim1,Set,Advisor_In,Advisor_Out,Proof).
 
+%%%
+% translate_from_shared_to_unshared_skolem( Now its incorrect!!!
+% +Input_Term,
+% +Global_Index,
+% +Start_Of_Local_Index,
+% -End_Of_Local_Index,
+% -Output_Term)
+translate_from_shared_to_unshared_skolem(V,_,I,I,V)   :- var(V),!.
+translate_from_shared_to_unshared_skolem(A,_,I,I,A)   :- number(A),!.
+translate_from_shared_to_unshared_skolem([],_,I,I,[]) :- !.
+translate_from_shared_to_unshared_skolem([H|Ls],G,I,O,[NH|NLs]) :- !,
+	translate_from_shared_to_unshared_skolem(H,G,I,I1,NH),
+	translate_from_shared_to_unshared_skolem(Ls,G,I1,O,NLs).
+translate_from_shared_to_unshared_skolem(X,G,I,O,Y)   :-
+        !,
+	X=..[F|As],
+	translate_from_shared_to_unshared_skolem(As,G,I,I1,Bs),
+	Q=..[F|Bs],
+	(
+	( name(F,[115,107,CDigit|_])/*prefix sk*/,
+	  name(Digit,[CDigit]),number(Digit)) ->
+	    O is I1 + 1,
+	    Y=(G)^Q
+	 ; 
+	    Y=Q,
+	    O=I1
+	).
+	
 %%% leanCoP core prover
 
 prove([],_,_,_,_,_,_,_,[]).
@@ -563,7 +701,16 @@ prove([Lit|Cla],Path,PathLength,PathLim,Lem,Set,Advisor_In,Advisor_Out,Proof) :-
          Cla1=[], Proof1=[]
          ;
           writeln('@'),
-          (machine_learning_of_subtrees -> copy_term([NegLit|Path],Real_Input),flag(best_lit_attempts,PAST,PAST) ; true),
+          (
+            machine_learning_of_subtrees -> 
+               copy_term([NegLit|Path],Real_Input),flag(best_lit_attempts,PAST,PAST) 
+             ; true
+          ),
+          (
+            generating_lemmas ->
+               copy_term([Lit|Path],Lemma_Raw_Path)
+             ; true
+          ),
           best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,Lem,NegLit,Cla1,Grnd1,IDX),
           flag(best_lit_attempts,TRY,TRY+1),
 %         lit(NegLit,NegL,Cla1,Grnd1,_IDX),
@@ -572,6 +719,20 @@ prove([Lit|Cla],Path,PathLength,PathLim,Lem,Set,Advisor_In,Advisor_Out,Proof) :-
            \+ pathlim -> assert(pathlim), fail ),
          New_PathLength is PathLength+1,  
          prove(Cla1,[Lit|Path],New_PathLength,PathLim,Lem,Set,Advisor_In,Advisor_Out,Proof1),
+         (generating_lemmas ->
+               reverse(Lemma_Raw_Path,Lemma_Rev_Path),
+               (Lemma_Rev_Path=[_,_|Lemma_Path] ->
+                   copy_term(Cla1,Lemma_Cla1),
+                   append(Lemma_Cla1,Lemma_Path,Collected_Lemma),
+                   %negate_list(Neg_Collected_Lemma,Collected_Lemma),
+                   %Collected_Lemma=((Lemma_Path)-> (-Lemma_Cla1)),
+                   write('lemma: '),
+                   print_lemma(Collected_Lemma),
+                   nl
+                 ; true  
+               )
+            ; true 
+         ),
          (machine_learning_of_subtrees -> 
               write('& '),
               flag(best_lit_attempts,NOW,NOW),
@@ -586,7 +747,6 @@ prove([Lit|Cla],Path,PathLength,PathLim,Lem,Set,Advisor_In,Advisor_Out,Proof) :-
        ),
        ( member(cut,Set) -> ! ; true ),
        prove(Cla,Path,PathLength,PathLim,[Lit|Lem],Set,Advisor_In,Advisor_Out,Proof2).
-
 
 %%% write clauses into Prolog's database
 
@@ -729,10 +889,84 @@ clause_num_sub_with_global_index(Cla,Path,Lem,[Cla1|Mat],DNF_Mat,I,Num,Sub) :-
 nth_element(1,[E|_],E) :- !.
 nth_element(I,[_|Ls],E) :- I1 is I - 1, nth_element(I1,Ls,E).
 
-/*
+
 append([],[]).
 append([Ls],Ls).
 append([As,Bs|Cs],Ls) :-
 	append(As,Bs,Ds),
 	append([Ds|Cs],Ls).
-*/	
+
+%%%
+
+print_lemma(L) :- list_to_disjunction(L,D),close_formula(D,C),numbervars(C,0,_),print(C).
+
+%%%
+
+msg(M) :- write(user_error,M),nl(user_error).%%%
+
+%%%
+
+portray('&'(X,Y)) :-
+        print('('),
+        print(X),
+	print(' & '),
+        print(Y),
+	print(')').
+
+portray('|'(X,Y)) :-
+        print('('),
+        print(X),
+	print(' | '),
+        print(Y),
+	print(')').
+
+portray('='(X,Y)) :-
+        print('('),
+        print(X),
+	print(' = '),
+        print(Y),
+	print(')').
+
+portray(':'(X,Y)) :-
+        print('('),
+        print(X),
+	print(' : '),
+        print(Y),
+	print(')').
+
+portray('~'(X)) :-
+        print('(~ '),
+        print(X),
+	print(')').
+%%%%%%
+
+negate_list([],[]).
+negate_list([-L|Ls],[L|Ns]) :- !,
+	negate_list(Ls,Ns).
+negate_list([L|Ls],[-L|Ns]) :- !,
+	negate_list(Ls,Ns).
+
+%%%%%%
+
+close_formula(FOF,CFOF) :-
+        term_variables(FOF,Vars),
+	(
+	Vars = [] ->
+	  CFOF=FOF
+	;
+	  CFOF=':'('!'(Vars),FOF)
+	).
+
+%%%%%%
+
+list_to_disjunction([],'$'(false)) :- !.
+list_to_disjunction([LIT],TPTPLIT) :- !,
+	literal_to_tptp(LIT,TPTPLIT).
+list_to_disjunction([L|Ls],'|'(TL,TLs)) :- !,
+	literal_to_tptp(L,TL),
+	list_to_disjunction(Ls,TLs).
+
+literal_to_tptp(-(T),'~'(T)) :- !.
+literal_to_tptp(T,T) :- !.
+
+
