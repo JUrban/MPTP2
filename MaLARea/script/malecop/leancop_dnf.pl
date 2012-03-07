@@ -1,4 +1,4 @@
-%% File: leancop_dnf.pl  -  Version: 1.25  -  Date: 2011
+%% File: leancop_dnf.pl  -  Version: 1.27  -  Date: 2011
 %%
 %% Purpose: Call the leanCoP core prover for a given formula with a machine learning server.
 %%
@@ -45,12 +45,13 @@ leancop_dnf(File,Settings,Result) :-
 %    ( Conj\=[] -> Problem1=Problem ; Problem1=(~Problem) ),
 %    leancop_equal(Problem1,Problem2),
 %    make_matrix(Problem2,Matrix,Settings),
+    flag(best_lit_attempts,_,0),
     Conj=non_empty,
     load_dnf(File,M),
     ( member(reo(I),Set) -> mreorder(M,Matrix,I) ; Matrix=M ),
     forall(member(X,Matrix),assertz(X)),
     (
-      best_lit_mode(original_leancop),
+      best_lit_mode(original_leancop),!,
       leancop_get_result(File,Matrix,Settings,Advisor_In,Advisor_Out,Proof,Result)    
      ;
       ai_advisor(DNS:PORT),
@@ -98,7 +99,7 @@ leancop_get_result(File,Matrix,Settings,Advisor_In,Advisor_Out,Proof,Result) :-
 
 assert_mode(original_leancop,Pred) :-
 XXX=((
-best_lit(_Advisor_In,_Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground,IDX) :-
+best_lit(_Advisor_In,_Advisor_Out,_Cla,_Path,_PathLength,_PathLim,_Lem,NegLit,Clause,Ground,IDX) :-
          lit(NegLit,NegL,Clause,Ground,IDX),
          unify_with_occurs_check(NegL,NegLit)
 )), XXX=(HHH:-BBB), HHH=..[_|REST], QQQ=..[Pred|REST], assert((QQQ :-BBB)).
@@ -107,7 +108,7 @@ best_lit(_Advisor_In,_Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground,
 
 assert_mode(naive_and_complete,Pred) :-
 XXX=((
-best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLim,_Lem,NegLit,Clause,Ground,I) :-
+best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLength,_PathLim,_Lem,NegLit,Clause,Ground,I) :-
          collect_symbols_top([NegLit|Path],Ps,Fs),
          append(Ps,Fs,Ss),
 %         writeln('sending to AI...'),
@@ -134,7 +135,7 @@ best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLim,_Lem,NegLit,Clause,Ground,I) 
 
 assert_mode(naive,Pred) :-
 XXX=((
-best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLim,_Lem,NegLit,Clause,Ground,I) :-
+best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLength,_PathLim,_Lem,NegLit,Clause,Ground,I) :-
          collect_symbols_top([NegLit|Path],Ps,Fs),
          append(Ps,Fs,Ss),
          write(Advisor_Out,Ss),nl(Advisor_Out),flush_output(Advisor_Out),
@@ -149,7 +150,7 @@ best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLim,_Lem,NegLit,Clause,Ground,I) 
 
 assert_mode(full_caching_and_complete,Pred) :-
 XXX=((
-best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLim,_Lem,NegLit,Clause,Ground,IDX) :-
+best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLength,_PathLim,_Lem,NegLit,Clause,Ground,IDX) :-
          collect_symbols_top([NegLit|Path],Ps,Fs),
          append(Ps,Fs,Ss),
          (
@@ -181,7 +182,7 @@ best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLim,_Lem,NegLit,Clause,Ground,IDX
 
 assert_mode(smart_caching_and_complete,Pred) :-
 XXX=((
-best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLim,_Lem,NegLit,Clause,Ground,Index) :-
+best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLength,_PathLim,_Lem,NegLit,Clause,Ground,Index) :-
          collect_symbols_top([NegLit|Path],Ps,Fs),
          append(Ps,Fs,Ss),
          (
@@ -219,7 +220,7 @@ best_lit(Advisor_In,Advisor_Out,_Cla,Path,_PathLim,_Lem,NegLit,Clause,Ground,Ind
 
 assert_mode(original_leancop_with_first_advise,Pred) :-
 XXX=((
-best_lit(_Advisor_In,_Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground,IDX) :-
+best_lit(_Advisor_In,_Advisor_Out,_Cla,_Path,_PathLength,_PathLim,_Lem,NegLit,Clause,Ground,IDX) :-
          advised_lit(NegLit,NegL,Clause,Ground,IDX),
          unify_with_occurs_check(NegL,NegLit)
 
@@ -230,12 +231,12 @@ best_lit(_Advisor_In,_Advisor_Out,_Cla,_Path,_PathLim,_Lem,NegLit,Clause,Ground,
 
 assert_mode(limited_smart_on_path_and_targets(Limitation),Pred) :-
 XXX=((
-best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,_Lem,NegLit,Clause,Ground,Index) :-
+best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,_Lem,NegLit,Clause,Ground,Index) :-
          append([NegLit/*|Cla*/],Path,Targets),
          collect_symbols_top(Targets,Ps,Fs),
          append(Ps,Fs,Ss),!,
          (
-             length(Path,K), K > Limitation ->
+             /*length(Path,K), K*/ PathLength > Limitation ->
              %write(user_error,K),nl(user_error),
              advised_lit(NegLit,NegL,Clause,Ground,Index)
            ;
@@ -281,8 +282,10 @@ assert_mode(M,best_lit)
 M=scalable_with_first_advise(PreCounting_Threshold,Query_Threshold,Mode_After_Threshold),
 assert_mode(Mode_After_Threshold,mode_lit),
 assert((
-best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,Lem,NegLit,Clause,Ground,Index) :-
-        length(Path,L), copy_term(NegLit,NegLit1),
+best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,Lem,NegLit,Clause,Ground,Index) :-
+%        length(Path,L), 
+        copy_term(NegLit,NegLit1),
+        L is PathLength + 1000000, % to ensure that this flag is not in collision with flag prove/9!
         flag(L,_,PreCounting_Threshold),!,
         ( 
 		 advised_lit(NegLit1,NegL1,Clause1,Ground1,Index1),
@@ -304,7 +307,7 @@ best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,Lem,NegLit,Clause,Ground,Index)
 			 member(advised_lit(NegLit,NegL,Clause,Ground,Index),Ws),
 			 advised_lit(NegLit,NegL,Clause,Ground,Index)
 		     ; 
-			 mode_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,Lem,NegLit,Clause,Ground,Index)
+			 mode_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,Lem,NegLit,Clause,Ground,Index)
 		      		      
 		 )
               ; (NegLit,NegL,Clause,Ground,Index)=(NegLit1,NegL1,Clause1,Ground1,Index1),
@@ -316,8 +319,10 @@ best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,Lem,NegLit,Clause,Ground,Index)
 M=scalable_with_first_advise(PreCounting_Threshold,Mode_After_Threshold),
 assert_mode(Mode_After_Threshold,mode_lit),
 assert((
-best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,Lem,NegLit,Clause,Ground,Index) :-
-        length(Path,L), copy_term(NegLit,NegLit1),
+best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,Lem,NegLit,Clause,Ground,Index) :-
+        %length(Path,L), 
+        copy_term(NegLit,NegLit1),
+        L is PathLength + 1000000, % to ensure that this flag is not in collision with flag prove/9!
         flag(L,_,PreCounting_Threshold),!,
         ( 
 		 advised_lit(NegLit1,NegL1,Clause1,Ground1,Index1),
@@ -326,7 +331,7 @@ best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,Lem,NegLit,Clause,Ground,Index)
 		 %write(user_error,(try(L,I))),nl(user_error),
 		 ((I =< 1) ,!, %write(user_error,(go(L,I))),nl(user_error),
 %	    ;
-                   mode_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,Lem,NegLit,Clause,Ground,Index)
+                   mode_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,Lem,NegLit,Clause,Ground,Index)
 		      
 		      
 		 
@@ -397,8 +402,8 @@ prove2(M,Set,Advisor_In,Advisor_Out,Proof) :-
     prove(1,Set,Advisor_In,Advisor_Out,Proof).
 
 prove(PathLim,Set,Advisor_In,Advisor_Out,Proof) :-
-    \+member(scut,Set) -> prove([-(#)],[],PathLim,[],Set,Advisor_In,Advisor_Out,[Proof]) ;
-    lit(#,_,C,_,_) -> prove(C,[-(#)],PathLim,[],Set,Advisor_In,Advisor_Out,Proof1),
+    \+member(scut,Set) -> prove([-(#)],[],0,PathLim,[],Set,Advisor_In,Advisor_Out,[Proof]) ;
+    lit(#,_,C,_,_) -> prove(C,[-(#)],0,PathLim,[],Set,Advisor_In,Advisor_Out,Proof1),
     Proof=[C|Proof1].
 prove(PathLim,Set,Advisor_In,Advisor_Out,Proof) :-
     member(comp(Limit),Set), PathLim=Limit -> prove(1,[],Advisor_In,Advisor_Out,Proof) ;
@@ -407,9 +412,9 @@ prove(PathLim,Set,Advisor_In,Advisor_Out,Proof) :-
 
 %%% leanCoP core prover
 
-prove([],_,_,_,_,_,_,[]).
+prove([],_,_,_,_,_,_,_,[]).
 
-prove([Lit|Cla],Path,PathLim,Lem,Set,Advisor_In,Advisor_Out,Proof) :-
+prove([Lit|Cla],Path,PathLength,PathLim,Lem,Set,Advisor_In,Advisor_Out,Proof) :-
     Proof=[[[NegLit|Cla1]|Proof1]|Proof2],
     \+ (member(LitC,[Lit|Cla]), member(LitP,Path), LitC==LitP),
     (-NegLit=Lit;-Lit=NegLit) ->
@@ -418,23 +423,27 @@ prove([Lit|Cla],Path,PathLim,Lem,Set,Advisor_In,Advisor_Out,Proof) :-
          member(NegL,Path), unify_with_occurs_check(NegL,NegLit),
          Cla1=[], Proof1=[]
          ;
-          writeln('@'), 
-          (machine_learning_of_subtrees -> copy_term([NegLit|Path],Real_Input) ; true),
-          best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLim,Lem,NegLit,Cla1,Grnd1,IDX),
+          writeln('@'),
+          (machine_learning_of_subtrees -> copy_term([NegLit|Path],Real_Input),flag(best_lit_attempts,PAST,PAST) ; true),
+          best_lit(Advisor_In,Advisor_Out,Cla,Path,PathLength,PathLim,Lem,NegLit,Cla1,Grnd1,IDX),
+          flag(best_lit_attempts,TRY,TRY+1),
 %         lit(NegLit,NegL,Cla1,Grnd1,_IDX),
 %         unify_with_occurs_check(NegL,NegLit),
-         ( Grnd1=g -> true ; length(Path,K), K<PathLim -> true ;
+         ( Grnd1=g -> true ; /*length(Path,K), K*/ PathLength<PathLim -> true ;
            \+ pathlim -> assert(pathlim), fail ),
-         prove(Cla1,[Lit|Path],PathLim,Lem,Set,Advisor_In,Advisor_Out,Proof1),
+         New_PathLength is PathLength+1,  
+         prove(Cla1,[Lit|Path],New_PathLength,PathLim,Lem,Set,Advisor_In,Advisor_Out,Proof1),
          (machine_learning_of_subtrees -> 
               write('& '),
+              flag(best_lit_attempts,NOW,NOW),
+              ATT is NOW-PAST,
               collect_symbols_top(Real_Input,Ps,Fs),
               append(Ps,Fs,Ss),            
-              write(Ss), write(' >>> '), writeln(IDX)
+              write(best_lit_attempts=ATT),write(' ; '),write(Ss), write(' >>> '), writeln(IDX)
             ; true)
        ),
        ( member(cut,Set) -> ! ; true ),
-       prove(Cla,Path,PathLim,[Lit|Lem],Set,Advisor_In,Advisor_Out,Proof2).
+       prove(Cla,Path,PathLength,PathLim,[Lit|Lem],Set,Advisor_In,Advisor_Out,Proof2).
 
 
 %%% write clauses into Prolog's database
