@@ -23,7 +23,7 @@ while($_=<XML>)
 {
     if(m/^fof.[dt][0-9]/) { print THE $_; }
     elsif(m/^fof.dt_[klmgu]/) { print DCO $_; }
-    elsif(m/^fof.(([fcr]c)|(ie))[0-9]/) { print DCL $_; }
+    elsif(m/^fof.(([fcr]c)|(ie)|(rd))[0-9]/) { print DCL $_; }
     elsif(m/^fof.[s][0-9]/) { print SCH $_; }
     elsif(m/^fof.[l][0-9]/) { print LEM $_; }
     elsif(m/^fof.(abstractness|antisymmetry|commutativity|connectedness|existence|free|idempotence|involutiveness|irreflexivity|projectivity|redefinition|reflexivity|symmetry)_[gklmruv]/) { print DCO $_; }
