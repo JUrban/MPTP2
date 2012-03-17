@@ -215,6 +215,8 @@ declare_mptp_predicates:-
  abolish(rc_syms_for_consider/7),
  abolish(fof_req/3),
  dynamic(fof_req/3),
+ abolish(fof_syms/2),
+ dynamic(fof_syms/2),
  abolish(sym_ref_graph/2),
  dynamic(sym_ref_graph/2),
  abolish(fof_ante_sym_cnt/4),
@@ -792,6 +794,12 @@ get_ref_fof(Ref,fof(Ref,R1,R2,R3,R4)):-
 	fof_name(Ref,Id),!,
 	clause(fof(Ref,R1,R2,R3,R4),_,Id),!.
 
+% dynamic caching for speed
+get_ref_syms(Ref,Syms):- fof_syms(Ref,Syms),!.
+get_ref_syms(Ref,Syms):-
+	get_ref_fla(Ref,Fla),
+	collect_symbols_top(Fla,Syms),
+	assert(fof_syms(Ref,Syms)),!.
 
 %% ref_mpropkind(?MPropKind, +Ref)
 %%
@@ -953,6 +961,7 @@ one_pass(F,Pos,mizar_from,RefsIn,OldSyms,NewSyms,_ZeroedRefs,AddedRefs):-
 %% it only serves during the recursion.
 %% fxp_refsin_/1 is an updated list of needed refs computed by the algo
 %% fxp_allsyms_/1 is an updated list of included symbols computed by the algo
+%% We assume that NewSyms comes sorted.
 %% ###TODO: keep the refs of different kinds in separate lists,
 %%          so that the lookup using member/2 is not so expensive
 %%          (or just use the recorded db
@@ -986,7 +995,7 @@ fixpoint_(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
 		    ConsInfos0
 		  ),
 	    sort(ConsInfos0, ConsInfos),
-	    union(OldSyms, NewSyms, AllSyms),
+	    ord_union(OldSyms, NewSyms, AllSyms),
 	    add_rclusters_for_unhandled(F, Pos, RefsIn, AllSyms, ConsInfos, NewRClusters),
 	    union(RefsIn, NewRClusters, RefsOut)
 	  ;
@@ -995,10 +1004,10 @@ fixpoint_(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
 	;
 	  union(Refs1, RefsIn, Refs2),
 	  findall(d,(member(R,Refs1),assert(fxp_refsin_(R))),_),
-	  union(OldSyms, NewSyms, OldSyms1),
-	  maplist(get_ref_fla, Refs1, Flas1),
-	  collect_symbols_top(Flas1, Syms1),
-	  subtract(Syms1, OldSyms1, NewSyms1),
+	  ord_union(OldSyms, NewSyms, OldSyms1),
+	  maplist(get_ref_syms, Refs1, SymsL1),
+	  ord_union(SymsL1,Syms1),
+	  ord_subtract(Syms1, OldSyms1, NewSyms1),
 	  findall(d,(member(S,NewSyms1),assert(fxp_allsyms_(S))),_),
 	  fixpoint_(F, Pos, InfKind, Refs2, OldSyms1, NewSyms1, RefsOut)
 	).
@@ -4190,8 +4199,8 @@ get_proof_syms_and_flas(RefsIn, PLevel, PSyms, PRefs):-
 	get_sublevel_names(PLevel, Names),
 	append(RefsIn, Names, AllNames),
 	sort(AllNames, PRefs),!,
-	maplist(get_ref_fla, PRefs, Flas1),
-	collect_symbols_top(Flas1, PSyms).
+	maplist(get_ref_syms, PRefs, PSymsL),
+	ord_union(PSymsL, PSyms).
 
 %% Create the abs_name table for all local references and constants
 %% by checking if their name ends with _Article or not.
@@ -4745,8 +4754,8 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	;
 	  InfKind \== mizar_proof,
 	  Refs = Refs0,
-	  maplist(get_ref_fla, [P|Refs], Flas1),
-	  collect_symbols_top(Flas1, Syms0),
+	  maplist(get_ref_syms, [P|Refs], SymsL0),
+	  ord_union(SymsL0,Syms0),
 	  Syms1 = Syms0,
 	  %% ###TODO: for reconsidered type, following is enough instead of fixpoint
 %	  AllRefs1 = [P|Refs]
@@ -5239,8 +5248,8 @@ check_redefs_int([[X,Y]|T],RefRedefPairs,FlaSyms,RefSyms):-
 
 get_mizar_inf_refs(File, P, Refs, InfKind, AllRefs):-
 	get_ref_fof(P, fof(P,_,Fla,_,[mptp_info(_,Lev,_,_,_)|_])),
-	maplist(get_ref_fla, Refs, Flas1),
-	collect_symbols_top( [Fla | Flas1], Syms1),
+	maplist(get_ref_syms, [P | Refs], SymsL1),
+	ord_union(SymsL1,Syms1),
 	ensure(article_position(P,Pos1), throw(article_position(P))),
 	%% ###TODO: for reconsidered type, following is enough instead of fixpoint
 	%% AllRefs1 = [P|Refs]
@@ -5551,6 +5560,8 @@ install_index:-
 	abolish(rc_syms_for_consider/7),
 	abolish(fof_req/3),
 	dynamic(fof_req/3),
+	abolish(fof_syms/2),
+	dynamic(fof_syms/2),
 	abolish(sym_ref_graph/2),
 	dynamic(sym_ref_graph/2),
 	abolish(fof_ante_sym_cnt/4),
@@ -5633,6 +5644,7 @@ assert_rc_syms(RCl, Fla, File):-
 %%   when it only takes care of a const/var type which is already taken care of
 assert_syms(rcluster,Ref1,_,_,Fla1,File1,Id,LogicSyms,_,Spc):- !,
 	    collect_symbols_top(Fla1,AllSyms),
+	    assert(fof_syms(Ref1,AllSyms)),
 	    subtract(AllSyms,LogicSyms,Syms),
 	    assert(fof_cluster(File1,Ref1,Syms)),
 	    assert_fxp_data(Ref1,File1,rcluster,Syms),
