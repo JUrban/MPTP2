@@ -54,6 +54,12 @@ mkdir $mycgi
 ln -s $root/$ver/bin $mycgi/mizar 
 # tar xzf mizbin.tar.gz -C$mycgi
 
+pushd /home/mptp/gitrepo/MPTP2/
+git pull; if [ $? != 0 ]; then echo "fix MPTP2 repo first, exiting"; exit 1; fi
+cd ../xsl4mizar
+git pull; if [ $? != 0 ]; then echo "fix xsl4mizar repo first, exiting"; exit 1; fi
+popd
+
 mkdir html 
 sed -e 's/urban/mptp/' /home/mptp/gitrepo/MPTP2/mizsys/Makefile.4.145 > Makefile
 cp -a mml miztmp
