@@ -21,7 +21,7 @@ mv miz.xsl miz.xml
 rm abstr.zip install.bat license mizdb1.zip mizsys.zip mizxml.zip prel.zip unzip.exe mizbib.zip mizdoc.zip mizutil.zip  mmlfull.zip 
 
 git add .
-git commit --author="Library Committee <mml@mizar.uwb.edu.pl>" -m $1
+git commit -a --author="Library Committee <mml@mizar.uwb.edu.pl>" -m $1
 git tag $1
 #cp -a mml miztmp
 #cp Makefile  miztmp

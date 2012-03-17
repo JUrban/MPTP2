@@ -14,7 +14,7 @@ tar xzf mizdoc.tar.gz -Cdoc
 rm mizshare.tar.gz
 rm mizdoc.tar.gz mizbin.tar.gz
 git add .
-git commit --author="Library Committee <mml@mizar.uwb.edu.pl>" -m $1
+git commit -a --author="Library Committee <mml@mizar.uwb.edu.pl>" -m $1
 git tag $1
 #cp -a mml miztmp
 #cp Makefile  miztmp
