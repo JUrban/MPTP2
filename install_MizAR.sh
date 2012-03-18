@@ -141,6 +141,11 @@ which swipl > /dev/null ; if [ $? != 0 ]; then echo "swipl not executable, exiti
 swipl -nodebug -A0 -L0 -G0 -T0 -q -t "[utils], mml2tptp_includes('Axioms/'), halt."
 cat Axioms/*.ax > 00allmmlax
 
+# make problems, this could use a makefile instead of parallel
+cat ../mml.lar | sort -R | time nice parallel -j $jobs  time "swipl -nodebug -A0 -L0 -G0 -T0  -t \"[utils], declare_mptp_predicates,load_mml_for_article({}, 'pl', []),install_index,time(mk_article_problems({},[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma] ],[opt_REM_SCH_CONSTS,opt_TPTP_SHORT])),halt.\"" 
+
+tar czf mptp_problems.$ver.tar.gz problems
+
 # fix bindir in mizf - done
 
 # upon first install, files in cgi-bin need to be symlinked to MizAR/cgi-bin files
