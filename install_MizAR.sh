@@ -96,6 +96,7 @@ make tarski.dco2
 
 for j in `ls *.htmla1| sed -e 's/.htmla1//'`; do mv $j.htmla1 ../html/$j.html; done
 cd ..
+mv miztmp/refs html
 tar czf html_abstr.$ver.noproofs.tar.gz html
 mv miztmp/proofs html
 tar czf html_abstr.$ver.tar.gz html
