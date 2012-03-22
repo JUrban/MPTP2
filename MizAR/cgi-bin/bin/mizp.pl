@@ -507,7 +507,7 @@ sub VerifyProofChunk
 
 # extensions of the environmental files
 my @gaccexts = (".aco", ".atr", ".dct", ".dfs", ".eid", ".ere", ".esh", ".evl", ".frm", ".prf", ".vcl",
-	       ".ano", ".cho", ".dcx", ".ecl", ".eno", ".eth", ".fil", ".nol", ".sgl");
+	       ".ano", ".cho", ".dcx", ".ecl", ".eno", ".epr", ".erd", ".eth", ".fil", ".nol", ".sgl");
 
 # extensions of files created/used by verifier, with exception of the .xml file 
 my @gvrfexts = ('.frx', '.idx', '.miz', '.par', '.ref');
