@@ -405,7 +405,7 @@ sub MakePiecesByPSize
 
 ## all the ajax proofs go usually into $gtopdir/proofs - to be in one place
 
-my $miz2html_params = "--param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$gmizhtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 ";
+my $miz2html_params = "--param default_target \\\'_self\\\'  --param linking \\\'l\\\' --param mizhtml \\\'$gmizhtml\\\' --param selfext \\\'html\\\'  --param titles 1 --param colored 1 --param mk_comments 1 --param mk_header 1 ";
 
 sub Htmlize
 {
