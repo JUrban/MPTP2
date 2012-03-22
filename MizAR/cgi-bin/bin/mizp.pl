@@ -231,6 +231,8 @@ $gxsldir = $gmizfiles unless(defined($gxsldir));
 my $addabsrefs = "$gxsldir/addabsrefs.xsl";
 my $miz2html = (-e "$gxsldir/miz.xsl") ? "$gxsldir/miz.xsl" : "$gxsldir/miz.xml";
 my $mizpl = "$gxsldir/mizpl.xsl";
+my $mkxmlhead = "$gxsldir/mkxmlhead.pl";
+my $mizcomments = "$gxsldir/MizComments.pl";
 
 
 my $gmizar_url = 'http://mizar.uwb.edu.pl';
@@ -410,6 +412,12 @@ my $miz2html_params = "--param default_target \\\'_self\\\'  --param linking \\\
 sub Htmlize
 {
     my ($myfstem, $htmlize, $ajax_proofs, $ajax_proof_dir) = @_;
+
+    return 0 unless($htmlize >= 1);
+
+    system("$mkxmlhead -s  $myfstem.miz > $myfstem.hdr");
+    system("$mizcomments   $myfstem.miz > $myfstem.cmt");
+
     if($htmlize == 2)
     {
 	system("xsltproc $addabsrefs $myfstem.xml 2> $myfstem.xml.errabs > $myfstem.xml.abs");
