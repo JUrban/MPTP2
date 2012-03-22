@@ -418,10 +418,12 @@ sub Htmlize
     system("$mkxmlhead -s  $myfstem.miz > $myfstem.hdr");
     system("$mizcomments   $myfstem.miz > $myfstem.cmt");
 
+    # do not produce ajax_refs, we do ont know how to fetch them yet from /tmp
+    # (this needs mwiki merger)
     if($htmlize == 2)
     {
 	system("xsltproc $addabsrefs $myfstem.xml 2> $myfstem.xml.errabs > $myfstem.xml.abs");
-	system("xsltproc $miz2html_params --param proof_links 1 --param ajax_proofs $ajax_proofs -param ajax_proof_dir \\\'$ajax_proof_dir\\\' $miz2html $myfstem.xml.abs 2>$myfstem.xml.errhtml > $myfstem.html");
+	system("xsltproc $miz2html_params --param proof_links 1 --param mk_ajax_refs 0 --param ajax_proofs $ajax_proofs -param ajax_proof_dir \\\'$ajax_proof_dir\\\' $miz2html $myfstem.xml.abs 2>$myfstem.xml.errhtml > $myfstem.html");
     }
     elsif($htmlize == 1)
     {
