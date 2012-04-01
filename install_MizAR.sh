@@ -145,6 +145,9 @@ cat Axioms/*.ax > 00allmmlax
 # make problems, this could use a makefile instead of parallel
 cat ../mml.lar | sort -R | time nice parallel -j $jobs  time "swipl -nodebug -A0 -L0 -G0 -T0  -t \"[utils], declare_mptp_predicates,load_mml_for_article({}, 'pl', []),install_index,time(mk_article_problems({},[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma] ],[opt_REM_SCH_CONSTS,opt_TPTP_SHORT])),halt.\"" 
 
+# sublemmas with proof, now commented, about 20 minutes and 156k probs
+# cat ../mml.lar | sort -R | time nice parallel -j $jobs  time "swipl -nodebug -A0 -L0 -G0 -T0  -t \"[utils], declare_mptp_predicates,load_mml_for_article({}, 'pl', []),install_index,time(mk_article_problems({},[[mizar_proof],[sublemma] ],[opt_REM_SCH_CONSTS,opt_TPTP_SHORT])),halt.\""
+
 mv problems problems_small
 mkdir problems
 tar czf mptp_problems_small.$ver.tar.gz problems_small
