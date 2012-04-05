@@ -9,7 +9,7 @@ accommodate()
 {
 PWD1=`pwd`
 cd `dirname $1`
-$PWD1/$bindir/mizar/accom -q -a $1
+$PWD1/$bindir/mizar/accom -l -q -a $1
  if test "$?" = "0"
   then
    cd $PWD1
