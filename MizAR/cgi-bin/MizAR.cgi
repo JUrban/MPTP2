@@ -357,16 +357,23 @@ sub SetupArticleFiles
 	close($VocFile);
 	close(VOC)
     }
+    # we now allow vocnames concatenated by "::" and contents by "::::::"
     elsif (defined($VocSource) && ($VocSource eq 'CONTENT')
-	   && defined($VocName) &&  (length($VocName) < 13) && (lc($VocName)=~m/^[a-z][a-z0-9_.]*$/)
+	   && defined($VocName) &&  (length($VocName) < 1000) && (lc($VocName)=~m/^[a-z][a-z0-9_.:]*$/)
 	   && !($VocName eq "") && defined($VocContent))
     {
-	$VocName = lc($VocName);
-	my $VOCFileOrig1 = "${TemporaryProblemDirectory}/dict/$VocName";
-	open(VOC, ">$VOCFileOrig1") or die "$VOCFileOrig1 not writable";
-	printf(VOC "%s",$VocContent);
-	close(VOC);
-	system("dos2unix $VOCFileOrig1");
+	my @VocNames = split(/::/, $VocName);
+	my @VocContents = split(/::::::/, $VocContent);
+	foreach my $vi (0 .. $#VocNames)
+	{
+	    my $vn = lc($VocNames[$vi]);
+	    my $vc = $VocContents[$vi];
+	    my $VOCFileOrig1 = "${TemporaryProblemDirectory}/dict/$vn";
+	    open(VOC, ">$VOCFileOrig1") or die "$VOCFileOrig1 not writable";
+	    printf(VOC "%s",$vc);
+	    close(VOC);
+	    system("dos2unix $VOCFileOrig1");
+	}
     }
 
 
