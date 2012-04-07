@@ -5,9 +5,11 @@
 #
 # ./svm.pl data > svmdata
 #
+
+@s=(0);
 while(<>)
 {
-    @s=(0);
+
     m/(^\d+);(.*);(.*)/ or die;
     @f0=split(/,/,$2);
     @f1=();
