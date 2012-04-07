@@ -7,8 +7,15 @@
 #
 while(<>)
 {
+    @s=(0);
     m/(^\d+);(.*);(.*)/ or die;
-    @f=sort {$a <=> $b} split(/,/,$2);
+    @f0=split(/,/,$2);
+    foreach $ff (@f0) 
+    { 
+	if(!exists $h{$ff}) { push(@s,$ff); $h{$ff}=$#s; }
+	push(@f1,$h{$ff});
+    }
+    @f = sort {$a <=> $b} @f1;
     @r=split(/,/,$3);
     push(@r,$1);
     $f1=join(":1 ",@f);
