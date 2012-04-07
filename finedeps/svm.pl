@@ -8,7 +8,7 @@
 while(<>)
 {
     m/(^\d+);(.*);(.*)/ or die;
-    @f=split(/,/,$2);
+    @f=sort {$a <=> $b} split(/,/,$2);
     @r=split(/,/,$3);
     push(@r,$1);
     $f1=join(":1 ",@f);
