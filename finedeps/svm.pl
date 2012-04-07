@@ -10,6 +10,7 @@ while(<>)
     @s=(0);
     m/(^\d+);(.*);(.*)/ or die;
     @f0=split(/,/,$2);
+    @f1=();
     foreach $ff (@f0) 
     { 
 	if(!exists $h{$ff}) { push(@s,$ff); $h{$ff}=$#s; }
