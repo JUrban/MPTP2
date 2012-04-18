@@ -15,7 +15,7 @@ die unless ((defined $adv) && open(A,$adv));
 die unless ((defined $adv1) && open(B,$adv1));
 
 # The weight for the first component - now hardwired here.
-$wr = 0.75;
+$wr = 0.5;
 $wl = 1 - $wr;
 
 while(<A>) { chop; @r=split /,/; $i=0; $f=$r[0]; push(@all,$f); foreach $k (@r) {$rh{$f}{$k} = $i * $wr; $i++} $maxr{$f}= 200 * $wr;}
