@@ -107,7 +107,7 @@ $query_mode = 'HTML' unless defined($query_mode);
 
 $mmlversion   = '4.100.1011' unless defined($mmlversion);
 
-$gtransf = 'miz.xsl' unless defined($gtransf);
+$gtransf = 'miz.xsl' if(!defined($gtransf) || $gtransf eq '');
 
 $proofsbyajax = 0; # unless defined($proofsbyajax); comented - not wroking yet, trying to write the relative proof path
 
