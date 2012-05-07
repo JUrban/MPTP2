@@ -30,6 +30,7 @@ sub szs_GAVEUP      ()  { 'GaveUp' }   # system exited before the time limit for
 my $query	  = new CGI;
 my $ProblemSource = $query->param('ProblemSource');
 my $VocFile       = $query->param('VocFile');
+my $VocURL       = $query->param('VocURL');
 my $VocSource       = $query->param('VocSource');
 my $VocName       = $query->param('VocName');
 my $VocContent       = $query->param('VocContent');
@@ -369,13 +370,10 @@ sub SetupArticleFiles
 	close($VocFile);
 	close(VOC)
     }
-    elsif (defined($VocSource) && ($VocSource eq 'URL')
+    elsif (defined($VocSource) && ($VocSource eq 'URL') 
+	   && defined($VocURL) && !($VocURL eq ""))
     {
 	my $VocURL = $query->param('VocURL');
-	if (!defined($VocURL)) 
-	{
-	    die("ERROR: No URL supplied\n");
-	}
 	my @VocURLparts = split(/\//, $VocURL);
 	my $VocFile1 = $VocURLparts[$#VocURLparts];
 	my $VOCFileOrig1 = "${TemporaryProblemDirectory}/dict/$VocFile1";
