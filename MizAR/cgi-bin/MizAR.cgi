@@ -84,6 +84,15 @@ my $gparallelize = $query->param('Parallelize');
 
 my $gppolicy = $query->param('PPolicy');
 
+
+# the htmlization stylesheet to apply
+my $gtransf = $query->param('Transf');
+
+# its parameters
+my $gtransfparams = $query->param('TParams');
+
+
+
 ## (full) htmlization for parallelizer. Only used if $gparallelize>1,
 ## and other conditions met below.
 my $gphtmlize = 2; 
@@ -97,6 +106,9 @@ $gppolicy = 1 unless defined($gppolicy);
 $query_mode = 'HTML' unless defined($query_mode);
 
 $mmlversion   = '4.100.1011' unless defined($mmlversion);
+
+$gtransf = 'miz.xsl' unless defined($gtransf);
+
 $proofsbyajax = 0; # unless defined($proofsbyajax); comented - not wroking yet, trying to write the relative proof path
 
 # values: 1 for master mode If 1, master_mode (no limits) is used, if
@@ -175,7 +187,7 @@ my $err2pl = "$Bindir/err2pl.pl";
 my $err2xml = "$Bindir/err2xml.pl";
 my $mizitemize = "$Bindir/MizItemize.pl";
 my $addabsrefs = "$Xsl4MizarDir/addabsrefs.xsl";
-my $miz2html = "$Xsl4MizarDir/miz.xsl";
+my $miz2html = "$Xsl4MizarDir/$gtransf";
 my $mizpl = "$Xsl4MizarDir/mizpl.xsl";
 my $evl2pl = "$Xsl4MizarDir/evl2pl.xsl";
 my $mkxmlhead = "$Xsl4MizarDir/mkxmlhead.pl";
