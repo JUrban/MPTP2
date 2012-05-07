@@ -376,7 +376,7 @@ sub SetupArticleFiles
 	my $VocURL = $query->param('VocURL');
 	my @VocURLparts = split(/\//, $VocURL);
 	my $VocFile1 = $VocURLparts[$#VocURLparts];
-	my $VOCFileOrig1 = "${TemporaryProblemDirectory}/dict/$VocFile1";
+	my $VOCFileOrig1 = "${TemporaryProblemDirectory}/dict/VocFile1";
 	getstore($VocURL,$VOCFileOrig1) or
 	    die("ERROR: Could not fetch from $VocURL");
     }
