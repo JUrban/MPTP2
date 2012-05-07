@@ -369,6 +369,21 @@ sub SetupArticleFiles
 	close($VocFile);
 	close(VOC)
     }
+    elsif (defined($VocSource) && ($VocSource eq 'URL')
+    {
+	my $VocURL = $query->param('VocURL');
+	if (!defined($VocURL)) 
+	{
+	    die("ERROR: No URL supplied\n");
+	}
+	my @VocURLparts = split(/\//, $VocURL);
+	my $VocFile1 = $VocURLparts[$#VocURLparts];
+	my $VOCFileOrig1 = "${TemporaryProblemDirectory}/dict/$VocFile1";
+	getstore($VocURL,$VOCFileOrig1) or
+	    die("ERROR: Could not fetch from $VocURL");
+    }
+
+
     # we now allow vocnames concatenated by "::" and contents by "::::::"
     elsif (defined($VocSource) && ($VocSource eq 'CONTENT')
 	   && defined($VocName) &&  (length($VocName) < 1000) && (lc($VocName)=~m/^[a-z][a-z0-9_.:]*$/)
