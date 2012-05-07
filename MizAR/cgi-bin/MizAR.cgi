@@ -373,7 +373,6 @@ sub SetupArticleFiles
     elsif (defined($VocSource) && ($VocSource eq 'URL') 
 	   && defined($VocURL) && !($VocURL eq ""))
     {
-	my $VocURL = $query->param('VocURL');
 	my @VocURLparts = split(/\//, $VocURL);
 	my $VocFile1 = $VocURLparts[$#VocURLparts];
 	my $VOCFileOrig1 = "${TemporaryProblemDirectory}/dict/VocFile1";
