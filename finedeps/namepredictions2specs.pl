@@ -27,7 +27,7 @@ while(<G>)
 $thnr=0;
 while(<>)
 {
-    chop;
+    chomp;
     exists $c[$thnr] or die;
     @k=($c[$thnr]);
     foreach $l (split(",",$_))
