@@ -32,7 +32,7 @@ while(<>)
     @k=($c[$thnr]);
     foreach $l (split(",",$_))
     { 
-	exists $h{$l} or die "$l";
+	exists $h{$l} or die "bad: $l, thnr: $thnr, $th: $c[$thnr]";
 	push(@k,$l) if (exists $g{$c[$thnr]}{$l}) ;
     }
     my $l1 = min($#k,$lim);
