@@ -27,7 +27,7 @@ while(<G>)
 $thnr=0;
 while(<>)
 {
-    chomp;
+    s/\r?\n$//; # get rid of newlines also in dos files
     exists $c[$thnr] or die;
     @k=($c[$thnr]);
     foreach $l (split(",",$_))
