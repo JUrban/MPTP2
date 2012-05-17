@@ -64,7 +64,7 @@ foreach my $i ( sort {$a <=> $b} keys %glabels)
     my $labels = $glabels{$i};
     my $features = $gfeatures{$i};
     print $i, ';', join(',', map { $_ . ':1' } (keys %$features)), ';'; 
-    print join(',', map { $_ . ':1' } (keys %$labels)); 
+    print join(',', map { $_ . ':1' } (keys %$labels)), "\n"; 
 }
  
 
@@ -84,7 +84,7 @@ if($tst == 1)
 	    push(@f1,$h{$j});
 	}
 
-	print T ('0;', join(',', map { $_ . ':1' } @f1), ';'); 
+	print T ('0;', join(',', map { $_ . ':1' } @f1), ";\n"); 
     }
     close(T);
 }
