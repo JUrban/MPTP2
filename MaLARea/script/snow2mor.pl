@@ -63,8 +63,8 @@ foreach my $i ( sort {$a <=> $b} keys %glabels)
 {
     my $labels = $glabels{$i};
     my $features = $gfeatures{$i};
-    print $i, ';', join(',', map { $_ . ':1' } (keys %$features)), ';'; 
-    print join(',', map { $_ . ':1' } (keys %$labels)), "\n"; 
+    print $i, ';', join(',', map { $_ . ':1' } (sort {$a <=> $b} keys %$features)), ';'; 
+    print join(',', map { $_ . ':1' } (sort {$a <=> $b} keys %$labels)), "\n"; 
 }
  
 
