@@ -84,7 +84,7 @@ if($tst == 1)
 	    push(@f1,$h{$j});
 	}
 
-	print T ('0;', join(',', map { $_ . ':1' } @f1), ";\n"); 
+	print T ('0;', join(',', map { $_ . ':1' } (sort {$a <=> $b} @f1)), ";\n"); 
     }
     close(T);
 }
