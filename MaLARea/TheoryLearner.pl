@@ -2573,7 +2573,7 @@ sub SetupProblemsFromProblemsFile
 	    {
 		my ($pname, $sname) = ($1,$2);
 		die "$pname not readable!" unless(-e $pname);
-		my ($volume,$directories,$file) = splitpath( $pname );
+		my ($volume,$directories,$file) = File::Spec->splitpath( $pname );
 		die "Non-unique basenames not allowed: $file, $pname, $gltbnames{$file}->[0]"
 		    if(exists $gltbnames{$file});
 		`cp $pname $file_prefix`;
