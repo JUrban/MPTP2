@@ -460,6 +460,9 @@ my @gitermods;		    # for each iteration holds $#gnrmod achieved at that iterati
                             # that is, if $gitermods[n] = $gitermods[n-1], no models were found
                             # in n-th iteration
 
+my @ghistory;               # ghistory[$iter] = [$nrproved, $nrtried, $threshold, $timelimit, $modelsfound, $proved]
+                            # keeps the statistics for possible policy adjustments
+
 my %grefsyms;     # Ref2Sym hash for each reference array of its symbols
 my %greftrmstd;   # Ref2Sym hash for each reference array of its stdterms (their shared-entry numbers)
 my %greftrmnrm;   # Ref2Sym hash for each reference array of its nrmterms (their shared-entry numbers)
@@ -727,6 +730,7 @@ sub LoadTables
     %glocal_consts_refs = ();
     @gnrsym = ();
     @gnrref = ();
+    @ghistory  = ();
 
     %gmodnr = ();
     @gnrmod = ();
@@ -2214,6 +2218,9 @@ sub RunProblemsFromMakefile
 # We try to "exit nicely from here": $gtimelimit is re-set to $mintimelimit whenever a theorem is proved
 # - this can cause redundant entries in %gresults - this happens unless $keep_cpu_limit <> 1, which means
 # that we are running with high timelimit problems (e.g. when cheating)
+# updates the global var:
+# ghistory[$iter] = [$nrproved, $nrtried, $threshold, $timelimit, $modelsfound, $proved]
+
 sub RunProblems
 {
     my ($iter, $file_prefix, $file_postfix, $conjs,
@@ -2489,6 +2496,14 @@ sub RunProblems
     TmpProbIOCleanup($iter, $file_prefix, $file_postfix);
     $gitermods[$iter] = $#gnrmod;
     print "MODELS: found: $models_found, old: $models_old, new: $models_new\n";
+
+    my $models = $gitermods[$iter];
+    if($iter > 0) { $models = $models - $gitermods[$iter-1]; }
+
+    my %proved = ();   
+    @proved{ keys %proved_by } = ();
+    $ghistory[$iter] = [scalar keys %proved, scalar @$conjs, $threshold, $gtimelimit, $models, \%proved];
+
     return \%proved_by;
 }
 
@@ -2733,6 +2748,8 @@ sub NormalizeAndCreateInitialSpecs
     `grep conjecture $filestem.allflas > $filestem.allconjs`;
     `grep -v conjecture $filestem.allflas > $filestem.allaxs`;
 }
+
+
 
 sub Iterate
 {
@@ -3038,6 +3055,88 @@ sub Iterate
 
 Iterate($gfileprefix,$gfilepostfix);
 
+
+# return new axiom limit based on the current value
+# the basic function
+sub StdAxLimitFunc { return $_ * 2; }
+
+my @glowaxlimits = (4,8,12,16,24,32,48,64,80,128);
+
+# hash for the next value and its initialisation
+my %gnextlowaxlimit = ();
+
+foreach my $i (0 .. $#glowaxlimits - 1) { $gnextlowaxlimit{$glowaxlimits[$i]} =  $glowaxlimits[$i+1]; }
+
+sub LowAxLimitFunc 
+{ 
+    if($_ >= $glowaxlimits[$#glowaxlimits])
+    {
+	return StdAxLimitFunc($_); 
+    }
+    else
+    {
+	return $gnextlowaxlimit{$_};
+    }
+}
+
+my $gaxlimfunc = 'axfun_DBL';
+
+my %gaxlimfuncs = (
+    'axfun_DBL' => \&StdAxLimitFunc,
+    'axfun_LOW' => \&LowAxLimitFunc
+);
+
+
+# ##TODO: unfinished, unused
+# Update the axiom and time limits for the next iteration according
+# to the current values and the policy
+# global args:
+#  ($giterpolicy, $maxthreshold, $minthreshold, $maxtimelimit, $mintimelimit, 
+#   $giterlimit, $gmaxiterlimit, $gminiterlimit) 
+sub StdLimPol
+{
+     my ($axlimfunc,$newly_proved,$iter,$gtimelimit,$threshold) = @_; 
+
+     if ($newly_proved == -1)
+     {
+	 if ($threshold < $maxthreshold) {
+	     $threshold = $gaxlimfuncs{$axlimfunc}->($threshold);
+	     print "THRESHOLD: $threshold\n";
+	 }
+	 else
+	 {
+	     if ($gtimelimit < $maxtimelimit)
+	     {
+		 $gtimelimit = 4 * $gtimelimit;
+		 $threshold = $gaxlimfuncs{$axlimfunc}->($minthreshold); # if timelimit is nonminimal, start with bigger threshold
+		 print "THRESHOLD: $threshold\nTIMELIMIT: $gtimelimit\n";
+	     }
+	     else
+	     {
+		 if(($giterpolicy == pol_GROWTH) && ($iter < $gminiterlimit))
+		 {
+		     $threshold = $minthreshold;
+		     $gtimelimit = $mintimelimit;
+		     print "THRESHOLD: $threshold\nTIMELIMIT: $gtimelimit\n";
+		 }
+		 else
+		 {
+		     DumpResults(); DumpModelInfo();
+		     die "reached maximum threshold: $threshold, and timelmit: $gtimelimit";
+		 }
+	     }
+	 }
+     }
+     else
+     {
+	 if (($threshold < $maxthreshold) && ($giterpolicy == pol_GROWTH))
+	 {
+	     $threshold = $gaxlimfuncs{$axlimfunc}->($threshold);
+	 }
+	 else { $threshold = $minthreshold; }
+	 $gtimelimit = $mintimelimit;
+     }
+}
 
 # only create cheatable specs after a run:
 # LoadTables();
