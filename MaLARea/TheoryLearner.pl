@@ -2927,6 +2927,8 @@ sub Iterate
 	my $proved_by = RunProblems($iter,$file_prefix, $file_postfix,$to_solve,$threshold,$gspass,$gvampire,$gparadox,0);
 	my @newly_proved = keys %$proved_by;
 	# we need a better variating policy here
+	if((($iter =~ m/^[258]0$/) || ($iter =~ m/^1[147]0$/)) && ($maxthreshold > 128)) { $maxthreshold = $maxthreshold >> 3; }
+	if((($iter =~ m/^[47]0$/) || ($iter =~ m/^1[036]0$/)) && ($maxthreshold < 128)) { $maxthreshold = $maxthreshold << 3; }
 	if ($#newly_proved == -1)
 	{
 	    if ($threshold < $maxthreshold) {
