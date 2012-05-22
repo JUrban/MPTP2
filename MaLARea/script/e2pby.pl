@@ -5,6 +5,10 @@
 # 
 # the same thing for z3 is simpler:
 # cat *|grep '^core'  | sed -e 's/^core(\([^,]*\),\[/proved_by(\1,[\1,/' > 00zproved_by
+#
+# minimization of multiple pby's:
+#
+# perl -e 'while(<>) { m/^proved_by\(([^,]*),(.*)$/ or die $_; ($c,$r)=($1,$2); @k= $r=~ m/,/g; if((!exists($h{$c})) || ($h{$c} > $#k)) { $h{$c}=$#k; $g{$c}=$_;}} foreach $i (sort keys %g) { print $g{$i}; }' 00proved_by
 
 my $e_regexp =  '.*, *file\([^\),]+, *([a-z0-9A-Z_]+) *\)';
 
