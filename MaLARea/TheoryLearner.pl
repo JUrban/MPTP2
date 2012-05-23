@@ -2813,7 +2813,10 @@ sub Iterate
 		chop;
 		m/^proved_by\(([^,]+),\[([^\]]*)\]\)\./ or die "Bad proved_by entry: $_";
 		my ($conj,$needed_str) = ($1, $2);
-		if (exists $gresults{$conj})
+		# do not check if conjecture, just if known fla
+		# we want to learn from problems that are not being solved now
+                # if (exists $gresults{$conj})
+		if(exists($grefnr{$conj}))
 		{
 		    print PROVED_BY_0 "$_\n";
 		    my @needed_refs = split(/\,/, $needed_str);
