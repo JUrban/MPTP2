@@ -52,37 +52,37 @@ while a < ARGV.length
   end
   if ARGV[a] == "-crswsos"
     crswsos = ARGV[a+1]
-    if crswsos > 0
+    if crswsos.to_i > 0
       crswsos_s = "#{crswsos}*ConjectureRelativeSymbolWeight(SimulateSOS,0.5, 100, 100, 100, 100, 1.5, 1.5, 1)"
     end
   end
   if ARGV[a] == "-crswng"
     crswng = ARGV[a+1]
-    if crswng > 0
+    if crswng.to_i > 0
       crswng_s = "#{crswng}*ConjectureRelativeSymbolWeight(PreferNonGoals,0.5, 100, 100, 100, 100, 1.5, 1.5, 1),"
     end
   end
   if ARGV[a] == "-rwsos"
     rwsos = ARGV[a+1]
-    if rwsos > 0
+    if rwsos.to_i > 0
       rwsos_s = "#{rwsos}*Refinedweight(SimulateSOS,1,1,2,1.5,2),"
     end
   end
   if ARGV[a] == "-rwng"
     rwng = ARGV[a+1]
-    if rwng > 0
+    if rwng.to_i > 0
       rwng_s = "#{rwng}*Refinedweight(PreferNonGoals,1,1,2,1.5,1.5),"
     end
   end
   if ARGV[a] == "-cwproc"
     cwproc = ARGV[a+1]
-    if cwproc > 0
+    if cwproc.to_i > 0
       cwproc_s = "#{cwproc}*Clauseweight(PreferProcessed,1,1,1),"
     end
   end
   if ARGV[a] == "-fwproc"
     fwproc = ARGV[a+1]
-    if fwproc > 0
+    if fwproc.to_i > 0
       fwproc_s = "#{fwproc}*FIFOWeight(PreferProcessed)"
     end
   end
