@@ -27,8 +27,5 @@ cwproc { 0, 1, 2 } [1]
 fwcp { 0, 1 } [0]
 fwproc { 0, 1, 2 } [1]
 
-{fwcp=1,fwproc=1}
-{fwcp=1,fwproc=2}
-{fwcp=0,fwproc=0}
 
 

@@ -42,6 +42,7 @@ cwproc_s  = ""
 fwcp_s = ""
 fwproc_s = ""
 
+heurparms = []
 
 a = 5
 while a < ARGV.length
@@ -74,49 +75,57 @@ while a < ARGV.length
   if ARGV[a] == "-crswcp"
     crswcp = ARGV[a+1]
     if crswcp.to_i > 0
-      crswscp_s = "#{crswcp}*ConjectureRelativeSymbolWeight(ConstPrio,0.1, 100, 100, 100, 100, 1.5, 1.5, 1.5),"
+      crswscp_s = "#{crswcp}*ConjectureRelativeSymbolWeight(ConstPrio,0.1, 100, 100, 100, 100, 1.5, 1.5, 1.5)"
+      heurparms << crswscp_s
     end
   end
   if ARGV[a] == "-crswsos"
     crswsos = ARGV[a+1]
     if crswsos.to_i > 0
-      crswsos_s = "#{crswsos}*ConjectureRelativeSymbolWeight(SimulateSOS,0.5, 100, 100, 100, 100, 1.5, 1.5, 1),"
+      crswsos_s = "#{crswsos}*ConjectureRelativeSymbolWeight(SimulateSOS,0.5, 100, 100, 100, 100, 1.5, 1.5, 1)"
+      heurparms << crswsos_s
     end
   end
   if ARGV[a] == "-crswng"
     crswng = ARGV[a+1]
     if crswng.to_i > 0
-      crswng_s = "#{crswng}*ConjectureRelativeSymbolWeight(PreferNonGoals,0.5, 100, 100, 100, 100, 1.5, 1.5, 1),"
+      crswng_s = "#{crswng}*ConjectureRelativeSymbolWeight(PreferNonGoals,0.5, 100, 100, 100, 100, 1.5, 1.5, 1)"
+      heurparms << crswng_s
     end
   end
   if ARGV[a] == "-rwsos"
     rwsos = ARGV[a+1]
     if rwsos.to_i > 0
-      rwsos_s = "#{rwsos}*Refinedweight(SimulateSOS,1,1,2,1.5,2),"
+      rwsos_s = "#{rwsos}*Refinedweight(SimulateSOS,1,1,2,1.5,2)"
+      heurparms << rwsos_s
     end
   end
   if ARGV[a] == "-rwng"
     rwng = ARGV[a+1]
     if rwng.to_i > 0
-      rwng_s = "#{rwng}*Refinedweight(PreferNonGoals,1,1,2,1.5,1.5),"
+      rwng_s = "#{rwng}*Refinedweight(PreferNonGoals,1,1,2,1.5,1.5)"
+      heurparms << rwng_s
     end
   end
   if ARGV[a] == "-cwproc"
     cwproc = ARGV[a+1]
     if cwproc.to_i > 0
-      cwproc_s = "#{cwproc}*Clauseweight(PreferProcessed,1,1,1),"
+      cwproc_s = "#{cwproc}*Clauseweight(PreferProcessed,1,1,1)"
+      heurparms << cwproc_s
     end
   end
   if ARGV[a] == "-fwcp"
     fwcp = ARGV[a+1]
     if fwcp.to_i > 0
       fwcp_s = "#{fwcp}*FIFOWeight(ConstPrio)"
+      heurparms << fwcp_s
     end
   end
   if ARGV[a] == "-fwproc"
     fwproc = ARGV[a+1]
     if fwproc.to_i > 0
       fwproc_s = "#{fwproc}*FIFOWeight(PreferProcessed)"
+      heurparms << fwproc_s
     end
   end
   a = a+2
@@ -131,7 +140,11 @@ end
 # cmd = "./ubcsat -alg saps #{paramstring} -inst #{cnf_filename} -cutoff #{cutoff_length} -timeout #{cutoff_time} -target #{qual} -seed #{seed} -r stats stdout default,best"
 #cmd = "eprover1.6tst2  -s -R --cpu-limit=#{cutoff_time} --print-statistics --tstp-in --sine='GSinE(CountFormulas, #{paramstring} )' -tAuto -xAuto #{infilename}"
 
-heur = crswsos_s + crswcp_s + crswng_s + rwsos_s + rwng_s + cwproc_s + fwcp_s + fwproc_s 
+
+
+heur = heurparms.join(",")
+
+# crswsos_s + crswcp_s + crswng_s + rwsos_s + rwng_s + cwproc_s + fwcp_s + fwproc_s 
 
 # heur = "#{crswsos}*ConjectureRelativeSymbolWeight(SimulateSOS,0.5, 100, 100, 100, 100, 1.5, 1.5, 1),#{crswng}*ConjectureRelativeSymbolWeight(PreferNonGoals,0.5, 100, 100, 100, 100, 1.5, 1.5, 1),#{rwsos}*Refinedweight(SimulateSOS,1,1,2,1.5,2),#{rwng}*Refinedweight(PreferNonGoals,1,1,2,1.5,1.5),#{cwproc}*Clauseweight(PreferProcessed,1,1,1),#{fwproc}*FIFOWeight(PreferProcessed)"
 
