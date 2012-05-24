@@ -14,7 +14,7 @@
 # -Ginvfreqconstmin
 
 splaggr { 0, 1 } [1]
-splcl { 4, 7 } [4]
+splcl { 0, 4, 7 } [4]
 prord { arity, invfreq, invfreqconstmin } [invfreqconstmin]
 tord { Auto, LPO4, KBO} [LPO4]
 sel {SelectMaxLComplexAvoidPosPred, SelectNewComplexAHP, SelectComplexG} [SelectMaxLComplexAvoidPosPred]
@@ -29,5 +29,6 @@ fwproc { 0, 1, 2 } [1]
 
 {fwcp=1,fwproc=1}
 {fwcp=1,fwproc=2}
+{fwcp=0,fwproc=0}
 
 
