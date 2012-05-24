@@ -19,20 +19,26 @@ end
 
 # splaggr { 0, 1 } [1]
 # splcl { 4, 7 } [4]
-# sel {SelectMaxLComplexAvoidPosPred,SelectNewComplexAHP,SelectComplexG} [SelectMaxLComplexAvoidPosPred]
+# prord { arity, invfreq, invfreqconstmin } [invfreqconstmin]
+# tord { LPO4, KBO} [LPO4]
+# sel {SelectMaxLComplexAvoidPosPred, SelectNewComplexAHP, SelectComplexG} [SelectMaxLComplexAvoidPosPred]
+# crswcp  {0, 1, 2, 4, 6, 8, 10} [0]
 # crswsos {0,1,2,3,4,6,8} [0]
 # crswng  {0,1,2,3,4,6,8} [0]
 # rwsos { 0,1,2,4,6,8,10 } [4]
 # rwng { 0,1,2,3,4,6,8,10 } [3]
-# cwproc { 1,2 } [1]
+# cwproc { 0,1,2 } [1]
+# fwcp { 0, 1, 2} [0]
 # fwproc { 1,2 } [1]
 
 splaggr_s = ""
+crswcp_s = ""
 crswsos_s = ""
 crswng_s = ""
 rwsos_s = ""
 rwng_s = ""
 cwproc_s  = ""
+fwcp_s = ""
 fwproc_s = ""
 
 
@@ -57,6 +63,12 @@ while a < ARGV.length
   end
   if ARGV[a] == "-splcl"
     splcl =  ARGV[a+1]
+  end
+  if ARGV[a] == "-crswcp"
+    crswcp = ARGV[a+1]
+    if crswcp.to_i > 0
+      crswscp_s = "#{crswcp}*ConjectureRelativeSymbolWeight(ConstPrio,0.1, 100, 100, 100, 100, 1.5, 1.5, 1.5),"
+    end
   end
   if ARGV[a] == "-crswsos"
     crswsos = ARGV[a+1]
@@ -88,6 +100,12 @@ while a < ARGV.length
       cwproc_s = "#{cwproc}*Clauseweight(PreferProcessed,1,1,1),"
     end
   end
+  if ARGV[a] == "-fwcp"
+    fwcp = ARGV[a+1]
+    if fwcp.to_i > 0
+      fwcp_s = "#{fwcp}*FIFOWeight(ConstPrio),"
+    end
+  end
   if ARGV[a] == "-fwproc"
     fwproc = ARGV[a+1]
     if fwproc.to_i > 0
@@ -106,7 +124,7 @@ end
 # cmd = "./ubcsat -alg saps #{paramstring} -inst #{cnf_filename} -cutoff #{cutoff_length} -timeout #{cutoff_time} -target #{qual} -seed #{seed} -r stats stdout default,best"
 #cmd = "eprover1.6tst2  -s -R --cpu-limit=#{cutoff_time} --print-statistics --tstp-in --sine='GSinE(CountFormulas, #{paramstring} )' -tAuto -xAuto #{infilename}"
 
-heur = crswsos_s + crswng_s + rwsos_s + rwng_s + cwproc_s + fwproc_s 
+heur = crswsos_s + crswcp_s + crswng_s + rwsos_s + rwng_s + cwproc_s + fwcp_s + fwproc_s 
 
 # heur = "#{crswsos}*ConjectureRelativeSymbolWeight(SimulateSOS,0.5, 100, 100, 100, 100, 1.5, 1.5, 1),#{crswng}*ConjectureRelativeSymbolWeight(PreferNonGoals,0.5, 100, 100, 100, 100, 1.5, 1.5, 1),#{rwsos}*Refinedweight(SimulateSOS,1,1,2,1.5,2),#{rwng}*Refinedweight(PreferNonGoals,1,1,2,1.5,1.5),#{cwproc}*Clauseweight(PreferProcessed,1,1,1),#{fwproc}*FIFOWeight(PreferProcessed)"
 
