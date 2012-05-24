@@ -17,13 +17,13 @@ else
         qual = instance_specifics.split[0]
 end
 
-sel {SelectMaxLComplexAvoidPosPred,SelectNewComplexAHP,SelectComplexG} [SelectMaxLComplexAvoidPosPred]
-crswsos {0,1,2,3,4,6,8} [0]
-crswng  {0,1,2,3,4,6,8} [0]
-rwsos { 0,1,2,4,6,8,10 } [4]
-rwng { 0,1,2,3,4,6,8,10 } [3]
-cwproc { 1,2 } [1]
-fwproc { 1,2 } [1]
+# sel {SelectMaxLComplexAvoidPosPred,SelectNewComplexAHP,SelectComplexG} [SelectMaxLComplexAvoidPosPred]
+# crswsos {0,1,2,3,4,6,8} [0]
+# crswng  {0,1,2,3,4,6,8} [0]
+# rwsos { 0,1,2,4,6,8,10 } [4]
+# rwng { 0,1,2,3,4,6,8,10 } [3]
+# cwproc { 1,2 } [1]
+# fwproc { 1,2 } [1]
 
 
 
