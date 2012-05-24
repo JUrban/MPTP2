@@ -78,6 +78,7 @@ while a < ARGV.length
     cwproc = ARGV[a+1]
     if cwproc > 0
       cwproc_s = "#{cwproc}*Clauseweight(PreferProcessed,1,1,1),"
+    end
   end
   if ARGV[a] == "-fwproc"
     fwproc = ARGV[a+1]
