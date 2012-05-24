@@ -103,7 +103,7 @@ while a < ARGV.length
   if ARGV[a] == "-fwcp"
     fwcp = ARGV[a+1]
     if fwcp.to_i > 0
-      fwcp_s = "#{fwcp}*FIFOWeight(ConstPrio),"
+      fwcp_s = "#{fwcp}*FIFOWeight(ConstPrio)"
     end
   end
   if ARGV[a] == "-fwproc"
