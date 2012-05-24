@@ -53,7 +53,7 @@ while a < ARGV.length
   if ARGV[a] == "-crswsos"
     crswsos = ARGV[a+1]
     if crswsos.to_i > 0
-      crswsos_s = "#{crswsos}*ConjectureRelativeSymbolWeight(SimulateSOS,0.5, 100, 100, 100, 100, 1.5, 1.5, 1)"
+      crswsos_s = "#{crswsos}*ConjectureRelativeSymbolWeight(SimulateSOS,0.5, 100, 100, 100, 100, 1.5, 1.5, 1),"
     end
   end
   if ARGV[a] == "-crswng"
