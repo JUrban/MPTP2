@@ -26,6 +26,13 @@ end
 # fwproc { 1,2 } [1]
 
 
+crswsos_s = ""
+crswng_s = ""
+rwsos_s = ""
+rwng_s = ""
+cwproc_s  = ""
+fwproc_s = ""
+
 
 a = 5
 while a < ARGV.length
@@ -45,21 +52,38 @@ while a < ARGV.length
   end
   if ARGV[a] == "-crswsos"
     crswsos = ARGV[a+1]
+    if crswsos > 0
+      crswsos_s = "#{crswsos}*ConjectureRelativeSymbolWeight(SimulateSOS,0.5, 100, 100, 100, 100, 1.5, 1.5, 1)"
+    end
   end
   if ARGV[a] == "-crswng"
     crswng = ARGV[a+1]
+    if crswng > 0
+      crswng_s = "#{crswng}*ConjectureRelativeSymbolWeight(PreferNonGoals,0.5, 100, 100, 100, 100, 1.5, 1.5, 1),"
+    end
   end
   if ARGV[a] == "-rwsos"
     rwsos = ARGV[a+1]
+    if rwsos > 0
+      rwsos_s = "#{rwsos}*Refinedweight(SimulateSOS,1,1,2,1.5,2),"
+    end
   end
   if ARGV[a] == "-rwng"
     rwng = ARGV[a+1]
+    if rwng > 0
+      rwng_s = "#{rwng}*Refinedweight(PreferNonGoals,1,1,2,1.5,1.5),"
+    end
   end
   if ARGV[a] == "-cwproc"
     cwproc = ARGV[a+1]
+    if cwproc > 0
+      cwproc_s = "#{cwproc}*Clauseweight(PreferProcessed,1,1,1),"
   end
   if ARGV[a] == "-fwproc"
     fwproc = ARGV[a+1]
+    if fwproc > 0
+      fwproc_s = "#{fwproc}*FIFOWeight(PreferProcessed)"
+    end
   end
   a = a+2
 end
@@ -73,7 +97,9 @@ end
 # cmd = "./ubcsat -alg saps #{paramstring} -inst #{cnf_filename} -cutoff #{cutoff_length} -timeout #{cutoff_time} -target #{qual} -seed #{seed} -r stats stdout default,best"
 #cmd = "eprover1.6tst2  -s -R --cpu-limit=#{cutoff_time} --print-statistics --tstp-in --sine='GSinE(CountFormulas, #{paramstring} )' -tAuto -xAuto #{infilename}"
 
-heur = "#{crswsos}*ConjectureRelativeSymbolWeight(SimulateSOS,0.5, 100, 100, 100, 100, 1.5, 1.5, 1),#{crswng}*ConjectureRelativeSymbolWeight(PreferNonGoals,0.5, 100, 100, 100, 100, 1.5, 1.5, 1),#{rwsos}*Refinedweight(SimulateSOS,1,1,2,1.5,2),#{rwng}*Refinedweight(PreferNonGoals,1,1,2,1.5,1.5),#{cwproc}*Clauseweight(PreferProcessed,1,1,1),#{fwproc}*FIFOWeight(PreferProcessed)"
+heur = crswsos_s + crswng_s + rwsos_s + rwng_s + cwproc_s + fwproc_s 
+
+# heur = "#{crswsos}*ConjectureRelativeSymbolWeight(SimulateSOS,0.5, 100, 100, 100, 100, 1.5, 1.5, 1),#{crswng}*ConjectureRelativeSymbolWeight(PreferNonGoals,0.5, 100, 100, 100, 100, 1.5, 1.5, 1),#{rwsos}*Refinedweight(SimulateSOS,1,1,2,1.5,2),#{rwng}*Refinedweight(PreferNonGoals,1,1,2,1.5,1.5),#{cwproc}*Clauseweight(PreferProcessed,1,1,1),#{fwproc}*FIFOWeight(PreferProcessed)"
 
 params1 = " -s -R --memory-limit=Auto --print-statistics --definitional-cnf=24 --tstp-format --split-aggressive --split-clauses=4 --simul-paramod --forward-context-sr --destructive-er-aggressive --destructive-er --prefer-initial-clauses -t#{tord} #{prord} -F1 --delete-bad-limit=150000000 -W#{sel} -H'(" + heur + ")' --cpu-limit=#{cutoff_time} #{infilename}"
 
