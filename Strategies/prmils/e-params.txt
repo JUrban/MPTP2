@@ -11,6 +11,8 @@
 # -winvfreqrank -c1 -Ginvfreq
 # -Ginvfreqconstmin
 
+splaggr { 0, 1 } [1]
+splcl { 4, 7 } [4]
 prord { arity, invfreq, invfreqconstmin } [invfreqconstmin]
 tord { LPO4, KBO} [LPO4]
 sel {SelectMaxLComplexAvoidPosPred, SelectNewComplexAHP, SelectComplexG} [SelectMaxLComplexAvoidPosPred]
