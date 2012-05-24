@@ -17,22 +17,38 @@ else
         qual = instance_specifics.split[0]
 end
 
+sel {SelectMaxLComplexAvoidPosPred,SelectNewComplexAHP,SelectComplexG} [SelectMaxLComplexAvoidPosPred]
+crswsos {0,1,2,3,4,6,8} [0]
+crswng  {0,1,2,3,4,6,8} [0]
+rwsos { 0,1,2,4,6,8,10 } [4]
+rwng { 0,1,2,3,4,6,8,10 } [3]
+cwproc { 1,2 } [1]
+fwproc { 1,2 } [1]
+
+
+
 a = 5
 while a < ARGV.length
-  if ARGV[a] == "-depth"
-    depth = ARGV[a+1]
+  if ARGV[a] == "-sel"
+    sel = ARGV[a+1]
   end
-  if ARGV[a] == "-benevolence"
-    ben = ARGV[a+1]
+  if ARGV[a] == "-crswsos"
+    crswsos = ARGV[a+1]
   end
-  if ARGV[a] == "-hyp"
-    hyp = ARGV[a+1]
+  if ARGV[a] == "-crswng"
+    crswng = ARGV[a+1]
   end
-  if ARGV[a] == "-size"
-    size = ARGV[a+1]
+  if ARGV[a] == "-rwsos"
+    rwsos = ARGV[a+1]
   end
-  if ARGV[a] == "-fraction"
-    frac = ARGV[a+1]
+  if ARGV[a] == "-rwng"
+    rwng = ARGV[a+1]
+  end
+  if ARGV[a] == "-cwproc"
+    cwproc = ARGV[a+1]
+  end
+  if ARGV[a] == "-fwproc"
+    fwproc = ARGV[a+1]
   end
   a = a+2
 end
