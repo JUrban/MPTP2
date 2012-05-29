@@ -18,7 +18,9 @@
 # -WSelectMaxLComplexAvoidPosPred 
 # -winvfreqrank -c1 -Ginvfreq
 # -Ginvfreqconstmin
+# --split-reuse-defs
 
+srd { 0, 1 } [0]
 forwardcntxtsr { 0 , 1 } [1]
 simparamod { none, normal, oriented } [normal]
 splaggr { 0, 1 } [1]
@@ -34,6 +36,6 @@ rwng { 0, 1, 2, 3, 4, 6, 8, 10 } [3]
 cwproc { 0, 1, 2 } [1]
 fwcp { 0, 1 } [0]
 fwproc { 0, 1, 2 } [1]
-
+cwcp { 0, 1, ,4,8,12} [0]
 
 
