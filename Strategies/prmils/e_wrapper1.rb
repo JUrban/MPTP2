@@ -41,6 +41,8 @@ rwng_s = ""
 cwproc_s  = ""
 fwcp_s = ""
 fwproc_s = ""
+forwardcntxtsr_s = ""
+simparamod_s =""
 
 heurparms = []
 
@@ -80,6 +82,12 @@ while a < ARGV.length
     splcl =  ARGV[a+1]
     if splcl.to_i > 0
       splcl_s = "--split-clauses=#{splcl}"
+    end
+  end
+  if ARGV[a] == "-forwardcntxtsr"
+    forwardcntxtsr =  ARGV[a+1]
+    if forwardcntxtsr.to_i > 0
+      forwardcntxtsr_s = "--forward-context-sr"
     end
   end
   if ARGV[a] == "-crswcp"
