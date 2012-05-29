@@ -19,7 +19,13 @@
 # -winvfreqrank -c1 -Ginvfreq
 # -Ginvfreqconstmin
 # --split-reuse-defs
+# Refinedweight(PreferGroundGoals,2,1,2,1.0,1)
+# Clauseweight(ByCreationDate,2,1,0.8)
 
+
+
+cwbcd {0,1} [0]
+rwpgg { 0,1,2,4,8,10} [0]
 srd { 0, 1 } [0]
 forwardcntxtsr { 0 , 1 } [1]
 simparamod { none, normal, oriented } [normal]
@@ -37,5 +43,6 @@ cwproc { 0, 1, 2 } [1]
 fwcp { 0, 1 } [0]
 fwproc { 0, 1, 2 } [1]
 cwcp { 0, 1, ,4,8,12} [0]
+
 
 

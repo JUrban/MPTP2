@@ -45,6 +45,8 @@ forwardcntxtsr_s = ""
 simparamod_s =""
 srd_s = ""
 cwcp_s = ""
+rwpgg_s = ""
+cwbcd_s = ""
 
 heurparms = []
 
@@ -126,6 +128,13 @@ while a < ARGV.length
       heurparms << rwsos_s
     end
   end
+  if ARGV[a] == "-cwbcd"
+    cwbcd = ARGV[a+1]
+    if cwbcd.to_i > 0
+      cwbcd_s = "#{cwbcd}*Clauseweight(ByCreationDate,2,1,0.8)"
+      heurparms << cwbcd_s
+    end
+  end
   if ARGV[a] == "-rwng"
     rwng = ARGV[a+1]
     if rwng.to_i > 0
@@ -145,6 +154,13 @@ while a < ARGV.length
     if cwcp.to_i > 0
       cwcp_s = "#{cwcp}*Clauseweight(ConstPrio,3,1,1)"
       heurparms << cwcp_s
+    end
+  end
+  if ARGV[a] == "-rwpgg"
+    rwpgg = ARGV[a+1]
+    if rwpgg.to_i > 0
+      rwpgg_s = "#{rwpgg}*Refinedweight(PreferGroundGoals,2,1,2,1.0,1)"
+      heurparms << rwpgg_s
     end
   end
   if ARGV[a] == "-fwcp"
