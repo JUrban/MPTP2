@@ -21,9 +21,11 @@
 # --split-reuse-defs
 # Refinedweight(PreferGroundGoals,2,1,2,1.0,1)
 # Clauseweight(ByCreationDate,2,1,0.8)
+# ConjectureSymbolWeight(ConstPrio,10,10,5,5,5,1.5,1.5,1.5)
 
 
 
+cswcp { 0, 1, 2, 4, 7, 10} [0]
 cwbcd {0,1} [0]
 rwpgg { 0,1,2,4,8,10} [0]
 srd { 0, 1 } [0]

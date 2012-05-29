@@ -47,6 +47,8 @@ srd_s = ""
 cwcp_s = ""
 rwpgg_s = ""
 cwbcd_s = ""
+cswcp_s = ""
+
 
 heurparms = []
 
@@ -119,6 +121,13 @@ while a < ARGV.length
     if crswng.to_i > 0
       crswng_s = "#{crswng}*ConjectureRelativeSymbolWeight(PreferNonGoals,0.5, 100, 100, 100, 100, 1.5, 1.5, 1)"
       heurparms << crswng_s
+    end
+  end
+  if ARGV[a] == "-cswcp"
+    cswcp = ARGV[a+1]
+    if cswcp.to_i > 0
+      cswcp_s = "#{cswcp}*ConjectureSymbolWeight(ConstPrio,10,10,5,5,5,1.5,1.5,1.5)"
+      heurparms << cswcp_s
     end
   end
   if ARGV[a] == "-rwsos"
