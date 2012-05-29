@@ -166,7 +166,7 @@ heur = heurparms.join(",")
 
 # heur = "#{crswsos}*ConjectureRelativeSymbolWeight(SimulateSOS,0.5, 100, 100, 100, 100, 1.5, 1.5, 1),#{crswng}*ConjectureRelativeSymbolWeight(PreferNonGoals,0.5, 100, 100, 100, 100, 1.5, 1.5, 1),#{rwsos}*Refinedweight(SimulateSOS,1,1,2,1.5,2),#{rwng}*Refinedweight(PreferNonGoals,1,1,2,1.5,1.5),#{cwproc}*Clauseweight(PreferProcessed,1,1,1),#{fwproc}*FIFOWeight(PreferProcessed)"
 
-params1 = " -s -R --memory-limit=Auto --print-statistics --definitional-cnf=24 --tstp-format #{splaggr_s} #{splcl_s}  #{simparamod_s} --forward-context-sr --destructive-er-aggressive --destructive-er --prefer-initial-clauses -t#{tord} #{prord} -F1 --delete-bad-limit=150000000 -W#{sel} -H'(" + heur + ")' --cpu-limit=#{cutoff_time} #{infilename}"
+params1 = " -s -R --memory-limit=Auto --print-statistics --definitional-cnf=24 --tstp-format #{splaggr_s} #{splcl_s}  #{simparamod_s} #{forwardcntxtsr_s} --destructive-er-aggressive --destructive-er --prefer-initial-clauses -t#{tord} #{prord} -F1 --delete-bad-limit=150000000 -W#{sel} -H'(" + heur + ")' --cpu-limit=#{cutoff_time} #{infilename}"
 
 # 4*Refinedweight(SimulateSOS,1,1,2,1.5,2),3*Refinedweight(PreferNonGoals,1,1,2,1.5,1.5),1*Clauseweight(PreferProcessed,1,1,1),1*FIFOWeight(PreferProcessed))' -s --print-statistics --print-pid --resources-info --memory-limit=192 -s -R --cpu-limit=5 --memory-limit=Auto --tstp-format --print-statistics
 
