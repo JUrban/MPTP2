@@ -47,8 +47,8 @@ sub PrintProbStrFiles
 	{
 	    if(($v->{$p}{$k}>=$min) && ($v->{$p}{$k}<=$max))
 	    {
-		print F ("$gprobprefix", "$k:$v->{$p}{$k}", ".p\n");
-		print F1 ("$gprobprefix", "$k:$v->{$p}{$k}", ".p\n");
+		print F ("$gprobprefix", "$k", ".p\n");
+		print F1 ("$gprobprefix", "$k", ".p\n");
 	    }
 	}
 	close(F); close (F1);
