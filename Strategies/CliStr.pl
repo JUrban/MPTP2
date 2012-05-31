@@ -17,6 +17,7 @@ my $gPIexmpldir = $gPIdir . "/example_data";
 
 my $gstratsdir = "strats";
 
+my $gprobprefix = 'example_data/e1/';
 
 my $gmaxstr = shift;
 my $gminstrprobs = shift;
@@ -38,11 +39,19 @@ sub PrintProbStr
 sub PrintProbStrFiles
 {
     my ($v,$iter,$min,$max) = @_;
-    foreach my $p (sort keys %$v) {
-	print "\n$p:\n";
-	foreach my $k (sort keys %{$v->{$p}}) {
-	    print "$k:$v->{$p}{$k}\n" if(($v->{$p}{$k}>=$min) && ($v->{$p}{$k}<=$max));
+    foreach my $p (sort keys %$v)
+    {
+	open(F,">$gPIexmpldir/$p.$iter.txt");
+	open(F1,">$gPIexmpldir/$p.$iter.tst");
+	foreach my $k (sort keys %{$v->{$p}})
+	{
+	    if(($v->{$p}{$k}>=$min) && ($v->{$p}{$k}<=$max))
+	    {
+		print F ("$gprobprefix", "$k:$v->{$p}{$k}", ".p\n");
+		print F1 ("$gprobprefix", "$k:$v->{$p}{$k}", ".p\n");
+	    }
 	}
+	close(F); close (F1);
     }
 }
 
@@ -71,16 +80,16 @@ sub TopStratProbs
 
     foreach my $k (keys %g) { $c{$g{$k}}++ if( ($h{$k} >= $min) &&  ($h{$k}<=$max)); }
 
-    print %c,"\n";
+    #print %c,"\n";
 
     foreach my $s (keys %c) { $c{$s}=0 if( $c{$s} < $minstrprobs ); }
 
-    print %c,"\n";
+    #print %c,"\n";
 
     my $cnt = 0;
     foreach my $s (sort {$c{$b} <=> $c{$a}} keys %c) { $cnt++; $c{$s}=0 if($cnt > $maxstr); }
 
-    print %c,"\n";
+    #print %c,"\n";
 
     foreach my $k (sort keys %h)
     {
@@ -95,4 +104,4 @@ my ($h,$v) = TopStratProbs($gmaxstr,$gminstrprobs,500,30000);
 
 PrintProbStr($v,500,30000);
 
-
+PrintProbStrFiles($v,10,500,30000);
