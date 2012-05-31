@@ -43,11 +43,12 @@ sub TopStratProbs
 	$v{$g{$k}}{$k}=$h{$k};
     }
 
-    PrintProbStr(\%v,500,30000);
-
     return (\%h, \%v);
 }
 
 
-TopStratProbs();
+my ($h,$v) = TopStratProbs();
+
+PrintProbStr($v,500,30000);
+
 
