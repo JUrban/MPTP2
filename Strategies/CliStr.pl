@@ -18,6 +18,12 @@ my $gPIexmpldir = $gPIdir . "/example_data";
 my $gstratsdir = "strats";
 
 
+my $gmaxstr = shift;
+my $gminstrprobs = shift;
+
+$gmaxstr = 20 unless(defined($gmaxstr));
+$gminstrprobs = 8 unless(defined($gminstrprobs));
+
 sub PrintProbStr
 {
     my ($v,$min,$max) = @_;
@@ -80,7 +86,7 @@ sub TopStratProbs
 }
 
 
-my ($h,$v) = TopStratProbs(5,8);
+my ($h,$v) = TopStratProbs($gmaxstr,$gminstrprobs);
 
 PrintProbStr($v,500,30000);
 
