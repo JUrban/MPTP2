@@ -6,6 +6,20 @@
 
 use strict;
 
+my $stratsdir = "strats";
+
+
+sub PrintProbStr
+{
+    my ($v,$min,$max) = @_;
+    foreach my $p (sort keys %$v) {
+	print "\n$p:\n";
+	foreach my $k (sort keys %{$v->{$p}}) {
+	    print "$k:$v->{$p}{$k}\n" if(($v->{$p}{$k}>=$min) && ($v->{$p}{$k}<=$max));
+	}
+    }
+}
+
 sub TopStratProbs
 {
     my %g = ();
@@ -29,13 +43,11 @@ sub TopStratProbs
 	$v{$g{$k}}{$k}=$h{$k};
     }
 
-    foreach my $p (sort keys %v) {
-	print "\n$p:\n";
-	foreach my $k (sort keys %{$v{$p}}) {
-	    print "$k:$h{$k}\n" if(($h{$k}>500) && ($h{$k}<30000));
-	}
-    }
+    PrintProbStr(\%v,500,30000);
+
+    return (\%h, \%v);
 }
+
 
 TopStratProbs();
 
