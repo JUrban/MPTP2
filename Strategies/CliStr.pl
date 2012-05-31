@@ -71,11 +71,16 @@ sub TopStratProbs
 
     foreach my $s (values %g) { $c{$s}++; }
 
+    print %c,"\n";
+
     foreach my $s (keys %c) { $c{$s}=0 if( $c{$s} < $minstrprobs ); }
+
+    print %c,"\n";
 
     my $cnt = 0;
     foreach my $s (sort {$c{$b} <=> $c{$a}} keys %c) { $cnt++; $c{$s}=0 if($cnt > $maxstr); }
 
+    print %c,"\n";
 
     foreach my $k (sort keys %h)
     {
