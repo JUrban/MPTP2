@@ -4,8 +4,6 @@
 
 use strict;
 
-
-
 sub TopStratProbs
 {
     my %g = ();
@@ -36,3 +34,6 @@ sub TopStratProbs
 	}
     }
 }
+
+TopStratProbs();
+
