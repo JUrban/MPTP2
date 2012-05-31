@@ -80,7 +80,7 @@ sub TopStratProbs
 }
 
 
-my ($h,$v) = TopStratProbs(20,8);
+my ($h,$v) = TopStratProbs(5,8);
 
 PrintProbStr($v,500,30000);
 
