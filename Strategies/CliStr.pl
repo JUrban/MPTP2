@@ -49,7 +49,7 @@ sub PrintProbStrFiles
 
 sub TopStratProbs
 {
-    my ($maxstr,$minstrprobs) = @_;
+    my ($maxstr,$minstrprobs,$min,$max) = @_;
     my %g = ();
     my %h = ();
     my %i = ();
@@ -69,7 +69,7 @@ sub TopStratProbs
 	}
     }
 
-    foreach my $s (values %g) { $c{$s}++; }
+    foreach my $k (keys %g) { $c{$g{$k}}++ if( ($h{$k} >= $min) &&  ($h{$k}<=$max)); }
 
     print %c,"\n";
 
@@ -91,7 +91,7 @@ sub TopStratProbs
 }
 
 
-my ($h,$v) = TopStratProbs($gmaxstr,$gminstrprobs);
+my ($h,$v) = TopStratProbs($gmaxstr,$gminstrprobs,500,30000);
 
 PrintProbStr($v,500,30000);
 
