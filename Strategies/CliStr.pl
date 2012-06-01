@@ -41,6 +41,7 @@ my %gstrnames =
      'protokoll_my19simple' => 'zz37',
      'protokoll_my17simple' => 'zz36',
      'protokoll_my18simple' => 'zz-my18simple',
+     'protokoll_my18simple_KBO' => 'zz-my18simple_KBO',
      'protokoll_my9simple' => 'zz23',
      'protokoll_my5simple' => 'zz13',
 
@@ -50,6 +51,7 @@ my %gstrnames =
      'protokoll_cnf_my19simple' => 'zz37',
      'protokoll_cnf_my17simple' => 'zz36',
      'protokoll_cnf_my18simple' => 'zz-my18simple',
+     'protokoll_cnf_my18simple_KBO' => 'zz-my18simple_KBO',
      'protokoll_cnf_my9simple' => 'zz23',
      'protokoll_cnf_my5simple' => 'zz13'
     );
