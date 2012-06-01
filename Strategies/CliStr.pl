@@ -65,7 +65,7 @@ sub PrintScenario
     if(exists $gstrnames{$prot})
     {
 
-	print "time ./param_ils_2_3_run.rb -numRun 0 -scenariofile example_e1/scenario-$prot.$iter.txt -N 10000 -validN 30 -init $gstrnames{$prot} >$prot.$iter.mylog\n";
+	print "time ./param_ils_2_3_run.rb -numRun 0 -scenariofile example_e1/scenario-$prot.$iter.txt -N 10000 -validN 30 -init $gstrnames{$prot} >$prot.$iter.mylog & \n";
 
 	open(F,">$gPIscendir/scenario-$prot.$iter.txt");
 
