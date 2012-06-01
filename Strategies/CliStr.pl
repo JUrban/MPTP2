@@ -38,7 +38,7 @@ my %gstrnames =
      'protokoll_my22simple' => 'zz-my22simple',
      'protokoll_my21simple' => 'zz-my21simple',
      'protokoll_my20simple' => 'zz-my20simple',
-     'protokoll_my19simple' => 'zz37',
+     'protokoll_my19simple' => 'zz-my19simple',
      'protokoll_my17simple' => 'zz36',
      'protokoll_my18simple' => 'zz-my18simple',
      'protokoll_my18simple_KBO' => 'zz-my18simple_KBO',
@@ -48,7 +48,7 @@ my %gstrnames =
      'protokoll_cnf_my22simple' => 'zz-my22simple',
      'protokoll_cnf_my21simple' => 'zz-my21simple',
      'protokoll_cnf_my20simple' => 'zz-my20simple',
-     'protokoll_cnf_my19simple' => 'zz37',
+     'protokoll_cnf_my19simple' => 'zz-my19simple',
      'protokoll_cnf_my17simple' => 'zz36',
      'protokoll_cnf_my18simple' => 'zz-my18simple',
      'protokoll_cnf_my18simple_KBO' => 'zz-my18simple_KBO',
@@ -83,7 +83,6 @@ paramfile = example_e1/e-params.txt
 outdir = example_e1/paramils-out
 instance_file = example_data/$prot.$iter.txt
 test_instance_file = example_data/$prot.$iter.tst
-
 SCEN
 
 	close(F);
