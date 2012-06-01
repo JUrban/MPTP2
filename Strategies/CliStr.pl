@@ -15,15 +15,46 @@ my $gPIdir = '/home/mptp/big/ec/paramils2.3.5-source';
 
 my $gPIexmpldir = $gPIdir . "/example_data";
 
+my $gPIscendir = $gPIdir . "/example_e1";
+
 my $gstratsdir = "strats";
 
-my $gprobprefix = 'example_data/e1/';
+my $gprobprefix = 'example_data/e1/'; # ecnf1
+
+my $gprobsuffix = '.p'; # .p.leancop.cnf
 
 my $gmaxstr = shift;
 my $gminstrprobs = shift;
 
 $gmaxstr = 20 unless(defined($gmaxstr));
 $gminstrprobs = 8 unless(defined($gminstrprobs));
+
+
+sub PrintScenario
+{
+    my ($prot,$iter) = @_;
+
+    open(F,">$gPIscendir/scenario-$prot.$iter.txt");
+
+
+    print F <<SCEN;
+algo = ruby e_wrapper1.rb
+execdir = example_e1
+deterministic = 0
+run_obj = runlength
+overall_obj = mean
+cutoff_time = 3
+cutoff_length = max
+tunerTimeout = 20060
+paramfile = example_e1/e-params.txt
+outdir = example_e1/paramils-out
+instance_file = example_data/$prot.$iter.txt
+test_instance_file = example_data/$prot.$iter.tst
+
+SCEN
+
+    close(F);
+}
 
 sub PrintProbStr
 {
@@ -41,14 +72,15 @@ sub PrintProbStrFiles
     my ($v,$iter,$min,$max) = @_;
     foreach my $p (sort keys %$v)
     {
+	PrintScenario($p,$iter);
 	open(F,">$gPIexmpldir/$p.$iter.txt");
 	open(F1,">$gPIexmpldir/$p.$iter.tst");
 	foreach my $k (sort keys %{$v->{$p}})
 	{
 	    if(($v->{$p}{$k}>=$min) && ($v->{$p}{$k}<=$max))
 	    {
-		print F ("$gprobprefix", "$k", ".p\n");
-		print F1 ("$gprobprefix", "$k", ".p\n");
+		print F ("$gprobprefix", "$k", $gprobsuffix, "\n");
+		print F1 ("$gprobprefix", "$k", $gprobsuffix, "\n");
 	    }
 	}
 	close(F); close (F1);
