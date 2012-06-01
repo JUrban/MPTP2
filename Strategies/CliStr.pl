@@ -19,9 +19,12 @@ my $gPIscendir = $gPIdir . "/example_e1";
 
 my $gstratsdir = "strats";
 
-my $gprobprefix = 'example_data/e1/'; # ecnf1
+#my $gprobprefix = 'example_data/e1/'; # ecnf1
+my $gprobprefix = 'example_data/ecnf1';
 
-my $gprobsuffix = '.p'; # .p.leancop.cnf
+
+#my $gprobsuffix = '.p'; # .p.leancop.cnf
+my $gprobsuffix = '.p.leancop.cnf';
 
 my $gmaxstr = shift;
 my $gminstrprobs = shift;
@@ -30,14 +33,42 @@ $gmaxstr = 20 unless(defined($gmaxstr));
 $gminstrprobs = 8 unless(defined($gminstrprobs));
 
 
+my %gstrnames = 
+    (
+     'protokoll_my22simple' => 'zz-my22simple',
+     'protokoll_my21simple' => 'zz-my21simple',
+     'protokoll_my20simple' => 'zz-my20simple',
+     'protokoll_my19simple' => 'zz37',
+     'protokoll_my17simple' => 'zz36',
+     'protokoll_my18simple' => 'zz-my18simple',
+     'protokoll_my9simple' => 'zz23',
+     'protokoll_my5simple' => 'zz13',
+
+     'protokoll_cnf_my22simple' => 'zz-my22simple',
+     'protokoll_cnf_my21simple' => 'zz-my21simple',
+     'protokoll_cnf_my20simple' => 'zz-my20simple',
+     'protokoll_cnf_my19simple' => 'zz37',
+     'protokoll_cnf_my17simple' => 'zz36',
+     'protokoll_cnf_my18simple' => 'zz-my18simple',
+     'protokoll_cnf_my9simple' => 'zz23',
+     'protokoll_cnf_my5simple' => 'zz13'
+    );
+
+
+
 sub PrintScenario
 {
     my ($prot,$iter) = @_;
 
-    open(F,">$gPIscendir/scenario-$prot.$iter.txt");
+    if(exists $gstrnames{$prot})
+    {
+
+	print "time ./param_ils_2_3_run.rb -numRun 0 -scenariofile example_e1/scenario-$prot.$iter.txt -N 10000 -validN 30 -init $gstrnames{$prot} >$prot.$iter.mylog\n";
+
+	open(F,">$gPIscendir/scenario-$prot.$iter.txt");
 
 
-    print F <<SCEN;
+	print F <<SCEN;
 algo = ruby e_wrapper1.rb
 execdir = example_e1
 deterministic = 0
@@ -53,7 +84,8 @@ test_instance_file = example_data/$prot.$iter.tst
 
 SCEN
 
-    close(F);
+	close(F);
+    }
 }
 
 sub PrintProbStr
