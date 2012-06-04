@@ -2385,6 +2385,7 @@ sub RunProblems
 
 		my $eproof_pid = open(EP,"cat $file.out1 |grep file|") or die("Cannot start grep");
 		$proved_by{$conj} = [];
+		while ($_=<EP>)
 		{
 		    m/.*, *file\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $file: $_";
 		    my $ref = $1;
