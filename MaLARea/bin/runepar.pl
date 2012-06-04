@@ -178,13 +178,13 @@ foreach my $strat (@strats)
 
 	if ($status eq szs_COUNTERSAT)
 	{
-	    print '# SZS status ', szs_COUNTERSAT;
+	    print '# SZS status ', szs_COUNTERSAT, "\n";
 	    exit(0);
 	}
 	elsif ($status eq szs_THEOREM)
 	{
 	    my $sinestr = '';
-	    print '# SZS status ', szs_THEOREM;
+	    print '# SZS status ', szs_THEOREM, "\n";
 	    if(($sine == 1) && exists($nsinestr{$strat})) { $sinestr = ' --sine=Auto '; }
 	    `ulimit -t 61; bin/eprover $sdef{$strat} $sinestr --cpu-limit=60 --memory-limit=Auto --tstp-in -l4 -o- --pcl-terms-compressed --pcl-compact $file |bin/epclextract --tstp-out -f -C --competition-framing > $file.out1`;
 
@@ -195,6 +195,6 @@ foreach my $strat (@strats)
     }
 }
 
-print '# SZS status ', $status;
+print '# SZS status ', $status, "\n";
 exit(0);
 
