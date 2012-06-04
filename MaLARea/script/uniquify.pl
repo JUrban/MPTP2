@@ -158,6 +158,7 @@ sub ReadLTB
 	    if($gconjnaming == 1)
 	    {
 		$tptpname = `grep 'fof(.*, *conjecture[ ,]' $pname | sed -e 's/^.*fof( *\\([^ ,]*\\) *, *conjecture.*/\\1/'`;
+		chomp($tptpname);
 	    }
 	    die "Non-unique TPTP-fied basenames not allowed: $file, $tptpname, $pname, $gltbprobnames{$file}->[0]"
 		if(exists $gltbprobnames{$tptpname});
