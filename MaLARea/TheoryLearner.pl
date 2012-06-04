@@ -2828,7 +2828,8 @@ sub Iterate
 		{
 		    print PROVED_BY_0 "$_\n";
 		    my @needed_refs = split(/\,/, $needed_str);
-		    push( @{$proved_by_0{$conj}}, @needed_refs);
+		    my @existing_refs = grep { exists($grefnr{$_}) } @needed_refs;
+		    push( @{$proved_by_0{$conj}}, @existing_refs);
 		}
 		# only warning here, some MPTP files could be removed for various
 		# buggyness reasons, and it's a pain to die here
