@@ -2573,7 +2573,7 @@ sub SetupProblemsFromProblemsFile
     %gltbnames = ();
     if($guniquify > 0)
     {
-	`script/uniquify.pl  -f200000 $problems_file $file_prefix "$filestem.pmap" "$filestem.fmap"`;
+	`script/uniquify.pl  -f200000 -m0 $problems_file $file_prefix "$filestem.pmap" "$filestem.fmap"`;
 	open(PF,"$filestem.pmap") or die "$filestem.pmap not readable";
 	while($_=<PF>)
 	{
