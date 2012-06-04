@@ -133,10 +133,20 @@ sub ReadLTB
 
     open(LTB, $ltbfile) or die "$ltbfile not readable";
 
+    my $readprobs = 0;
+
     %gltbprobnames = ();
     while($_=<LTB>)
     {
-	if(m/^\s*(\S+)\s+(\S+)\s*$/)
+	if(m/^\s*%\s*SZS\s+start\s+BatchProblems/)
+	{
+	    $readprobs = 1;
+	}
+	if(m/^\s*%\s*SZS\s+end\s+BatchProblems/)
+	{
+	    $readprobs = 0;
+	}
+	if(($readprobs == 1) && m/^\s*(\S+)\s+(\S+)\s*$/)
 	{
 	    my ($pname, $sname) = ($1,$2);
 	    die "$pname not readable!" unless(-e $pname);
