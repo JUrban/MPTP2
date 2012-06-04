@@ -186,7 +186,7 @@ foreach my $strat (@strats)
 	    my $sinestr = '';
 	    print '# SZS status ', szs_THEOREM;
 	    if(($sine == 1) && exists($nsinestr{$strat})) { $sinestr = ' --sine=Auto '; }
-	    `bin/eprover $sdef{$strat} $sinestr --cpu-limit=60 --memory-limit=Auto --tstp-in -l4 -o- --pcl-terms-compressed --pcl-compact $file |bin/epclextract --tstp-format -f -C --competition-framing > $file.out1`;
+	    `bin/eprover $sdef{$strat} $sinestr --cpu-limit=60 --memory-limit=Auto --tstp-in -l4 -o- --pcl-terms-compressed --pcl-compact $file |bin/epclextract --tstp-out -f -C --competition-framing > $file.out1`;
 
 #	    `bin/eproof  $sdef{$strat} $sinestr --cpu-limit=60 --memory-limit=Auto --tstp-format $file > $file.out1`;
 
