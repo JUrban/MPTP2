@@ -616,11 +616,18 @@ $gcache = "" unless(defined($gcache));
 # needed for fast grepping
 $ENV{"LANG"}= 'C';
 
+# needed for file inclusion to work, we expect this to be set for LTB
+# $ENV{'TPTP'}=
+
+
 my $gtimelimit = $maxtimelimit;
 my $gdotrmstd = $gsimilarity & 2;
 my $gdotrmnrm = $gsimilarity & 4;
 my $gdosyms = $gsimilarity & 1;
 my $gdostreedefs = $gsimilarity & 8;
+
+# TODO: make this a param, now off by default
+my $garitize = ''; # "aritize,"
 
 # shared features generating program
 my $gshgenfeatureprg = ($gdostreedefs > 0)? "fof2streedefs" : "fofshared";
@@ -2537,8 +2544,8 @@ sub GenerateProblemsFromCommonFile
     my ($i,$j);
     die "Remove $file_prefix manually first!" if(-e $file_prefix);
     mkdir($file_prefix);
-    my @lAxioms = `bin/tptp4X -t aritize,noint -x -f tptp:short  -u machine -c $common_file | grep "fof.[^,]*,[ ]*axiom"`;
-    my @lConjs = `bin/tptp4X -t aritize,noint -x -f tptp:short  -u machine -c $common_file | grep "fof.[^,]*,[ ]*conjecture"`;
+    my @lAxioms = `bin/tptp4X -t $garitize noint -x -f tptp:short  -u machine -c $common_file | grep "fof.[^,]*,[ ]*axiom"`;
+    my @lConjs = `bin/tptp4X -t $garitize noint -x -f tptp:short  -u machine -c $common_file | grep "fof.[^,]*,[ ]*conjecture"`;
     foreach $i (@lConjs)
     {
 	$i =~ m/^fof.[ ]*([^ ,]*)[ ]*,/ or die "Bad conjecture name $i";
@@ -2566,7 +2573,7 @@ sub SetupProblemsFromProblemsFile
     %gltbnames = ();
     if($guniquify > 0)
     {
-	`script/uniquify.pl  -f200000 $problems_file $file_prefix "$filestem.pmap" "$filestem.fmap"`;
+	`script/uniquify.pl  -f200000 -m0 -c1 $problems_file $file_prefix "$filestem.pmap" "$filestem.fmap"`;
 	open(PF,"$filestem.pmap") or die "$filestem.pmap not readable";
 	while($_=<PF>)
 	{
@@ -2680,7 +2687,7 @@ sub NormalizeAndCreateInitialSpecs
 #	chop $i;
 	## true axioms formulas are ignored from the very start now, and not included
 	## into the normalized problems; saves memory and also crap when boosting is used
-	my @lines2 = `bin/tptp4X -t aritize,noint -x -f tptp:short  -u machine -c $i | grep -v '^fof.[^,]*,axiom,[\$\( ]*true[\) ]*[.]'`;
+	my @lines2 = `bin/tptp4X -t $garitize noint -x -f tptp:short  -u machine -c $i | grep -v '^fof.[^,]*,axiom,[\$\( ]*true[\) ]*[.]'`;
 	my $conj = "";
 	my %h = ();
 	open(PROBLEM,">$i");
