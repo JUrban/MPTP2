@@ -616,6 +616,10 @@ $gcache = "" unless(defined($gcache));
 # needed for fast grepping
 $ENV{"LANG"}= 'C';
 
+# needed for file inclusion to work, we expect this to be set for LTB
+# $ENV{'TPTP'}=
+
+
 my $gtimelimit = $maxtimelimit;
 my $gdotrmstd = $gsimilarity & 2;
 my $gdotrmnrm = $gsimilarity & 4;
