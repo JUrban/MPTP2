@@ -2381,7 +2381,7 @@ sub RunProblems
 		    exists $grefnr{$ref} or die "Unknown reference $ref in $file: $_";
 		    push( @{$proved_by{$conj}}, $ref);
 		}
-		if($gproblemsfile ne "")
+		if(($gproblemsfile ne "") && (($gdummy eq "") or !($gdummy=~m/^.*[\/]?$conj$/)))
 		{
 		    my $solution = $gltbnames{$conj}->[1];
 		    `cp $file.out1 $solution`;
