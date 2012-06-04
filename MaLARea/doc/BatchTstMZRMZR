@@ -42,8 +42,8 @@ include('/home/mptp/big/MZR4Training/Problems/Axioms/MZR001+9.ax').
 % SZS end BatchIncludes
 % SZS start BatchProblems
 /home/mptp/big/MZR4Training/Problems/MZT000+1.p /home/mptp/big/MZR4Training/TstSolutions/MZT000+1
-/home/mptp/big/MZR4Training/Problems/MZT000+2.p /home/mptp/big/MZR4Training/TstSolutions/MZT000+2
-/home/mptp/big/MZR4Training/Problems/MZT000+3.p /home/mptp/big/MZR4Training/TstSolutions/MZT000+3
-/home/mptp/big/MZR4Training/Problems/MZT000+4.p /home/mptp/big/MZR4Training/TstSolutions/MZT000+4
-/home/mptp/big/MZR4Training/Problems/MZT000+5.p /home/mptp/big/MZR4Training/TstSolutions/MZT000+5
+/home/mptp/big/MZR4Training/Problems/MZT001+1.p /home/mptp/big/MZR4Training/TstSolutions/MZT001+1
+/home/mptp/big/MZR4Training/Problems/MZT002+1.p /home/mptp/big/MZR4Training/TstSolutions/MZT002+1
+/home/mptp/big/MZR4Training/Problems/MZT003+1.p /home/mptp/big/MZR4Training/TstSolutions/MZT003+1
+/home/mptp/big/MZR4Training/Problems/MZT004+1.p /home/mptp/big/MZR4Training/TstSolutions/MZT004+1
 % SZS end BatchProblems
