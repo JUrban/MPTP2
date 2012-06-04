@@ -157,7 +157,7 @@ sub ReadLTB
 	    my $tptpname = MkTptpName($file);
 	    if($gconjnaming == 1)
 	    {
-		$tptpname = `grep 'fof(.*, *conjecture[ ,]' $pname | sed -e 's/^.*fof( *\([^ ,]*\) *, *conjecture.*/\1/'`;
+		$tptpname = `grep 'fof(.*, *conjecture[ ,]' $pname | sed -e 's/^.*fof( *\\([^ ,]*\\) *, *conjecture.*/\\1/'`;
 	    }
 	    die "Non-unique TPTP-fied basenames not allowed: $file, $tptpname, $pname, $gltbprobnames{$file}->[0]"
 		if(exists $gltbprobnames{$tptpname});
