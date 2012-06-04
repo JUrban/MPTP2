@@ -85,7 +85,7 @@ use File::Spec;
 
 
 my ($gforgetlimit,  $gmerge,    $gunique,
-    $gduplprint);
+    $gduplprint, $gconjnaming);
 
 
 my ($help, $man);
@@ -96,6 +96,7 @@ GetOptions('forgetlimit|f=i'    => \$gforgetlimit,
 	   'duplprint|d=i'    => \$gduplprint,
 	   'merge|m=i'    => \$gmerge,
 	   'unique|u=i'    => \$gunique,
+	   'conjnaming|c=i'    => \$gconjnaming,
 	   'help|h'          => \$help,
 	   'man'             => \$man)
     or pod2usage(2);
@@ -115,6 +116,8 @@ $gforgetlimit = 100000000 unless(defined($gforgetlimit));
 $gduplprint = 0 unless(defined($gduplprint));
 $gmerge = 1 unless(defined($gmerge));
 $gunique = 1 unless(defined($gunique));
+$gconjnaming = 0 unless(defined($gconjnaming));
+
 
 my %gltbprobnames;
 my %gfla2ref = ();
@@ -152,6 +155,10 @@ sub ReadLTB
 	    die "$pname not readable!" unless(-e $pname);
 	    my ($volume,$directories,$file) = File::Spec->splitpath( $pname );
 	    my $tptpname = MkTptpName($file);
+	    if($gconjnaming == 1)
+	    {
+		$tptpname = `grep 'fof(.*, *conjecture[ ,]' $pname | sed -e 's/^.*fof( *\([^ ,]*\) *, *conjecture.*/\1/'`;
+	    }
 	    die "Non-unique TPTP-fied basenames not allowed: $file, $tptpname, $pname, $gltbprobnames{$file}->[0]"
 		if(exists $gltbprobnames{$tptpname});
 	    $gltbprobnames{$tptpname} = [$pname, $sname];
