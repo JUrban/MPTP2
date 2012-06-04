@@ -53,6 +53,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --alwaysmizrefs=<arg>,   -m<arg>
    --tptpproofs=<arg>,      -z<arg>
    --cache=<arg>,           -H<arg>
+   --dummy=<arg>           
    --help,                  -h
    --man
 
@@ -392,6 +393,12 @@ parameters and file, it is just cat-ed instead of running the
 ATP. This saves a lot of time in experimenting, but it must not be
 used in competitions and benchmarks when time is important.
 
+=item B<<< --dummy=<arg> >>>
+
+If nonempty, points to a dummy file to be added to the set of
+problems, which is ignored when pritning LTB solutions. This can be
+used to make available axioms mentioned in external training data.
+
 =item B<<< --help, -h >>>
 
 Print a brief help message and exit.
@@ -509,7 +516,7 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $gmaceemul,    $gincrmodels,    $giterlimit,
     $guniquify,    $gcountersatcheck, $gproblemsfile,
     $gsnowserver,  $glearnpolicy,   $gtptpproofs,
-    $gcache);
+    $gcache,	   $gdummy);
 
 my ($help, $man);
 my $gtargetsnr = 1233;
@@ -556,6 +563,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'alwaysmizrefs|m=i'    => \$galwaysmizrefs,
 	   'tptpproofs|z=i'             => \$gtptpproofs,
 	   'cache|H=s'             => \$gcache,
+	   'dummy=s'             => \$gdummy,
 	   'help|h'          => \$help,
 	   'man'             => \$man)
     or pod2usage(2);
@@ -612,6 +620,7 @@ $mintimelimit = 1 unless(defined($mintimelimit));  # should be power of 4
 $permutetimelimit = $mintimelimit unless(defined($permutetimelimit));
 $maxthreshold = 128 unless(defined($maxthreshold)); # should be power of 2
 $gcache = "" unless(defined($gcache));
+$gdummy = "" unless(defined($gdummy));
 
 # needed for fast grepping
 $ENV{"LANG"}= 'C';
@@ -2570,7 +2579,7 @@ sub SetupProblemsFromProblemsFile
 {
     my ($file_prefix, $problems_file) = @_;
     die "Remove $file_prefix manually first!" if(-e $file_prefix);
-    mkdir($file_prefix);
+    mkdir($file_prefix);    
     %gltbnames = ();
     if($guniquify > 0)
     {
@@ -2680,6 +2689,10 @@ sub NormalizeAndCreateInitialSpecs
 	    if(($file_prefix eq "") or ($last_char ne "/"));
 	$file_prefix = $file_prefix . $last_char;
 	SetupProblemsFromProblemsFile($file_prefix, $problems_file);
+    }
+    if($gdummy ne "")
+    {
+	`cp $gdummy $file_prefix`;
     }
     open(INISPECS,">$filestem.specs");
     my %alllines2 = ();
