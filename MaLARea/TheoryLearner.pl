@@ -53,6 +53,7 @@ time ./TheoryLearner.pl --fileprefix='chainy_lemma1/' --filepostfix='.ren' chain
    --alwaysmizrefs=<arg>,   -m<arg>
    --tptpproofs=<arg>,      -z<arg>
    --cache=<arg>,           -H<arg>
+   --runepar=<arg>
    --dummy=<arg>           
    --help,                  -h
    --man
@@ -393,6 +394,12 @@ parameters and file, it is just cat-ed instead of running the
 ATP. This saves a lot of time in experimenting, but it must not be
 used in competitions and benchmarks when time is important.
 
+=item B<<< --runepar=<arg> >>>
+
+If nonzero, runs E using a special strategy parallelizer.  Default is
+0, the parallelization method and strategies are now hardwired for
+CASC and Mizar problems.
+
 =item B<<< --dummy=<arg> >>>
 
 If nonempty, points to a dummy file to be added to the set of
@@ -516,7 +523,7 @@ my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $gmaceemul,    $gincrmodels,    $giterlimit,
     $guniquify,    $gcountersatcheck, $gproblemsfile,
     $gsnowserver,  $glearnpolicy,   $gtptpproofs,
-    $gcache,	   $gdummy);
+    $gcache,	   $grunepar,       $gdummy);
 
 my ($help, $man);
 my $gtargetsnr = 1233;
@@ -563,6 +570,7 @@ GetOptions('commonfile|c=s'    => \$gcommonfile,
 	   'alwaysmizrefs|m=i'    => \$galwaysmizrefs,
 	   'tptpproofs|z=i'             => \$gtptpproofs,
 	   'cache|H=s'             => \$gcache,
+	   'runepar=i'             => \$grunepar,
 	   'dummy=s'             => \$gdummy,
 	   'help|h'          => \$help,
 	   'man'             => \$man)
@@ -620,6 +628,7 @@ $mintimelimit = 1 unless(defined($mintimelimit));  # should be power of 4
 $permutetimelimit = $mintimelimit unless(defined($permutetimelimit));
 $maxthreshold = 128 unless(defined($maxthreshold)); # should be power of 2
 $gcache = "" unless(defined($gcache));
+$grunepar = 0 unless(defined($grunepar));
 $gdummy = "" unless(defined($gdummy));
 
 # needed for fast grepping
@@ -2352,7 +2361,47 @@ sub RunProblems
 	    print " Mace: $mace_status,";
 	}
 
-	if (($eprover == 1) && ($linesnr <= $gatpdata{ 'atp_E' }->[ opt_MAXREFS ]) &&
+
+	if (($eprover == 1) && ($grunepar > 0) && ($linesnr <= $gatpdata{ 'atp_E' }->[ opt_MAXREFS ]) &&
+	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
+	{
+
+	    my $dosine = 0;
+	    if($linesnr > 130) { $dosine = 1; }
+
+	    my $status_line = `bin/runepar.pl $gtimelimit $dosine $file | grep "SZS status" |tee $file.out`;
+	    if ($status_line=~m/.*SZS status[ :]*(.*)/)
+	    {
+		$status = $1;
+	    }
+	    else
+	    {
+		print "Bad status line, assuming szs_UNKNOWN: $file: $status_line";
+		$status = szs_UNKNOWN;
+	    }
+	    print " E: $status";
+	    if ($status eq szs_THEOREM)
+	    {
+
+		my $eproof_pid = open(EP,"cat $file.out1 |grep file|") or die("Cannot start grep");
+		$proved_by{$conj} = [];
+		{
+		    m/.*, *file\([^\),]+, *([a-z0-9A-Z_]+) *\)/ or die "bad proof line: $file: $_";
+		    my $ref = $1;
+		    exists $grefnr{$ref} or die "Unknown reference $ref in $file: $_";
+		    push( @{$proved_by{$conj}}, $ref);
+		}
+		if(($gproblemsfile ne "") && (($gdummy eq "") or !($gdummy=~m/^.*[\/]?$conj$/)))
+		{
+		    my $solution = $gltbnames{$conj}->[1];
+		    `cp $file.out1 $solution`;
+		    print "\n% SZS status Theorem for $solution\n";
+		}
+	    }
+	}
+
+
+	if (($eprover == 1) && ($grunepar == 0) && ($linesnr <= $gatpdata{ 'atp_E' }->[ opt_MAXREFS ]) &&
 	    (($status eq szs_RESOUT) || ($status eq szs_GAVEUP) || ($status eq szs_UNKNOWN)))
 	{
 
