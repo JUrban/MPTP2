@@ -5,7 +5,7 @@
 
 ## SYNOPSIS
 
-## ./RunMZT12.pl /home/urban/MaLARea---0.3 /home/urban/MaLARea---0.3/doc/BatchTstMZRMZR
+## ./RunMZT12.pl /home/mptp/gr/MPTP2/MaLARea /home/mptp/gr/MPTP2/MaLARea/doc/BatchTstMZRMZR
 
 use strict;
 
