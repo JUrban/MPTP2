@@ -2376,6 +2376,7 @@ sub RunProblems
 		{
 		    my $solution = $gltbnames{$conj}->[1];
 		    `cp $file.out1 $solution`;
+		    print "\n% SZS status Theorem for $solution\n";
 		}
 	    }
 	}
