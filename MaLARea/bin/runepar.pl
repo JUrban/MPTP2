@@ -148,7 +148,7 @@ foreach my $strat (@strats)
 	# child
 	my $sinestr = '';
 	if(($sine == 1) && exists($nsinestr{$strat})) { $sinestr = ' --sine=Auto '; }
-	`bin/eprover $sdef{$strat} $sinestr --tstp-format -s --cpu-limit=$tl $file 2>$file.err.$strat | grep "SZS status" >$file.out.$strat`;
+	`ulimit -t $tl1; bin/eprover $sdef{$strat} $sinestr --tstp-format -s --cpu-limit=$tl $file 2>$file.err.$strat | grep "SZS status" >$file.out.$strat`;
 	#DEBUG print "$chunk\n\n";
 	#DEBUG sleep(5);
 	exit(0);
@@ -186,7 +186,7 @@ foreach my $strat (@strats)
 	    my $sinestr = '';
 	    print '# SZS status ', szs_THEOREM;
 	    if(($sine == 1) && exists($nsinestr{$strat})) { $sinestr = ' --sine=Auto '; }
-	    `bin/eprover $sdef{$strat} $sinestr --cpu-limit=60 --memory-limit=Auto --tstp-in -l4 -o- --pcl-terms-compressed --pcl-compact $file |bin/epclextract --tstp-out -f -C --competition-framing > $file.out1`;
+	    `ulimit -t 61; bin/eprover $sdef{$strat} $sinestr --cpu-limit=60 --memory-limit=Auto --tstp-in -l4 -o- --pcl-terms-compressed --pcl-compact $file |bin/epclextract --tstp-out -f -C --competition-framing > $file.out1`;
 
 #	    `bin/eproof  $sdef{$strat} $sinestr --cpu-limit=60 --memory-limit=Auto --tstp-format $file > $file.out1`;
 
