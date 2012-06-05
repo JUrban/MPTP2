@@ -1,6 +1,6 @@
-MaLARea for CASC LTB, version 0.3
+MaLARea for CASC MZT 2012, version 0.4
 
-Run it as ./RunLTB with two arguments - see the SYNOPSIS in RunLTB.pl 
+Run it as ./RunMZT12.pl with two arguments - see the SYNOPSIS in RunMZT12.pl 
 for their description.
 
 Requirements:
