@@ -1370,7 +1370,7 @@ sub CombineWSine
 {
     my ($iter, $spec1, $reserve1) = @_;
 
-    return ($spec1, $reserve1) unless (($gusesinerel==1) && (0 == $iter % 3) && ($iter > 14));
+    return ($spec1, $reserve1) unless (($gusesinerel==1) && (0 == $iter % 7) && ($iter > 13));
 
     my $conj = $spec1->[0];
 
