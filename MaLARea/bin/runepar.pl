@@ -185,7 +185,13 @@ foreach my $strat (@strats)
 		    my $sinestr = '';
 		    print '# SZS status ', szs_THEOREM, "\n";
 		    if(($sine == 1) && exists($nsinestr{$strat})) { $sinestr = ' --sine=Auto '; }
-		    `ulimit -t 61; bin/eprover $sdef{$strat} $sinestr --cpu-limit=60 --memory-limit=Auto --tstp-in -l4 -o- --pcl-terms-compressed --pcl-compact $file |bin/epclextract --tstp-out -f -C --competition-framing > $file.out1`;
+		    my $status_line = `ulimit -t 61; bin/eprover $sdef{$strat} $sinestr --cpu-limit=60 --memory-limit=Auto --tstp-in -l4 -o- --pcl-terms-compressed --pcl-compact $file |bin/epclextract --tstp-out -f -C --competition-framing |tee $file.out1 | grep "SZS status" `;
+
+		    # if epclextract breaks, add at least the correct status to the proof file
+		    unless ($status_line=~m/.*SZS status[ :]*(.*)/)
+		    {
+			`echo "# SZS status Theorem" > $file.out1`;
+		    }
 
 		    #	    `bin/eproof  $sdef{$strat} $sinestr --cpu-limit=60 --memory-limit=Auto --tstp-format $file > $file.out1`;
 
@@ -193,7 +199,7 @@ foreach my $strat (@strats)
 		}
 	    }
 	}
-
+	close(OUT);
     }
 }
 
