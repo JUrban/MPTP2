@@ -1518,6 +1518,22 @@ sub PrintPruned
     close(PRUNED);
 }
 
+sub ShakeThreshold
+{
+    my ($i) = @_;
+
+    if($i==4) { return 6 }
+    elsif($i==8) { return 12 }
+    elsif($i==16) { return 24 }
+    elsif($i==32) { return 40 }
+    elsif($i==64) { return 80 }
+    elsif($i==128) { return 160 }
+    elsif($i==256) { return 320 }
+    elsif($i==512) { return 640 }
+    else { return $i }
+}
+
+
 # Run SNoW in testing mode on .test_$iter1 and .net_$iter, limiting
 # the results to $wantednr; if possible, re-use previous SNoW evaluation.
 # Process the results calling HandleSpec.
@@ -1535,6 +1551,8 @@ sub SelectRelevantFromSpecs
     my ($iter, $newly_proved, $threshold, $file_prefix, $file_postfix, $recurse) = @_;
 
 #    LoadSpecs(); # calls LoadTables too
+
+    if(($iter > 20) && ($iter < 40)) { $threshold = ShakeThreshold($threshold); }
 
     my $previter = $iter - 1;
     my @to_prove = (); # for checking the SNoW output
@@ -2259,6 +2277,8 @@ sub RunProblems
     %gitrefposmods = ();
     %gitrefnegmods = ();
 
+    # TODO unhack!
+    if(($iter > 20) && ($iter < 40)) { $threshold = ShakeThreshold($threshold); }
 
 #    if($gtimelimit<16) { $spass=1; $vampire=0}
 #    if($threshold<16) {$spass=1; $vampire=0}
