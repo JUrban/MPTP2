@@ -1365,6 +1365,64 @@ sub AddMizarRefs
     @$reserve = @newreserve;
 }
 
+# todo: parameterize
+sub CombineWSine
+{
+    my ($iter, $spec1, $reserve1) = @_;
+
+    return ($spec1, $reserve1) unless (($gusesinerel==1) && (0 == $iter % 3) && ($iter > 14));
+
+    my $conj = $spec1->[0];
+
+    if(exists($gsinerel{$conj}))
+    {
+	my @spec = @$spec1;
+	my @reserve  = @$reserve1;
+	shift @spec;
+	my $cnt1 = $#spec;
+	my $cntr = $#reserve;
+	my %rh = ();
+	my %lh = ();
+	my $wr = 0.5;
+	my $wl = 1 - $wr;
+
+	my $i = 0;
+
+	foreach my $k (@spec,@reserve) 
+	{
+	    $rh{$k} = $i * $wr;
+	    $i++;
+	}
+
+	my $maxr= (2+$cnt1+$cntr) * $wr;
+
+	my $j = 0;
+
+	foreach my $k (@{$gsinerel{$conj}}) 
+	{
+	    $lh{$k} = $j * $wl;
+	    $j++;
+	}
+
+	my $maxl = (2+$cnt1+$cntr) * $wl;
+
+	foreach my $k (keys %rh) { if(!(exists $lh{$k})) { $rh{$k} += $maxl }  }
+	foreach my $k (keys %lh) { if(exists $rh{$k}) { $rh{$k} += $lh{$k} } else  { $rh{$k} = $maxr + $lh{$k} }  }
+
+	my @res = sort {$rh{$a}<=>$rh{$b}} keys %rh;
+
+	my @newspec = ($conj, @res[0 .. $cnt1 - 1]);
+	my @newres  = @res[$cnt1 .. $cnt1 + $cntr];
+
+	return (\@newspec, \@newres);
+    }
+    else
+    {
+	print "Warning: no sine info for $conj\n";
+	return ($spec1, $reserve1);
+    }
+}
+
 
 # Processes one specification suggested by SNoW, and possibly prints
 # the task using PrintPruned.
@@ -1380,7 +1438,10 @@ sub AddMizarRefs
 # ##TODO: improve for lemmatizing
 sub HandleSpec
 {
-    my ($iter, $file_prefix, $file_postfix, $spec1, $reserve1) = @_;
+    my ($iter, $file_prefix, $file_postfix, $spec3, $reserve3) = @_;
+
+    my ($spec1, $reserve1) = CombineWSine($iter, $spec3, $reserve3);
+
     my @spec = @$spec1;
     my @reserve = @$reserve1;
     my $conjecture = $spec[0];
