@@ -3120,6 +3120,10 @@ sub Iterate
 		{
 		    $maxtimelimit = 4;
 		}
+		if(($iter > 60) && ($maxtimelimit == 4))
+		{
+		    $maxtimelimit = 16;
+		}
 
 		if ($gtimelimit < $maxtimelimit)
 		{
