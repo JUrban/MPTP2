@@ -509,6 +509,8 @@ my %gatpdata;     # for each ATP a hash of its thresholds and other useful data
 my $gsnowport;    # port for snow running as a server of guseserver>0; determined at Learn
 my $grunner = 'runwtlimit'; # the default non-cached atp runner
 
+my %gsinerel;     # for each conjecture the allowed refs sorted by sine
+
 my $minthreshold = 4;
 my ($gcommonfile,  $gfileprefix,    $gfilepostfix,
     $maxtimelimit, $gdofull,        $giterrecover,
@@ -684,6 +686,9 @@ $galwaysrefsregexp = $gisarefsregexp if($galwaysmizrefs == 3);
 # run simultaneously, this is a quick hack.
 
 my $gvampire_version = '0.6'; # another option is '9'
+
+# TODO: make this an option
+my $gusesinerel = 1;
 
 
 # list of all handled atps
@@ -2728,6 +2733,7 @@ sub SetupGeneralization
 # .allasax - each fla just once (as axiom), .axp9 - the same for prover9/mace4,
 # and also all conjecures (.allconjs) and all axioms (.allaxs)
 # If ($ggeneralize > 0) formula generalizations are created and set up.
+# creates the gsinerel relevances
 sub NormalizeAndCreateInitialSpecs
 {
     my ($file_prefix, $file_postfix, $common_file, $problems_file) = @_;
@@ -2738,6 +2744,7 @@ sub NormalizeAndCreateInitialSpecs
     %gref2gen   = ();
     %ggen2ref   = ();
     %gref2fla   = ();
+    %gsinerel   = ();
 
     if($gtmpdir ne "")
     {
@@ -2799,6 +2806,21 @@ sub NormalizeAndCreateInitialSpecs
 	print INISPECS "spec($conj,[" . join(",", keys %h) . "]).\n";
 	close(PROBLEM);
 	close(PROBLEM1) if($gdofull > 0);
+
+	if($gusesinerel > 0)
+	{
+	    `bin/e_axfilter -f script/filter1000 $i -o /dev/null`;
+	    my $sinefile = $conj . '_pr1000.p';
+	    die "Sine failed for $conj" unless(-e $sinefile);
+	    $gsinerel{$conj} = [];
+	    my $sine_pid = open(SN,"cat $sinefile |") or die("Cannot start cat");
+	    while ($_=<SN>)
+	    {
+		m/^fof.[ ]*([^ ,]*)[ ]*,/ or die "Bad fla name $i";
+		push(@{$gsinerel{$conj}}, $1) if ($conj ne $1);
+	    }
+	    unlink $sinefile;
+	}
     }
     close(INISPECS);
     open(ALLFLAS, ">$filestem.allflas");
