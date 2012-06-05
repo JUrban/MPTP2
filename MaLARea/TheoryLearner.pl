@@ -1552,7 +1552,7 @@ sub SelectRelevantFromSpecs
 
 #    LoadSpecs(); # calls LoadTables too
 
-    if(($iter > 20) && ($iter < 40)) { $threshold = ShakeThreshold($threshold); }
+    if(($iter > 20) && ($iter < 30)) { $threshold = ShakeThreshold($threshold); }
 
     my $previter = $iter - 1;
     my @to_prove = (); # for checking the SNoW output
@@ -2278,7 +2278,7 @@ sub RunProblems
     %gitrefnegmods = ();
 
     # TODO unhack!
-    if(($iter > 20) && ($iter < 40)) { $threshold = ShakeThreshold($threshold); }
+    if(($iter > 20) && ($iter < 30)) { $threshold = ShakeThreshold($threshold); }
 
 #    if($gtimelimit<16) { $spass=1; $vampire=0}
 #    if($threshold<16) {$spass=1; $vampire=0}
