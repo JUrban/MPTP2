@@ -3012,6 +3012,12 @@ sub Iterate
 	    }
 	    else
 	    {
+		# raise the maxtimelimit if we were limited to low runs
+		if(($iter > 40) && ($maxtimelimit == 1))
+		{
+		    $maxtimelimit = 4;
+		}
+
 		if ($gtimelimit < $maxtimelimit)
 		{
 		    $gtimelimit = 4 * $gtimelimit;
