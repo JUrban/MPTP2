@@ -11,8 +11,34 @@ die "runepar.pl takes exactly three paramaters" unless((defined $tl) && (defined
 
 my $tl1 = 1 + $tl;
 
-# we only run these 16 now
+
+# mizstratsold without four (protokoll_X----_sauto_300 ,
+# protokoll_my14simple, protokoll_my16simple, protokoll_my22simple)
 my @strats =
+(
+'protokoll_G-E--_008_K18_F1_PI_AE_CS_SP_S0Y',
+'protokoll_G-E--_107_C37_F1_PI_AE_Q4_CS_SP_PS_S0Y',
+'protokoll_G-E--_045_K18_F1_PI_AE_CS_OS_S0S_sine05',
+# 'protokoll_my14simple',
+# 'protokoll_my16simple',
+'protokoll_my18simple',
+# 'protokoll_my22simple',
+'protokoll_my21simple',
+'protokoll_my24simple',
+'protokoll_my8simple_sine13',
+'protokoll_my11simple_sine13',
+'protokoll_my1_SOS',
+'protokoll_my13simple',
+'protokoll_X----_auto_sine03',
+# 'protokoll_X----_sauto_300',
+'protokoll_my23simple'
+);
+
+
+
+# we only run these 16 now (first version for mizar used for casc mzt 12)
+# it seems that some are redundant, see above
+my @mizstratsold =
 (
 'protokoll_G-E--_008_K18_F1_PI_AE_CS_SP_S0Y',
 'protokoll_G-E--_107_C37_F1_PI_AE_Q4_CS_SP_PS_S0Y',
