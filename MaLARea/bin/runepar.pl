@@ -11,10 +11,11 @@ die "runepar.pl takes exactly three paramaters" unless((defined $tl) && (defined
 
 my $tl1 = 1 + $tl;
 
+my @strats;  # the strategies used, now set to @mizstratsold
 
 # mizstratsold without four (protokoll_X----_sauto_300 ,
 # protokoll_my14simple, protokoll_my16simple, protokoll_my22simple)
-my @strats =
+my @mizstrats1 =
 (
 'protokoll_G-E--_008_K18_F1_PI_AE_CS_SP_S0Y',
 'protokoll_G-E--_107_C37_F1_PI_AE_Q4_CS_SP_PS_S0Y',
@@ -57,6 +58,9 @@ my @mizstratsold =
 'protokoll_X----_sauto_300',
 'protokoll_my23simple'
 );
+
+@strats = @mizstratsold;
+
 
 # possible SZS statuses
 sub szs_INIT        ()  { 'Initial' } # system was not run on the problem yet
