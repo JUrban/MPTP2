@@ -83,11 +83,14 @@ make -j $jobs allacc | tee 00acc.log
 make -j $jobs allhdr | tee 00hdr.log
 make -j $jobs allcmt | tee 00cmt.log
 make -j $jobs allxml | tee 00xml.log
+if [ "$?" != "0" ]; then exit 1; fi
 make -j $jobs allxml1 | tee 00xml1.log
 make -j $jobs allhtmla1 | tee 00htmla1.log
 make -j $jobs allxml2 | tee 00xml2.log
+if [ "$?" != "0" ]; then exit 1; fi
 make -j $jobs allevl1 | tee 00evl1.log
 make -j $jobs allevl2 | tee 00evl2.log
+if [ "$?" != "0" ]; then exit 1; fi
 
 make hidden.acc
 make hidden.hdr
