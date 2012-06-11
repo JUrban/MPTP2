@@ -29,6 +29,7 @@ cd $ver
 cvs -d:pserver:softdev@mizar.uwb.edu.pl:2401/srv/cvsroot co -rver_$cvsver kernel libtools base
 cd kernel
 fpc -Sd -dCH_REPORT -dSCH_REPORT -Fu../base verifier.dpr 
+fpc -Sd -dCH_REPORT -dSCH_REPORT -Fu../base nverifier.dpr 
 fpc -Sd -dCH_REPORT -dSCH_REPORT -Fu../base accom.dpr 
 fpc -Sd -dCH_REPORT -dSCH_REPORT -Fu../base transfer.dpr 
 fpc -Sd -dCH_REPORT -dSCH_REPORT -Fu../base nexporter.dpr 
@@ -54,6 +55,7 @@ mkdir bin
 #tar xzf mizbin.tar.gz -Cbin
 cp  kernel/verifier bin/verifier.bfex
 cp  kernel/verifier bin/verifier.std
+cp  kernel/nverifier bin/nverifier.std
 cp  kernel/accom bin/accom
 cp  kernel/nexporter bin/nexporter
 cp  kernel/nexporter bin/exporter
