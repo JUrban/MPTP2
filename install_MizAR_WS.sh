@@ -20,6 +20,7 @@ jobs=8
 
 #wget ftp://mizar.uwb.edu.pl/pub/system/i386-linux/mizar-$ver-i386-linux.tar
 wget ftp://mizar.uwb.edu.pl/pub/system/i386-win32/mizar-$ver-i386-win32.exe
+if [ "$?" != "0" ]; then exit 1; fi
 mkdir $ver
 
 unzip mizar-$1-i386-win32.exe -d $ver
