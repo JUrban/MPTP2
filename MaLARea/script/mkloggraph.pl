@@ -38,7 +38,7 @@ while (<>)
 	  $state = 2;
 	}
     }
-  if(m/Theorem/) { $theoremnbr++; }
+  if((m/Theorem/) && !(m/% SZS/)){ $theoremnbr++; }
   if(($state == 0) && (m/.*:.*:/)) { $total++; }
 }
 #print "$giter\n";
