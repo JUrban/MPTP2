@@ -40,6 +40,25 @@ my @mizstrats1 =
 'protokoll_my23simple'
 );
 
+my @greedymizstrats =
+(
+ 'protokoll_my21simple',
+ 'protokoll_my14simple',
+ 'protokoll_G-E--_107_C37_F1_PI_AE_Q4_CS_SP_PS_S0Y',
+ 'protokoll_my8simple_sine13',
+ 'protokoll_my18simple',
+ 'protokoll_G-E--_008_K18_F1_PI_AE_CS_SP_S0Y',
+ 'protokoll_my16simple',
+ 'protokoll_G-E--_045_K18_F1_PI_AE_CS_OS_S0S_sine05',
+ 'protokoll_X----_sauto_300',
+ 'protokoll_X----_auto_sine03',
+ 'protokoll_my23simple',
+ 'protokoll_my1_SOS',
+ 'protokoll_my22simple',
+ 'protokoll_my11simple_sine13'
+# 'protokoll_my24simple',
+# 'protokoll_my13simple'
+);
 
 
 # we only run these 16 now (first version for mizar used for casc mzt 12)
@@ -233,11 +252,18 @@ sub ProcessStrategyOutput
     }
 }
 
+sub min { my ($x,$y) = @_; ($x <= $y)? $x : $y }
+sub max { my ($x,$y) = @_; ($x <= $y)? $y : $x }
 
 my $status = szs_UNKNOWN ;
 
 if($serial == 1)
 {
+    my $oldtl = $tl;
+    $tl = max( 1, int( $oldtl/(scalar @greedymizstrats) ));
+
+    @strats = @greedymizstrats;
+
     foreach my $strat (@strats)
     {
 	RunStrategyNoProof($strat);
