@@ -7,8 +7,10 @@ my $tl = shift @ARGV;
 my $sine = shift @ARGV; # 0 or 1
 my $file = shift @ARGV;
 my $doproof = shift @ARGV; # 0, 1 or nothing (which means 1)
+my $serial = shift @ARGV; # 0, 1 or nothing (which means 0 - run in parallel)
 
 $doproof = 1 unless(defined($doproof));
+$serial = 0 unless(defined($serial));
 
 die "runepar.pl takes at least three paramaters: timelimit dosine inputfile" unless((defined $tl) && (defined $sine) && (defined $file));
 
@@ -166,39 +168,34 @@ my %sdef =
 'protokoll_my9simple' => '  --definitional-cnf=24 --split-aggressive --split-clauses=7 --simul-paramod --forward-context-sr --destructive-er-aggressive --destructive-er --prefer-initial-clauses -tAuto -winvfreqrank -c1 -Ginvfreq -F1 --delete-bad-limit=150000000 -WSelectComplexG -H\'(6*ConjectureRelativeSymbolWeight(SimulateSOS,0.5, 100, 100, 100, 100, 1.5, 1.5, 1),1*FIFOWeight(ConstPrio),2*Refinedweight(SimulateSOS,1,1,2,1.5,2),2*Refinedweight(PreferNonGoals,1,1,2,1.5,1.5),2*FIFOWeight(PreferProcessed),10*ConjectureRelativeSymbolWeight(ConstPrio,0.1, 100, 100, 100, 100, 1.5, 1.5, 1.5),3*ConjectureRelativeSymbolWeight(PreferNonGoals,0.5, 100, 100, 100, 100, 1.5, 1.5, 1))\' '
 );
 
-my @childs = ();
-foreach my $strat (@strats)
+sub RunStrategyNoProof
 {
+    my ($strat) = @_;
 
-    my $pid = fork();
-    if ($pid) 
+    my $sinestr = '';
+    if(($sine == 1) && exists($nsinestr{$strat})) { $sinestr = ' --sine=Auto '; }
+    `ulimit -t $tl1; bin/eprover $sdef{$strat} $sinestr --tstp-format -s --cpu-limit=$tl $file 2>$file.err.$strat | grep "SZS status" >$file.out.$strat`;
+}
+
+sub RunStrategyWithProof
+{
+    my ($strat) = @_;
+
+    my $sinestr = '';
+    if(($sine == 1) && exists($nsinestr{$strat})) { $sinestr = ' --sine=Auto '; }
+    my $status_line = `ulimit -t 61; bin/eprover $sdef{$strat} $sinestr --cpu-limit=60 --memory-limit=Auto --tstp-in -l4 -o- --pcl-terms-compressed --pcl-compact $file |bin/epclextract --tstp-out -f -C --competition-framing |tee $file.out1 | grep "SZS status" `;
+
+    # if epclextract breaks, add at least the correct status to the proof file
+    unless ($status_line=~m/.*SZS status[ :]*(.*)/)
     {
-	# parent
-	push(@childs, $pid);
-    } 
-    elsif ($pid == 0) 
-    {
-	# child
-	my $sinestr = '';
-	if(($sine == 1) && exists($nsinestr{$strat})) { $sinestr = ' --sine=Auto '; }
-	`ulimit -t $tl1; bin/eprover $sdef{$strat} $sinestr --tstp-format -s --cpu-limit=$tl $file 2>$file.err.$strat | grep "SZS status" >$file.out.$strat`;
-	#DEBUG print "$chunk\n\n";
-	#DEBUG sleep(5);
-	exit(0);
-    } 
-    else 
-    {
-	die "couldn’t fork: $!\n";
+	`echo "# SZS status Theorem" > $file.out1`;
     }
 }
 
-foreach (@childs) { waitpid($_, 0);}
-
-
-my $status = szs_UNKNOWN ;
-
-foreach my $strat (@strats)
+sub ProcessStrategyOutput
 {
+    my ($strat) = @_;
+
     if(open(OUT,"$file.out.$strat"))
     {
 	while($_=<OUT>)
@@ -206,7 +203,7 @@ foreach my $strat (@strats)
 
 	    if (m/.*SZS status[ :]*(.*)/)
 	    {
-		$status = $1;
+		my $status = $1;
 
 		if ($status eq szs_COUNTERSAT)
 		{
@@ -215,19 +212,11 @@ foreach my $strat (@strats)
 		}
 		elsif ($status eq szs_THEOREM)
 		{
-		    my $sinestr = '';
 		    print '# SZS status ', szs_THEOREM, "\n";
 		    
 		    if($doproof == 1)
 		    {
-			if(($sine == 1) && exists($nsinestr{$strat})) { $sinestr = ' --sine=Auto '; }
-			my $status_line = `ulimit -t 61; bin/eprover $sdef{$strat} $sinestr --cpu-limit=60 --memory-limit=Auto --tstp-in -l4 -o- --pcl-terms-compressed --pcl-compact $file |bin/epclextract --tstp-out -f -C --competition-framing |tee $file.out1 | grep "SZS status" `;
-
-			# if epclextract breaks, add at least the correct status to the proof file
-			unless ($status_line=~m/.*SZS status[ :]*(.*)/)
-			{
-			    `echo "# SZS status Theorem" > $file.out1`;
-			}
+			RunStrategyWithProof($strat);
 		    }
 		    else
 		    {
@@ -242,6 +231,52 @@ foreach my $strat (@strats)
 	}
 	close(OUT);
     }
+}
+
+
+my $status = szs_UNKNOWN ;
+
+if($serial == 1)
+{
+    foreach my $strat (@strats)
+    {
+	RunStrategyNoProof($strat);
+	ProcessStrategyOutput($strat);
+    }
+
+    print '# SZS status ', $status, "\n"; # only printed if everything failed
+    exit(0);
+}
+
+
+my @childs = ();
+foreach my $strat (@strats)
+{
+
+    my $pid = fork();
+    if ($pid) 
+    {
+	# parent
+	push(@childs, $pid);
+    } 
+    elsif ($pid == 0) 
+    {
+	# child
+	RunStrategyNoProof($strat);
+	exit(0);
+    } 
+    else 
+    {
+	die "couldn’t fork: $!\n";
+    }
+}
+
+foreach (@childs) { waitpid($_, 0);}
+
+
+foreach my $strat (@strats)
+{
+    ProcessStrategyOutput($strat);
 }
 
 print '# SZS status ', $status, "\n";
