@@ -25,10 +25,12 @@ foreach my $j (1 .. $max)
 
     print "$top :",  scalar (keys %{$h{$top}}), "\n";
 
+    my @todelete = keys %{$h{$top}};
+
     foreach my $i (@sorted)
     {
     
-	delete @{$h{$i}}{  keys %{$h{$top}} };
+	delete @{$h{$i}}{  @todelete };
 
     }
 }
