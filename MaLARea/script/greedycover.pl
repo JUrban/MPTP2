@@ -16,10 +16,12 @@ while (my $f=shift)
 }
 
 my $max = scalar keys %h;
+my @sorted = keys %h;
+
 
 foreach my $j (1 .. $max)
 {
-    my @sorted = sort {scalar (keys %{$h{$b}}) <=>  scalar (keys %{$h{$a}})} keys %h;
+    my @sorted = sort {scalar (keys %{$h{$b}}) <=>  scalar (keys %{$h{$a}})} @sorted;
 
     my $top = shift @sorted;
 
