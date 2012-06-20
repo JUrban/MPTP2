@@ -19,7 +19,7 @@ my $max = scalar keys %h;
 
 foreach my $j (1 .. $max)
 {
-    my @sorted = sort {scalar (keys %{$h{$a}}) <=>  scalar (keys %{$h{$b}})} keys %h;
+    my @sorted = sort {scalar (keys %{$h{$b}}) <=>  scalar (keys %{$h{$a}})} keys %h;
 
     my $top = shift @sorted;
 
@@ -28,7 +28,7 @@ foreach my $j (1 .. $max)
     foreach my $i (@sorted)
     {
     
-	delete @{%{$h{$i}}}{  keys %{$h{$top}} };
+	delete @{$h{$i}}{  keys %{$h{$top}} };
 
     }
 }
