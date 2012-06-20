@@ -21,7 +21,7 @@ my @sorted = keys %h;
 
 foreach my $j (1 .. $max)
 {
-    my @sorted = sort {scalar (keys %{$h{$b}}) <=>  scalar (keys %{$h{$a}})} @sorted;
+    @sorted = sort {scalar (keys %{$h{$b}}) <=>  scalar (keys %{$h{$a}})} @sorted;
 
     my $top = shift @sorted;
 
