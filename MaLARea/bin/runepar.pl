@@ -6,8 +6,11 @@ use strict;
 my $tl = shift @ARGV;
 my $sine = shift @ARGV; # 0 or 1
 my $file = shift @ARGV;
+my $doproof = shift @ARGV; # 0, 1 or nothing (which means 1)
 
-die "runepar.pl takes exactly three paramaters" unless((defined $tl) && (defined $sine) && (defined $file));
+$doproof = 1 unless(defined($doproof));
+
+die "runepar.pl takes at least three paramaters: timelimit dosine inputfile" unless((defined $tl) && (defined $sine) && (defined $file));
 
 my $tl1 = 1 + $tl;
 
@@ -214,11 +217,19 @@ foreach my $strat (@strats)
 		{
 		    my $sinestr = '';
 		    print '# SZS status ', szs_THEOREM, "\n";
-		    if(($sine == 1) && exists($nsinestr{$strat})) { $sinestr = ' --sine=Auto '; }
-		    my $status_line = `ulimit -t 61; bin/eprover $sdef{$strat} $sinestr --cpu-limit=60 --memory-limit=Auto --tstp-in -l4 -o- --pcl-terms-compressed --pcl-compact $file |bin/epclextract --tstp-out -f -C --competition-framing |tee $file.out1 | grep "SZS status" `;
+		    
+		    if($doproof == 1)
+		    {
+			if(($sine == 1) && exists($nsinestr{$strat})) { $sinestr = ' --sine=Auto '; }
+			my $status_line = `ulimit -t 61; bin/eprover $sdef{$strat} $sinestr --cpu-limit=60 --memory-limit=Auto --tstp-in -l4 -o- --pcl-terms-compressed --pcl-compact $file |bin/epclextract --tstp-out -f -C --competition-framing |tee $file.out1 | grep "SZS status" `;
 
-		    # if epclextract breaks, add at least the correct status to the proof file
-		    unless ($status_line=~m/.*SZS status[ :]*(.*)/)
+			# if epclextract breaks, add at least the correct status to the proof file
+			unless ($status_line=~m/.*SZS status[ :]*(.*)/)
+			{
+			    `echo "# SZS status Theorem" > $file.out1`;
+			}
+		    }
+		    else
 		    {
 			`echo "# SZS status Theorem" > $file.out1`;
 		    }
