@@ -124,9 +124,8 @@ while ($_)
 	  
 	print ($gnrref[$target], ":");
     }
-    else
+    elsif (/^([0-9]+):/)
     {
-	/^(\d+):.*/ or die "Bad prediction: $_";
 	my $axiom = $1;
 	die "Reference $axiom has no name in $reftable!"
 	    unless (defined $gnrref[$axiom]);
