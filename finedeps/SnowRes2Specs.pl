@@ -60,9 +60,6 @@ the target, which is correct for current version of Snow (3.0.3).
 use strict;
 use Pod::Usage;
 use Getopt::Long;
-use MPTPDebug;
-use MPTPUtils;
-use MPTPSgnFilter;
 
 my $glimit;     # How many references we want
 my $reftable;   # Translation table for references (*.refnr),
