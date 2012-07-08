@@ -124,13 +124,13 @@ while ($_)
 	  
 	print ($gnrref[$target], ":");
     }
-    elsif (/^([0-9]+):/)
+    elsif (/^([0-9]+):.*(\d+)[*]?$/)
     {
 	my $axiom = $1;
 	die "Reference $axiom has no name in $reftable!"
 	    unless (defined $gnrref[$axiom]);
 
-	if((1+$#predictions) < $glimit)
+	if(($2>0) && (1+$#predictions) < $glimit)
 	{
 	    push(@predictions, $gnrref[$axiom]);
 	}
