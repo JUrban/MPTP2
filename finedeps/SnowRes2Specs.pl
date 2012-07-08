@@ -114,9 +114,9 @@ while ($_)
 
 	@predictions = ();
 
-	/Example.*:(.*)/ or die "Bad Example $_";
-	my @wanted = split /\, /, $1;
-	$target = $wanted[0];
+	/Example *(\d+) *.*:(.*)/ or die "Bad Example $_";
+	my @wanted = split /\, /, $2;
+	$target = $1 - 1;
 
 	die "Target $target has no name in $reftable!"
 	    unless (exists $gnrref[$target]);
