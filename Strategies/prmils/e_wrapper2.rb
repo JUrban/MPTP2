@@ -17,6 +17,153 @@ else
         qual = instance_specifics.split[0]
 end
 
+
+cwa_cp_1 => "ClauseWeightAge(ConstPrio,1,1,0.7,3"
+cwa_cp_2 => "ClauseWeightAge(ConstPrio,1,1,1,3"
+cw_bcd => "Clauseweight(ByCreationDate,2,1,0.8"
+cw_cp_1 => "Clauseweight(ConstPrio,1,1,0.7"
+cw_cp_2 => "Clauseweight(ConstPrio,1,1,1",
+cw_cp_3 => "Clauseweight(ConstPrio,3,1,1",
+cw_pp => "Clauseweight(PreferProcessed,1,1,1",
+cw_pugg => "Clauseweight(PreferUnitGroundGoals,1,1,1",
+cgsw_pg => "ConjectureGeneralSymbolWeight(PreferGoals,100,100,100,50,50,10,50,1.5,1.5,1",
+cgsw_pgg_1 => "ConjectureGeneralSymbolWeight(PreferGroundGoals,100,100,100,50,50,10,100,1.5,1.5,1",
+cgsw_pgg_2 => "ConjectureGeneralSymbolWeight(PreferGroundGoals,100,100,100,50,50,10,50,1.5,1.5,1",
+cgsw_png_1 => "ConjectureGeneralSymbolWeight(PreferNonGoals,100,100,100,50,50,0,100,1.5,1.5,1",
+cgsw_png_2 => "ConjectureGeneralSymbolWeight(PreferNonGoals,100,100,100,50,50,1,100,1.5,1.5,1",
+cgsw_png_3 => "ConjectureGeneralSymbolWeight(PreferNonGoals,100,100,100,50,50,10,100,1.5,1.5,1",
+cgsw_png_4 => "ConjectureGeneralSymbolWeight(PreferNonGoals,100,100,100,50,50,100,100,1.5,1.5,1",
+cgsw_png_5 => "ConjectureGeneralSymbolWeight(PreferNonGoals,100,100,100,50,50,1000,100,1.5,1.5,1",
+cgsw_png_6 => "ConjectureGeneralSymbolWeight(PreferNonGoals,100,100,100,50,50,5000,100,1.5,1.5,1",
+cgsw_png_7 => "ConjectureGeneralSymbolWeight(PreferNonGoals,200,100,200,50,50,1,100,1.5,1.5,1",
+cgsw_sos_1 => "ConjectureGeneralSymbolWeight(SimulateSOS, 100,100,100,50,50,0,50,1.5,1.5,1",
+cgsw_sos_2 => "ConjectureGeneralSymbolWeight(SimulateSOS,100,100,100,50,50,10,50,1.5,1.5,1",
+cgsw_sos_3 => "ConjectureGeneralSymbolWeight(SimulateSOS,100,100,100,50,50,20,50,1.5,1.5,1",
+cgsw_sos_4 => "ConjectureGeneralSymbolWeight(SimulateSOS,100,100,100,50,50,50,50,1.5,1.5,1",
+cgsw_sos_5 => "ConjectureGeneralSymbolWeight(SimulateSOS,100,100,100,50,50,5000,50,1.5,1.5,1",
+crsw_cp_1 => "ConjectureRelativeSymbolWeight(ConstPrio,0.05, 100, 100, 100, 100, 1.5, 1.5, 1.5",
+crsw_cp_2 => "ConjectureRelativeSymbolWeight(ConstPrio,0.1, 100, 100, 100, 100, 1.5, 1.5, 1.5",
+crsw_cp_3 => "ConjectureRelativeSymbolWeight(ConstPrio,0.2, 100, 100, 100, 100, 1.5, 1.5, 1",
+crsw_cp_4 => "ConjectureRelativeSymbolWeight(ConstPrio,0.2, 100, 100, 100, 100, 1.5, 1.5, 1.5",
+crsw_cp_5 => "ConjectureRelativeSymbolWeight(ConstPrio,0.3, 100, 100, 100, 100, 2.5, 1, 1",
+crsw_cp_6 => "ConjectureRelativeSymbolWeight(ConstPrio,0.5, 100, 100, 100, 100, 1.5, 1.5, 1",
+crsw_cp_7 => "ConjectureRelativeSymbolWeight(ConstPrio,0.5, 100, 100, 100, 50, 1.5, 0.5, 1.5",
+crsw_cp_8 => "ConjectureRelativeSymbolWeight(ConstPrio,0.5, 100, 100, 100, 50, 1.5, 1.5, 1",
+crsw_cp_9 => "ConjectureRelativeSymbolWeight(ConstPrio,0.5, 100, 100, 100, 50, 1.5, 1.5, 1.5",
+crsw_cp_10 => "ConjectureRelativeSymbolWeight(ConstPrio,0.7, 100, 100, 100, 100, 1.5, 1.5, 1",
+crsw_png => "ConjectureRelativeSymbolWeight(PreferNonGoals,0.5, 100, 100, 100, 100, 1.5, 1.5, 1",
+crsw_sos_1 => "ConjectureRelativeSymbolWeight(SimulateSOS,0.05, 100, 100, 100, 100, 1.5, 1.5, 1.5",
+crsw_sos_2 => "ConjectureRelativeSymbolWeight(SimulateSOS,0.5, 100, 100, 100, 100, 1.5, 1.5, 1",
+csw_cp => "ConjectureSymbolWeight(ConstPrio,10,10,5,5,5,1.5,1.5,1.5",
+dw_sos => "Defaultweight(SimulateSOS",
+=> "F1",
+=> "F2",
+fw_bnlt => "FIFOWeight(ByNegLitDist",
+fw_cp => "FIFOWeight(ConstPrio",
+fw_pp => "FIFOWeight(PreferProcessed",
+fw_pu => "FIFOWeight(PreferUnits",
+fw_sos => "FIFOWeight(SimulateSOS",
+=> "Garity",
+=> "Ginvarity",
+=> "Ginvfreq",
+=> "Ginvfreqconstmin",
+=> "Ginvfreqhack",
+=> "Gunary_first",
+olmw_cp => "OrientLMaxWeight(ConstPrio,2,1,2,1,1",
+pnrw_pg_1 => "PNRefinedweight(PreferGoals,1,1,1,2,2,2,0.5",
+pnrw_pg_2 => "PNRefinedweight(PreferGoals,5,2,2,5,2,1,0.5",
+pnrw_png_1 => "PNRefinedweight(PreferNonGoals,2,1,1,1,2,2,2",
+pnrw_png_2 => "PNRefinedweight(PreferNonGoals,4,5,5,4,2,1,1",
+rw_pg_1 => "Refinedweight(PreferGoals,1,2,2,1,0.8",
+rw_pg_2 => "Refinedweight(PreferGoals,1,2,2,2,0.5",
+rw_pg_3 => "Refinedweight(PreferGoals,1,2,2,2,2",
+rw_pgg => "Refinedweight(PreferGroundGoals,2,1,2,1.0,1",
+rw_png_1 => "Refinedweight(PreferNonGoals,1,1,2,1.5,1.5",
+rw_png_2 => "Refinedweight(PreferNonGoals,2,1,2,2,0.5",
+rw_png_3 => "Refinedweight(PreferNonGoals,2,1,2,2,2",
+rw_png_4 => "Refinedweight(PreferNonGoals,2,1,2,3,0.8",
+rw_sos => "Refinedweight(SimulateSOS,1,1,2,1.5,2",
+stw_cp_1 => "SymbolTypeweight(ConstPrio,1,200,2,30,1.5,1.5,0.8",
+stw_cp_2 => "SymbolTypeweight(ConstPrio,7,20,0,0,1.5,5,0.8",
+=> "WNoGeneration",
+=> "WNoSelection",
+=> "WPSelectComplexExceptRRHorn",
+=> "WPSelectNewComplexAHPExceptRRHorn",
+=> "WPSelectNewComplexAHPExceptUniqMaxHorn",
+=> "WSelectComplexAHP",
+=> "WSelectComplexAHPExceptRRHorn",
+=> "WSelectComplexG",
+=> "WSelectMaxLComplexAvoidPosPred",
+=> "WSelectNewComplex",
+=> "WSelectNewComplexAHP",
+=> "WSelectNewComplexAHPExceptRRHorn",
+=> "WSelectNewComplexAHPExceptUniqMaxHorn",
+=> "backward-context-sr",
+=> "c1",
+=> "destructive-er",
+=> "destructive-er-aggressive",
+=> "forward-context-sr",
+=> "forward-context-sr-aggressive",
+=> "oriented-simul-paramod",
+=> "simul-paramod",
+=> "prefer-initial-clauses",
+=> "select-on-processing-only",
+=> "simplify-with-unprocessed-units",
+=> "sos-uses-input-types",
+=> "split-aggressive",
+=> "split-clauses=12",
+=> "split-clauses=2",
+=> "split-clauses=4",
+=> "split-clauses=7",
+=> "split-clauses=8",
+=> "split-reuse-defs",
+=> "tLPO4",
+=> "warity",
+=> "waritysquared",
+=> "wconstant",
+=> "winvfreqrank",
+=> "winvmodfreqrankmax0",
+=> "wmodarity",
+=> "wprecedence"
+
+
+"definitional-cnf=24"
+"delete-bad-limit=150000000"
+"tstp-in"
+"memory-limit=192"
+"print-pid"
+"print-statistics"
+"resources-info"
+"s"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # splaggr { 0, 1 } [1]
 # splcl { 4, 7 } [4]
 # prord { arity, invfreq, invfreqconstmin } [invfreqconstmin]
