@@ -53,6 +53,8 @@ unzip -a -o mizdb1
 #tar xzf mizdoc.tar.gz 
 mkdir bin
 #tar xzf mizbin.tar.gz -Cbin
+# TODO: need addfmsg and errflag
+# TODO: nverifier will disappear
 cp  kernel/verifier bin/verifier.bfex
 cp  kernel/verifier bin/verifier.std
 cp  kernel/nverifier bin/nverifier.std
