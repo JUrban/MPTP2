@@ -14,6 +14,11 @@
 %%  :- mk_problems_from_file('mptp_chall_problems').
 %%------------------------------------------------------------------------
 
+%% TODO: These two are only needed for formula abstraction 0 currently an AI experiment.
+%%       Can be safely removed if ausing problems.
+:- use_module(library(assoc)).
+:- use_module(library(ordsets)).
+
 
 %%%%%%%%%%%%%%%%%%%% Settings %%%%%%%%%%%%%%%%%%%%
 
@@ -21,13 +26,15 @@
 %% ('pl' directory in the distro).
 %mml_dir("/home/urban/miztmp/distro/pl/").
 %mml_dir("/home/urban/mptp/pl/").
-mml_dir("/home/urban/rsrch/MPTP2/pl/").
+mml_dir("/home/urban/mizwrk/7.13.01_4.181.1147/MPTP2/pl/").
+%mml_dir("/home/urban/rsrch/MPTP2/pl/").
 %mml_dir("/big/urban/miztmp/mml3/tmp/").
 mml_dir_atom(A):- mml_dir(S), string_to_atom(S,A).
 
 %% version of MML needed for requirements (encoding of numbers)
 %mml_version([4,48,930]).
-mml_version([4,100,1011]).
+mml_version([4,181,1147]).
+%mml_version([4,100,1011]).
 %% switch to fail for debug
 optimize_fraenkel. % :- fail.
 
@@ -47,6 +54,7 @@ dbg(_,_).
 
 %%%%%%%%%%%%%%%%%%%% Options %%%%%%%%%%%%%%%%%%%%
 opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme instances
+	       opt_LEMMA_GLOBAL_GEN,	%% MoMM-like export of proof-local lemmas by generelizing
 	       opt_MK_TPTP_INF,		%% better tptp inference slot and no mptp_info
 	       opt_TPTP_SHORT,	        %% short tptp format (parsable by vampire too)
 	       opt_NO_EX_BG_FLAS,       %% do not include existential background in fixpoint
@@ -55,6 +63,7 @@ opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme insta
 	       opt_NON_MML_DIR,         %% unary functor passing a nonstandard directory for the article
 	       opt_LOAD_MIZ_ERRORS,     %% import err2 file with Mizar's errors
 	       opt_PROB_PRINT_FUNC,	%% unary functor passing a special printing func
+	       opt_SORT_TRANS_FUNC,     %% unary functor passing a special sort transformation func
 	       opt_PRINT_PROB_PROGRESS, %% print processed problems to stdout
 	       opt_ARTICLE_AS_TPTP_AXS, %% print the whole article as tptp axioms
 	       opt_PP_SMALLER_INCLUDES, %% unary functor passing a list of possible includes,
@@ -67,9 +76,11 @@ opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme insta
 	       opt_ALLOWED_REF_INFO,    %% .allowed_local file with accessible references is printed
 	       opt_PROVED_BY_INFO,      %% .proved_by0 file with orig refs (no bg) printed
 	       opt_DBG_LEVS_POS,        %% print a debugging info for levels and positions
+	       opt_DBG_ART_POS,         %% print a debugging info for article positions
 	       opt_NO_FRAENKEL_CONST_GEN, %% do not generalize local consts when abstracting fraenkels
 	                                 %% (useful for fast translation, when consts are not loaded)
 	       opt_LEARN_EDGE,           %% print fromula as labeled graph edges for learning
+	       opt_LEARN_STDFILES,	 %% print the symnr and refnr files without the prolog syntax
 	       opt_LEARN_SYMS_SMALL      %% symbols are numbered starting from 0 instead of references
 	      ]).
 
@@ -164,6 +175,9 @@ portray(A <=> B):- format(' (~p <=> ~p) ',[A,B]).
 portray(A : B):- var(A), format(' ( ~p : ~p) ',[A,B]).
 portray(! A : B):- format(' (! ~p : ~p) ',[A,B]).
 portray(? A : B):- format(' (? ~p : ~p) ',[A,B]).
+
+portray(A):- atom(A), constr_name1(A,_,_,S,_), write(S).
+
 portray(A):- atom(A), constr_name(A,Name,Quote),
 	((Quote==0, write(Name));
 	    (Quote==1, write(''''),write(Name),write(''''))).
@@ -173,9 +187,52 @@ portray(A):- compound(A), A =.. [F|L], constr_name(F,Name,Quote),
 	    (Quote==1, write(''''),write(Name),write(''''))),
 	write('('), print_many(L), write(')').
 
+
+% this creates the constr_name1 predicate for pretty-printing (see mk_constr_names1.pl for 00constrnamesarity):
+% urban@zen:~/gr/MPTP2$ ./mk_constr_names1.pl  00constrnamesarity > foo1.pl
+% [foo1].
+
+portray(A):-
+	compound(A), A =.. [F|L], constr_name1(F,LA,RA,S,RS),
+	length(L,NL),
+	(RA=circumfix ->
+	 FirstPos is NL - LA,
+	 write(S), print_many_from(FirstPos,L), write(RS)
+	;
+	 TA is LA + RA,
+	 FirstPos is NL - TA,
+	 (LA=0 -> Rest = L
+	 ;
+	  write('('), print_many_from_times(FirstPos,LA,L,Rest), write(')')
+	 ),
+	 write(S),
+	 (Rest = [] -> true
+	 ;
+	  write('('), print_many(Rest), write(')')
+	 )
+	).
+
 print_many([]).
 print_many([X]):- print(X),!.
 print_many([X|Y]):- print(X), write(','), print_many(Y).
+
+print_many_from(_,[]):-!.
+print_many_from(0,L):-!, print_many(L).
+print_many_from(N,[_|T]):- N1 is N - 1,  print_many_from(N1, T).
+
+
+print_many_times(_,[],[]):-!.
+print_many_times(0,L,L):- !.
+print_many_times(1,[X|Y],Y):- !, print(X).
+print_many_times(N,[X|Y],Res):- !, N1 is N - 1, print(X), write(','), print_many_times(N1,Y,Res).
+
+% print from the From position Times elements, return Res
+print_many_from_times(_,_,[],[]):-!.
+print_many_from_times(_,0,L,L):-!.
+print_many_from_times(0,Times,L,Res):-!, print_many_times(Times,L,Res).
+print_many_from_times(N,Times,[_|T],Res):- N1 is N - 1,  print_many_from_times(N1, Times, T,  Res).
+
+
 
 % explain tstp parsing
 d2l(X,X):- atomic(X);var(X).
@@ -192,11 +249,14 @@ declare_mptp_predicates:-
  abolish(fof/5),
  abolish(theory/2),
  abolish(constr_name/3),
+ abolish(constr_name/5),
  multifile(fof/4),
  multifile(fof/5),
  dynamic(fof/5),
  dynamic(constr_name/3),
+ abolish(constr_name1/5),
  multifile(constr_name/3),
+ multifile(constr_name1/5),
  multifile(theory/2),
  abolish(fof_name/2),
  abolish(fof_file/2),
@@ -376,6 +436,263 @@ check_if_symbol(X1,S):-
 
 check_if_symbol_l([H|_],S):- check_if_symbol(H,S),!.
 check_if_symbol_l([_|T],S):- check_if_symbol_l(T,S),!.
+
+%%%%%%%%%%%%%%%%%%%% Abstractor %%%%%%%%%%%%%%%%%%%%
+
+%% ##TEST: :- declare_mptp_predicates,load_mml,install_index,all_articles(AA),checklist(abstract_fraenkels_if, AA),!,member(A,[card_1]),time(mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma, sublemma] ],[opt_LOAD_MIZ_ERRORS,opt_ARTICLE_AS_TPTP_AXS,opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_LINE_COL_NMS,opt_PRINT_PROB_PROGRESS,opt_ALLOWED_REF_INFO,opt_PROVED_BY_INFO,opt_SORT_TRANS_FUNC(set_of_abstr_trm_top)])),fail.
+
+% to forbid backtracking
+abstr_transform_top(X,Y):- abstr_transform(X,Y,[],_), !.
+% end of traversal
+abstr_transform(X,X,SubstIn,SubstIn):- var(X),!.
+
+abstr_transform(X & Y,X1 & Y1,SubstIn,SubstOut):-
+	abstr_transform_l([X,Y],[X1,Y1],SubstIn,SubstOut).
+
+
+
+abstr_transform(X,TermOut,SubstIn,SubstOut):-
+	X =.. [F|Args],!,
+	(
+	 memberchk(F,[&,'|',~,=>,<=,!,?,:,<=>,'..','.','$',true,[]]) ->
+	 abstr_transform_l(Args,Args1,SubstIn,SubstOut),
+	 TermOut =.. [F|Args1]
+	;
+	 (
+	  memberchk((F/NewVar),SubstIn) -> Subst1 = SubstIn
+	 ;
+	  Subst1 = [(F/NewVar)|SubstIn]
+	 ),
+	 abstr_transform_l(Args,Args1,Subst1,SubstOut),
+	 TermOut =.. [ap,NewVar|Args1]
+	). 
+
+abstr_transform_l([],[],SubstIn,SubstIn).
+abstr_transform_l([H|T],[H1|T1],SubstIn,SubstOut):-
+	abstr_transform(H,H1,SubstIn,Subst1),
+	abstr_transform_l(T,T1,Subst1,SubstOut).
+
+% Does not work when here - moved to the top
+% :- use_module(library(ordsets)).
+
+set_of_terms_top(X,Res) :- !,
+	copy_term(X,X1),
+	numbervars(X1,0,_),
+	set_of_terms(X1,[],Res).
+
+set_of_terms_l([],In,In).
+set_of_terms_l([H|T],In,Out):-
+	set_of_terms(H,In,S1),
+	set_of_terms_l(T,S1,Out).
+
+set_of_terms(X,In,Out):-
+	ord_add_element(In, X, S1),
+	X =.. [F|Args],
+	list_to_ord_set([F|Args], S2),
+	ord_union(S1, S2, S3),
+	set_of_terms_l(Args, S3, Out).
+
+set_of_abstr_trm_top(X,Out):-
+	sort_transform_top(X,X1),
+	abstr_transform_top(X1,Y),
+	set_of_terms_top(Y,Out1),!,
+	findall(K,(member(T,Out1),with_output_to(string(K), print(T))),Out).
+		   %%format(string(K),'~w',T)),Out).
+
+%	maplist(format('~w'),Out1,Out).
+%	repeat,(member(K,Out),write('"'),write(K),write('",'),fail; nl).
+
+%%%%%%%%% the version that add the counts of occurences
+
+%% ##TEST: :- declare_mptp_predicates,load_mml,install_index,all_articles(AA),checklist(abstract_fraenkels_if, AA),!,member(A,[card_1]),time(mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma, sublemma] ],[opt_LOAD_MIZ_ERRORS,opt_ARTICLE_AS_TPTP_AXS,opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_LINE_COL_NMS,opt_PRINT_PROB_PROGRESS,opt_ALLOWED_REF_INFO,opt_PROVED_BY_INFO,opt_SORT_TRANS_FUNC(bag_of_abstr_trm_top)])),fail.
+
+
+% Does not work when here - moved to the top
+:- use_module(library(assoc)).
+
+bag_insert(X,In,Out):-
+	(get_assoc(X, In, V) ->
+	 V1 is V + 1
+	;
+	 V1 is 1
+	 ),
+	put_assoc(X, In, V1, Out).
+
+bag_insert_l([],In,In).
+bag_insert_l([H|T],In,Out):-
+	bag_insert(H,In,Out1),
+	bag_insert_l(T,Out1,Out).
+	
+bag_of_terms_top(X,Res) :- !,
+	copy_term(X,X1),
+	numbervars(X1,0,_),
+	empty_assoc(Assoc),
+	bag_of_terms(X1,Assoc,Res).
+
+bag_of_terms_l([],In,In).
+bag_of_terms_l([H|T],In,Out):-
+	bag_of_terms(H,In,S1),
+	bag_of_terms_l(T,S1,Out).
+
+bag_of_terms($true,In,In):- !.
+bag_of_terms(X,In,Out):-
+	X =.. [F|Args],
+	bag_insert_l([X,F],In,In1),
+	bag_of_terms_l(Args, In1, Out).
+
+bag_of_abstr_trm_top(X,Out):-
+	sort_transform_top(X,X1),
+	abstr_transform_top(X1,Y),
+	bag_of_terms_top(Y,Out0),!,
+	assoc_to_list(Out0,Out1),
+	findall(K,(member(T,Out1),with_output_to(string(K), print(T))),Out).
+
+
+%%%%%%%%% the version that distinguishes funcs and preds
+
+mptp_pred_tptp(X):- atom_chars(X,[F|_]), member(F,[v,r,m,l,p]).
+
+% to forbid backtracking
+abstr1_transform_top(X,Y):- abstr1_transform(X,Y,[],[],_,_), !.
+% end of traversal
+abstr1_transform(X,X,SubstPIn,SubstFIn,SubstPIn,SubstFIn):- var(X),!.
+
+abstr1_transform(X & Y,X1 & Y1,SubstPIn,SubstFIn,SubstPOut,SubstFOut):-
+	abstr1_transform_l([X,Y],[X1,Y1],SubstPIn,SubstFIn,SubstPOut,SubstFOut).
+
+abstr1_transform(X,TermOut,SubstPIn,SubstFIn,SubstPOut,SubstFOut):-
+	X =.. [F|Args],!,
+	(
+	 memberchk(F,[&,'|',~,=>,<=,!,?,:,<=>,'..','.','$',true,[]]) ->
+	 abstr1_transform_l(Args,Args1,SubstPIn,SubstFIn,SubstPOut,SubstFOut),
+	 TermOut =.. [F|Args1]
+	;
+	 (
+	  mptp_pred_tptp(F) ->
+	  (
+	   memberchk((F/NewVar),SubstPIn) ->
+	   Subst1P = SubstPIn
+	  ;
+	   Subst1P = [(F/NewVar)|SubstPIn]
+	  ),
+	  abstr1_transform_l(Args,Args1,Subst1P,SubstFIn,SubstPOut,SubstFOut),
+	  TermOut =.. [p,NewVar|Args1]	  
+	 ;
+	  (
+	   memberchk((F/NewVar),SubstFIn) ->
+	   Subst1F = SubstFIn
+	  ;
+	   Subst1F = [(F/NewVar)|SubstFIn]
+	  ),
+	  abstr1_transform_l(Args,Args1,SubstPIn,Subst1F,SubstPOut,SubstFOut),
+	  TermOut =.. [f,NewVar|Args1]
+	 )
+	). 
+
+abstr1_transform_l([],[],SubstPIn,SubstFIn,SubstPIn,SubstFIn).
+abstr1_transform_l([H|T],[H1|T1],SubstPIn,SubstFIn,SubstPOut,SubstFOut):-
+	abstr1_transform(H,H1,SubstPIn,SubstFIn,Subst1P,Subst1F),
+	abstr1_transform_l(T,T1,Subst1P,Subst1F,SubstPOut,SubstFOut).
+
+
+%% ##TEST: :- declare_mptp_predicates,load_mml,install_index,all_articles(AA),checklist(abstract_fraenkels_if, AA),!,member(A,[card_1]),time(mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma, sublemma] ],[opt_LOAD_MIZ_ERRORS,opt_ARTICLE_AS_TPTP_AXS,opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_LINE_COL_NMS,opt_PRINT_PROB_PROGRESS,opt_ALLOWED_REF_INFO,opt_PROVED_BY_INFO,opt_SORT_TRANS_FUNC(bag_of_abstr1_trm_top)])),fail.
+
+bag_of_abstr1_trm_top(X,Out):-
+	sort_transform_top(X,X1),
+	abstr1_transform_top(X1,Y),
+	bag_of_terms_top(Y,Out0),!,
+	assoc_to_list(Out0,Out1),
+	findall(K,(member(T,Out1),with_output_to(string(K), print(T))),Out).
+
+
+%%%%%%%%%%%%%%%%%%%% Putting variable types into terms for learning  %%%%%%%%%%%%%%%%%%%%
+
+%% not used yet because of various explosions
+
+tvar_transforml(NewVar,Y1 & Y2,List):- !,
+	tvar_transforml(NewVar,Y1,L1),
+	tvar_transforml(NewVar,Y2,L2),
+	append(L1,L2,List).
+
+tvar_transforml(_, $true, []):- !.
+
+tvar_transforml(NewVar, ~S, [~S1]):- !,
+	S =.. [F|Args],
+	S1 =.. [F|[NewVar|Args]].
+
+tvar_transforml(NewVar, S, [S1]):- !,	
+	S =.. [F|Args],
+	S1 =.. [F|[NewVar|Args]].
+
+% to forbid backtracking
+tvar_transform_top(X,Y):- tvar_transform(X,Y), !.
+% end of traversal
+tvar_transform(X,X):- atomic(X); var(X).
+
+tvar_transform(! [(X:S)|T] : Y, Result):-
+	(
+	 S == $true -> X = NewVar
+	;
+	 tvar_transforml(NewVar,S,List),
+	 (X = List,!; print(zzzfail(X,List)))
+	 %ensure(X = List, tvar_transforml(X,List))
+	),
+	(
+	 T = [] -> tvar_transform(Y, Result)
+	;
+	 tvar_transform(! T : Y, Result)
+	), !.
+
+tvar_transform(? [(X:S)|T] : Y, Result):- !,
+	tvar_transform(! [(X:S)|T] : Y, Result).
+
+tvar_transform(sort(_,$true),$true).
+tvar_transform(sort(_,$false),$false).
+
+%% a list of predicates applied to a list
+tvar_transform(sort(X,S),List):- !,
+	tvar_transforml(X, S, List).
+
+%% removal of $true
+tvar_transform((A | B), Result):-
+	maplist(tvar_transform,[A,B],[A1,B1]),!,
+	(
+	  (A1 == $true;B1 == $true) -> Result = $true;
+	  Result = (A1 | B1)
+	).
+tvar_transform(A & B, Result):-
+	maplist(tvar_transform,[A,B],[A1,B1]),!,
+	(
+	  A1== $true -> Result = B1;
+	  (
+	    B1== $true -> Result = A1;
+	    Result = (A1 & B1)
+	  )
+	).
+tvar_transform(A => B, Result):-
+	maplist(tvar_transform,[A,B],[A1,B1]),!,
+	(
+	  A1== $true -> Result = B1;
+	  (
+	    B1== $true -> Result = $true;
+	    Result = (A1 => B1)
+	  )
+	).
+tvar_transform(A <=> B, Result):-
+	maplist(tvar_transform,[A,B],[A1,B1]),!,
+	(
+	  A1== $true -> Result = B1;
+	  (
+	    B1== $true -> Result = A1;
+	    Result = (A1 <=> B1)
+	  )
+	).
+% functor traversal
+tvar_transform(X1,X2):-
+	X1 =.. [H1|T1],
+	maplist(tvar_transform,T1,T2),
+	X2 =.. [H1|T2].
+
 
 
 %%%%%%%%%%%%%%%%%%%% Sort relativization %%%%%%%%%%%%%%%%%%%%
@@ -1381,14 +1698,18 @@ get_nr_type(File,N,Name):-
 
 
 %% the (non)zerotyp added by requirements numeral
-spec_num_type(0,_,(sort(0,(m2_subset_1(k1_numbers, k5_numbers)))
+spec_num_type(0,[4,_,_],(sort(0,(m2_subset_1(k1_numbers, k5_numbers)))
 		 & sort(0,(m1_subset_1(k5_numbers)))
 		 & sort(0,(m1_subset_1(k1_numbers))))) :- !.
 
-spec_num_type(N,MmlVersion,(sort(N,(IsPositive & m2_subset_1(k1_numbers, k5_numbers)))
-		 & sort(N,(m1_subset_1(k5_numbers)))
-		 & sort(N,(m1_subset_1(k1_numbers))))):- req_Positive(MmlVersion,IsPositive).
+spec_num_type(0,[5,_,_],sort(0,(m1_subset_1(k4_ordinal1)))):- !.
 
+spec_num_type(N,[4|MmlVersion4],(sort(N,(IsPositive & m2_subset_1(k1_numbers, k5_numbers)))
+		 & sort(N,(m1_subset_1(k5_numbers)))
+		 & sort(N,(m1_subset_1(k1_numbers))))):- !, req_Positive([4|MmlVersion4],IsPositive).
+
+spec_num_type(N,[5|MmlVersion5],sort(N,(IsPositive & m1_subset_1(k4_ordinal1)))):-
+	     !, req_Positive([5|MmlVersion5],IsPositive).
 
 
 %% ###TODO: change this system to the one used for assert_arith_evals
@@ -2435,16 +2756,32 @@ print_used_by(File, _Options):-
 
 %%%%%%%%%%%%%%%%%%%% Create training data for SNoW %%%%%%%%%%%%%%%%%%%%
 
+
 %% symbol and reference numbering for snow
 %% symbols start at 100000
-get_snow_refnr(Ref,Nr):- snow_refnr(Ref,Nr),!.
-get_snow_refnr(Ref,Nr):-
+%% old code that numbers from 1
+get_snow_refnr_old(Ref,Nr):- snow_refnr(Ref,Nr),!.
+get_snow_refnr_old(Ref,Nr):-
 	flag(snow_refnr,N,N+1), Nr is N+1,
 	assert(snow_refnr(Ref,Nr)),!.
 
-get_snow_symnr(Ref,Nr):- snow_symnr(Ref,Nr),!.
-get_snow_symnr(Ref,Nr):- flag(snow_symnr,N,N+1), Nr is N+1,
+get_snow_symnr_old(Ref,Nr):- snow_symnr(Ref,Nr),!.
+get_snow_symnr_old(Ref,Nr):- flag(snow_symnr,N,N+1), Nr is N+1,
 	assert(snow_symnr(Ref,Nr)),!.
+
+%% new code that numbers from 0
+get_snow_refnr(Ref,Nr):- snow_refnr(Ref,Nr),!.
+get_snow_refnr(Ref,Nr):-
+	flag(snow_refnr,Nr,Nr+1),
+	assert(snow_refnr(Ref,Nr)),!.
+
+get_snow_symnr(Ref,Nr):- snow_symnr(Ref,Nr),!.
+get_snow_symnr(Ref,Nr):-
+	flag(snow_symnr,Nr,Nr+1),
+	assert(snow_symnr(Ref,Nr)),!.
+
+
+
 
 %% print defs and thms, with only top-level references
 %% now prints in the article order, and also respects
@@ -2455,6 +2792,10 @@ get_snow_symnr(Ref,Nr):- flag(snow_symnr,N,N+1), Nr is N+1,
 %% With the following options the formula is printed as a graph, and with symbol
 %% numbering starting at 0 (instead of reference numbering):
 %% ##TEST: :- mk_snow_input_for_learning(snow3,[opt_LEARN_EDGE, opt_LEARN_SYMS_SMALL]).
+%%
+%% Print the refnr and symnr files without the prolog notation
+%% ##TEST: :- mk_snow_input_for_learning(snow3,[opt_LEARN_STDFILES]).
+
 mk_snow_input_for_learning(File,Options):-
 	declare_mptp_predicates,
 	load_theorems,
@@ -2519,10 +2860,24 @@ mk_snow_input_for_learning(File,Options):-
 	  told
 	),
 	tell(SymFile),
-	listing(snow_symnr),
+	(
+	 member(opt_LEARN_STDFILES,Options) ->
+	 (
+	  snow_symnr(SymName,_), print_nl(SymName), fail ; true
+	 )
+	 ;
+	 listing(snow_symnr)
+	),
 	told,
 	tell(RefFile),
-	listing(snow_refnr),
+	(
+	 member(opt_LEARN_STDFILES,Options) ->
+	 (
+	  snow_refnr(RefName,_), print_nl(RefName), fail ; true
+	 )
+	 ;
+	 listing(snow_refnr)
+	),
 	told.
 
 
@@ -2725,7 +3080,8 @@ parse_snow_specs(File):-
 
 %% this could become  MML-version specific (it is now)
 req_LessOrEqual([4,48,_],r1_xreal_0):-!.
-req_LessOrEqual([4,_,_],r1_xxreal_0).
+req_LessOrEqual([4,_,_],r1_xxreal_0):-!.
+req_LessOrEqual([5,_,_],r1_xxreal_0):-!.
 req_ImaginaryUnit(_,k1_xcmplx_0).
 req_RealAdd(_,k2_xcmplx_0).
 req_RealDiff(_,k6_xcmplx_0).
@@ -2734,7 +3090,9 @@ req_RealInv(_,k5_xcmplx_0).
 req_RealMult(_,k3_xcmplx_0).
 req_RealNeg(_,k4_xcmplx_0).
 req_Positive([4,48,_],v2_xreal_0):-!.
-req_Positive([4,_,_],v2_xxreal_0).
+req_Positive([4,_,_],v2_xxreal_0):-!.
+req_Positive([5,_,_],v2_xxreal_0).
+
 
 
 %% decode_pn_number(+Atom, [-MizExpr, -CmplxNr])
@@ -4440,8 +4798,10 @@ load_proper_article(Article,Options,PostLoadFiles):-
 	retractall(fof(_,_,_,file(Article,_),_)),
 	retractall(fraenkels_loaded(Article)),
 	%% ###TODO: this willbe no longer needed as the dco is in xml
-	sublist(exists_file,[DCO],ToLoad1),
-	load_files(ToLoad1,[silent(true)]),
+	%% commented now - works with MML 1103 and could caues trouble with 1011
+	%% uncomment for old versions
+	% sublist(exists_file,[DCO],ToLoad1),
+	% load_files(ToLoad1,[silent(true)]),
 	consult(File),
 	assert_arith_evals(_),
 	assert_arith_reqs(_),
@@ -4452,6 +4812,18 @@ load_proper_article(Article,Options,PostLoadFiles):-
 	abstract_fraenkels(Article, [], _, _),
 	abstract_prereq_fraenkels(Article, Options),
 	install_index,
+	(
+	  member(opt_DBG_ART_POS,Options) ->
+	  findall(bla,
+		  (
+		    fof(RefL1,_,_,_,_),
+		    article_position(RefL1,PosR1),
+		    print_nl([RefL1,PosR1])
+		  ),
+		  _Foo)
+	;
+	  true
+	),
 	(
 	  member(opt_DBG_LEVS_POS,Options) ->
 	  findall([FL1,RefL1,PosR1],
@@ -4796,7 +5168,12 @@ print_problem(P,F,[_InferenceKinds,_PropositionKinds|Rest],Options,
 
 print_ref_as_axiom(Options, Q):-
 	get_ref_fof(Q, fof(Q,_Q1,Q2,Q3,Q4)),
-	sort_transform_top(Q2,SR2),
+	(
+	 member(opt_SORT_TRANS_FUNC(Transf_Func),Options) ->
+	 call(Transf_Func, Q2, SR2)
+	;
+	 sort_transform_top(Q2,SR2)
+	),
 	numbervars([SR2,Q3,Q4],0,_),
 	Status = axiom, QQ3 = Q3, QQ4= [],
 	(member(opt_TPTP_SHORT,Options) ->
@@ -4813,7 +5190,12 @@ print_ref_as_axiom(Options, Q):-
 
 print_ref_as_conjecture(Options, ProperRefs1, Q):-
 	get_ref_fof(Q, fof(Q,_Q1,Q2,Q3,Q4)),
-	sort_transform_top(Q2,SR2),
+	(
+	 member(opt_SORT_TRANS_FUNC(Transf_Func),Options) ->
+	 call(Transf_Func, Q2, SR2)
+	;
+	 sort_transform_top(Q2,SR2)
+	),
 	numbervars([SR2,Q3,Q4],0,_),
 	Status = conjecture,
 	QQ3 = inference(mizar_bg_added,[status(thm)],ProperRefs1),
