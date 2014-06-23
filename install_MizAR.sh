@@ -16,6 +16,8 @@ bindir=bin$2
 mycgi=$cgi/bin$2
 mymml=$ph/mml$2
 jobs=8
+mmlver=`echo -n \[$2\]| sed -e 's/\./,/g'`
+
 
 wget ftp://mizar.uwb.edu.pl/pub/system/i386-linux/mizar-$ver-i386-linux.tar
 if [ "$?" != "0" ]; then exit 1; fi
@@ -132,7 +134,7 @@ ln -s /home/mptp/bin/vampire_1.8 $mycgi/vampire_rel2
 ln -s $mymml/mptp/utils.pl $mycgi/utils.pl
 
 
-sed -ie "s/^mml_dir(.*/mml_dir(\"\/home\/mptp\/mizwrk\/$ver\/MPTP2\/pl\/\")./" utils.pl
+sed -ie "s/^mml_dir(.*/mml_dir(\"\/home\/mptp\/mizwrk\/$ver\/MPTP2\/pl\/\")./; s/^mml_version(.*/mml_version($mmlver)./" utils.pl
 sed -ie "s/^bindir=.*/bindir=$bindir/" $mycgi/mizf
 sed -ie "s/^\(.*MyUrl.*\)http:..mws.cs.ru.nl.~mptp.*/\1$myurl\2/" $mycgi/MizARconfig.pl
 
@@ -155,6 +157,21 @@ cat ../mml.lar | sort -R | time nice parallel -j $jobs  time "swipl -nodebug -A0
 mv problems problems_small
 mkdir problems
 tar czf mptp_problems_small.$ver.tar.gz problems_small
+
+# make snow data and train incrementally (so we can compare the performance with other versions)
+swipl -nodebug -A0 -L0 -G0 -T0 -q -t "[utils], mk_snow_input_for_learning(snow3,[opt_LEARN_STDFILES]), halt."
+# need to count the targets
+refnr0=`cat snow3.refnr | wc -l`
+# we start from 0
+refnr=$((refnr0-1))
+head -n1 snow3.train > snow3.train1
+~/gitrepo/MPTP2/MaLARea/bin/snow -train -I snow3.train1 -F snow3.net  -B :0-$refnr
+time ~/gitrepo/MPTP2/MaLARea/bin/snow -test -o allboth -i+ -I snow3.train -F snow3.net  -L 100 -B :0-$refnr > snow3.eval
+
+# no need for this - no background flas at this moment
+# time /home/urban/gitrepo/MPTP2/finedeps/SnowRes2Specs.pl -l2048 -r refnr$ext < snow3.eval$ext  > snow3.spec
+
+
 
 # fix bindir in mizf - done
 
