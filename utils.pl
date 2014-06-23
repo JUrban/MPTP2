@@ -2278,7 +2278,8 @@ mml2tptp_includes(OutDirectory):-
 	all_articles(ArticleNames),
 	checklist(abstract_fraenkels_if, ArticleNames),
 	install_index,
-	checklist(article2tptp_include(OutDirectory), [hidden, tarski | ArticleNames]).
+%	checklist(article2tptp_include(OutDirectory), [hidden, tarski | ArticleNames]).
+	checklist(article2tptp_include(OutDirectory), [hidden, tarski_0, tarski_a | ArticleNames]).
 
 %% For all articles create the inference dag of its top-level theorems
 %% (and lemmas and schemes), including needed stuff from other articles
