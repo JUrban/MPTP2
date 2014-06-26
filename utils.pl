@@ -43,6 +43,10 @@ optimize_fraenkel. % :- fail.
 %% (all atoms starting with c[0-9]+_
 absolute_locals. %%:- fail.
 
+%% special articles not in mml.lar - changed in 1191; we omit hidden
+mml_added_spc([tarski]):- mml_version([_,_,X]), X < 1191,!.
+mml_added_spc([tarski_0, tarski_a]).
+
 
 %% debugging, Flags can be: [dbg_FRAENKELS,dbg_CLUSTERS,dbg_REQS,dbg_FIXPOINT,dbg_LEVEL_REFS]
 dbg_flags([]).
@@ -261,6 +265,8 @@ declare_mptp_predicates:-
  abolish(fof_name/2),
  abolish(fof_file/2),
  abolish(fof_eq_def/2),
+ abolish(fof_sort_def/2),
+ abolish(fof_pred_def/2),
  abolish(fof_section/2),
  abolish(fof_level/2),
  abolish(fof_toplevel/2),
@@ -1206,15 +1212,44 @@ get_eq_defs(Files,RefsIn,SymsIn,AddedRefs):-
 	subtract(Refs1, RefsIn, AddedRefs).
 
 
+func_eq_directive(Defs,Theory):-
+	mml_version([_,_,V]),
+	(V < 1172 ->
+	 member(definitions(Defs),Theory)
+	;
+	 member(equalities(Defs),Theory)
+	).
+
+pred_expand_directive(Expands,Theory):-
+	mml_version([_,_,V]),
+	(V < 1172 ->
+	 Expands = []
+	;
+	 member(expansions(Expands),Theory)
+	).
+
+%% ##TODO: add also fof_sort_def in the findall - can be a bit
+%% expensive if done also for cluster symbols however, so we might do
+%% it more cautiously - omitting for now since attributive expansions
+%% are hopefully not so common
+get_pred_expansions(_F,_Theory,_RefsIn,_NewSyms,[]):- mml_version([_,_,V]), V < 1172, !.
+get_pred_expansions(F,Theory,RefsIn,NewSyms,RefsOut):-	 
+	member(expansions(Expands),Theory),
+	findall(Ref1, (member(Sym,NewSyms), fof_pred_def(Sym, Id),
+		       clause(fof(Ref1,_,_,file(G,_),_),_,Id),
+		       member(G,[F|Expands])), Refs1),
+	subtract(Refs1, RefsIn, RefsOut).
+
+
 %% version for mizar_by and mizar_proof; mizar_proof should be
 %% enhanced a bit probably
 %% OldSyms are used only for clusters and requirements
-one_pass(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,ZeroedRefs,AddedRefs):-
+one_pass(F,Pos,Top,InfKind,RefsIn,OldSyms,NewSyms,ZeroedRefs,AddedRefs):-
 	member(InfKind,[mizar_by,mizar_proof]),
 	theory(F, Theory),
 	member(registrations(Regs),Theory),
 	member(requirements(Reqs),Theory),
-	member(definitions(Defs),Theory),
+	func_eq_directive(Defs,Theory),
 	get_properties(RefsIn,NewSyms,Refs0),
 	get_existence(RefsIn,NewSyms,Refs1),
 	get_redefinitions(RefsIn,NewSyms,Refs2),
@@ -1227,17 +1262,22 @@ one_pass(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,ZeroedRefs,AddedRefs):-
 	get_fraenkel_defs(RefsIn,NewSyms,Refs7),
 	get_eq_defs([F|Defs],RefsIn,NewSyms,Refs8),
 	get_nr_types(Reqs,RefsIn,NewSyms,Refs9),
-	flatten([Refs0,Refs1,Refs2,Refs3,Refs4,Refs5,Refs5i,Refs6,Refs7,Refs8,Refs9],
+	(Top = top ->
+	 get_pred_expansions(F,Theory,RefsIn,NewSyms,Refs10)
+	;
+	 Refs10 = []
+	),
+	flatten([Refs0,Refs1,Refs2,Refs3,Refs4,Refs5,Refs5i,Refs6,Refs7,Refs8,Refs9,Refs10],
 		AddedRefs).
 
 %% version for mizar_by and mizar_proof pruning
 %%  existence properties and clusters, and requirement flas.
 %%  -- just heuristical, quite often incomplete.
-one_pass(F,Pos,mizar_no_existence,RefsIn,OldSyms,NewSyms,_ZeroedRefs,AddedRefs):-
+one_pass(F,Pos,Top,mizar_no_existence,RefsIn,OldSyms,NewSyms,_ZeroedRefs,AddedRefs):-
 	theory(F, Theory),
 	member(registrations(Regs),Theory),
 	member(requirements(Reqs),Theory),
-	member(definitions(Defs),Theory),
+	func_eq_directive(Defs,Theory),
 	get_properties(RefsIn,NewSyms,Refs0),
 	get_redefinitions(RefsIn,NewSyms,Refs2),
 	get_types(RefsIn,NewSyms,Refs3),
@@ -1248,7 +1288,12 @@ one_pass(F,Pos,mizar_no_existence,RefsIn,OldSyms,NewSyms,_ZeroedRefs,AddedRefs):
 	get_fraenkel_defs(RefsIn,NewSyms,Refs7),
 	get_eq_defs([F|Defs],RefsIn,NewSyms,Refs8),
 	get_nr_types(Reqs,RefsIn,NewSyms,Refs9),
-	flatten([Refs0,Refs2,Refs3,Refs4,Refs5,Refs5i,Refs7,Refs8,Refs9],
+	(Top = top ->
+	 get_pred_expansions(F,Theory,RefsIn,NewSyms,Refs10)
+	;
+	 Refs10 = []
+	),
+	flatten([Refs0,Refs2,Refs3,Refs4,Refs5,Refs5i,Refs7,Refs8,Refs9,Refs10],
 		AddedRefs).
 
 
@@ -1258,7 +1303,7 @@ one_pass(F,Pos,mizar_no_existence,RefsIn,OldSyms,NewSyms,_ZeroedRefs,AddedRefs):
 %% NO: unfortunately, fraenkel defs are needed, see e1_46__relset_2
 %% ###TODO: also another possible problem there: fraenkel definitions don't seem
 %%          to be instantiated properly in scheme instances
-one_pass(F,Pos,mizar_from,RefsIn,OldSyms,NewSyms,_ZeroedRefs,AddedRefs):-
+one_pass(F,Pos,_Top,mizar_from,RefsIn,OldSyms,NewSyms,_ZeroedRefs,AddedRefs):-
 	theory(F, Theory),
 	member(registrations(Regs),Theory),
 	member(requirements(Reqs),Theory),
@@ -1288,13 +1333,13 @@ fixpoint(F,Pos,InfKind,RefsIn,[],NewSyms,RefsOut):-
 	findall(d,(member(R,RefsIn),assert(fxp_refsin_(R))),_),
 	findall(d,(member(S,NewSyms),assert(fxp_allsyms_(S))),_),
 	init_fxp_sym_flags,
-	fixpoint_(F,Pos,InfKind,RefsIn,[],NewSyms,RefsOut).
+	fixpoint_(F,Pos,top,InfKind,RefsIn,[],NewSyms,RefsOut).
 
-fixpoint_(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
+fixpoint_(F,Pos,Top,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
 	decrease_fxp_sym_flags(NewSyms, ZeroedRefs),
 	dbg(dbg_FIXPOINT,
 	    (print(nEWSYMS(NewSyms, ZeroedRefs)),nl)),
-	one_pass(F, Pos, InfKind, RefsIn, OldSyms, NewSyms, ZeroedRefs, Refs1), !,
+	one_pass(F, Pos, Top, InfKind, RefsIn, OldSyms, NewSyms, ZeroedRefs, Refs1), !,
 	(
 	  Refs1 = [] ->
 	  (
@@ -1326,7 +1371,7 @@ fixpoint_(F,Pos,InfKind,RefsIn,OldSyms,NewSyms,RefsOut):-
 	  ord_union(SymsL1,Syms1),
 	  ord_subtract(Syms1, OldSyms1, NewSyms1),
 	  findall(d,(member(S,NewSyms1),assert(fxp_allsyms_(S))),_),
-	  fixpoint_(F, Pos, InfKind, Refs2, OldSyms1, NewSyms1, RefsOut)
+	  fixpoint_(F, Pos, nontop, InfKind, Refs2, OldSyms1, NewSyms1, RefsOut)
 	).
 
 
@@ -2223,7 +2268,9 @@ mptp2tptp(InFile,Options,OutFile):-
 thms2tptp(OutDirectory):-
 	mml_dir_atom(MMLDir),
 	all_articles(List),
-	member(A,[tarski|List]),
+	mml_added_spc(Spc),
+	append(Spc,List,NList),
+	member(A,NList),
 	member([Kind|Options],[[lem, opt_NO_FRAENKEL_CONST_GEN],[the],[sch]]),
 	concat_atom([MMLDir, A, '.', Kind, '2'], InFile),
 	concat_atom([OutDirectory, A, '.', Kind, '3'], OutFile),
@@ -2238,7 +2285,9 @@ thms2tptp(OutDirectory):-
 mml2tptp(OutDirectory):-
 	mml_dir_atom(MMLDir),
 	all_articles(List),
-	member(A,[hidden,tarski|List]),
+	mml_added_spc(Spc),
+	append(Spc,List,NList),
+	member(A,[hidden|NList]),
 	member([Kind|Options],[[lem, opt_NO_FRAENKEL_CONST_GEN],[the],[dco],[dcl]]),
 	concat_atom([MMLDir, A, '.', Kind, '2'], InFile),
 	exists_file(InFile),
@@ -2278,8 +2327,9 @@ mml2tptp_includes(OutDirectory):-
 	all_articles(ArticleNames),
 	checklist(abstract_fraenkels_if, ArticleNames),
 	install_index,
-%	checklist(article2tptp_include(OutDirectory), [hidden, tarski | ArticleNames]).
-	checklist(article2tptp_include(OutDirectory), [hidden, tarski_0, tarski_a | ArticleNames]).
+	mml_added_spc(Spc),
+	append(Spc,ArticleNames,NList),
+	checklist(article2tptp_include(OutDirectory), [hidden | NList]).
 
 %% For all articles create the inference dag of its top-level theorems
 %% (and lemmas and schemes), including needed stuff from other articles
@@ -2459,6 +2509,8 @@ do_th_stats(File,Options):-
 	(member(o_ths_SCHEMES, Options) -> (RefCodes=[t,s|RefCodes1], load_schemes); RefCodes=[t|RefCodes1]),
 	install_index,
 	all_articles(Articles),
+	mml_added_spc(Spc),
+	append(Spc,Articles,NList),
 %	Articles = [xboole_0,boole,xboole_1,enumset1],
 %	Articles = [jgraph_6],
 %	first100(Articles),
@@ -2469,7 +2521,7 @@ do_th_stats(File,Options):-
 %	tell(TrainFile),
 	%% this no longer assumes mml order of Articles
 	(
-	  member(A,[tarski|Articles]),		write(A),nl,
+	  member(A,NList),		write(A),nl,
 %	  (nonnumeric(A) -> NN = t; NN = f),
 	  fof(Name,theorem,_,file(A,Name),Info),
 	  get_rec_uses(Name,RefCodes,_NN,_LRec1,_LRecNN1,_CL1,_CLNN1,_Last1,_LastNN1,_CLast1,_CLastNN1,_AllRecTmpS1,_AllRecTmpNNS1),
@@ -2608,7 +2660,9 @@ cmp_articles_in_mml_order(_,Name1,Name2):- throw(cmp_articles_in_mml_order(Name1
 number_articles(Added):-  articles_numbered(Added),!.
 number_articles(Added):-
 	all_articles(L1),
-	append([hidden,tarski|L1], Added, L),
+	mml_added_spc(Spc),
+	append(Spc,L1,NList),	
+	append([hidden|NList], Added, L),
 	abolish(article_nr/2),
 	dynamic(article_nr/2),!,
 	findall(foo, ( nth1(N,L,A), assert(article_nr(A,N))), _),
@@ -2700,12 +2754,14 @@ find_article_roots(A,Roots):-
 mk_proved_by_for_malarea(File):-
 	declare_mptp_predicates,
 	all_articles(Articles),
+	mml_added_spc(Spc),
+	append(Spc,Articles,NList),
 	load_theorems,
 	load_lemmas,
 	tell(File),
 	%% ###TODO: this might be a bit fragile
 	(
-	  member(A,[tarski|Articles]),
+	  member(A,NList),
 	  fof(Name,Kind,_Fla,file(A,Name),Info),
 	  member(Kind,[theorem,lemma_conjecture]),
 	  Info = [mptp_info(_,_,_,_,_), inference(_,_,Refs) |_],
@@ -2725,10 +2781,12 @@ create_used_by(_Options):-
 	load_theorems,
 	install_index,
 	all_articles(Articles),
+	mml_added_spc(Spc),
+	append(Spc,Articles,NList),
 	abolish(used_by/2),
 	dynamic(used_by/2),
 	(
-	 member(A,[tarski|Articles]),
+	 member(A,NList),
 	 fof(Name,Kind,_,file(A,Name),Info),
 	 Kind = theorem,
 	 Info = [mptp_info(_,[],theorem,_,_), inference(_,_,Refs) |_],
@@ -2742,9 +2800,11 @@ create_used_by(_Options):-
 % should be preceded by create_used_by
 print_used_by(File, _Options):-
 	all_articles(Articles),
+	mml_added_spc(Spc),
+	append(Spc,Articles,NList),
 	tell(File),
 	(
-	 member(A,[tarski|Articles]),
+	 member(A,NList),
 	 fof(Name,_,_,file(A,Name),_),
 	 findall(Ref, used_by(Name, Ref), Refs),
 	 concat_atom(Refs,',',ToPrint),
@@ -2802,6 +2862,8 @@ mk_snow_input_for_learning(File,Options):-
 	load_theorems,
 	install_index,
 	all_articles(Articles),
+	mml_added_spc(Spc),
+	append(Spc,Articles,NList),
 	abolish(snow_symnr/2),
 	abolish(snow_refnr/2),
 	dynamic(snow_symnr/2),
@@ -2822,7 +2884,7 @@ mk_snow_input_for_learning(File,Options):-
 	%% print definitions - they have no proof
 	%% ###TODO: this might be a bit fragile
 	(
-	  member(A,[tarski|Articles]),
+	  member(A,NList),
 	  fof(Name,Kind,Fla,file(A,Name),Info),
 	  (
 	    Kind = definition,
@@ -4303,9 +4365,11 @@ mk_momm_typ_files(OutDirectory):-
 	load_mml,
 	install_index,
 	all_articles(ArticleNames),
+	mml_added_spc(Spc),
+	append(Spc,ArticleNames,NList),
 	checklist(abstract_fraenkels_if, ArticleNames),
 	install_index,
-	checklist(article_momm_typ_file(OutDirectory), [hidden, tarski | ArticleNames]).
+	checklist(article_momm_typ_file(OutDirectory), [hidden | NList]).
 
 %% article_momm_typ_file(+OutDirectory,+A)
 %%
@@ -4706,7 +4770,15 @@ needed_environ(Article, AddedNonMML, Articles):-
 	member(definitions(Defs),Theory),
 	member(theorems(Thms),Theory),
 	member(schemes(Schms),Theory),
-	union1([Constrs,Regs,Reqs,Defs,Thms,Schms],[],Articles0),
+	mml_version([_,_,V]),	
+	(V < 1172 ->
+	 Equals = [],
+	 Expands = []
+	;
+	 member(equalities(Defs),Theory),
+	 member(expansions(Defs),Theory)
+	),	 
+	union1([Constrs,Regs,Reqs,Defs,Thms,Schms,Equals,Expands],[],Articles0),
 	sort_articles_in_mml_order(Articles0, AddedNonMML, Articles).
 
 %% ##TEST: :- first100(L),print_env_deps(mml1,L).
@@ -5924,6 +5996,10 @@ install_index:-
 	dynamic(fof_file/2),
 	abolish(fof_eq_def/2),
 	dynamic(fof_eq_def/2),
+	abolish(fof_sort_def/2),
+	dynamic(fof_sort_def/2),
+	abolish(fof_pred_def/2),
+	dynamic(fof_pred_def/2),
 	abolish(fof_section/2),
 	dynamic(fof_section/2),
 	abolish(fof_level/2),
@@ -6046,6 +6122,13 @@ assert_syms(definition,_,definition,[],Fla1,_,Id,_,_,_):-
 	STerm =..[SFun|_],
 	atom_chars(SFun,[v|_]),
 	assert(fof_sort_def(SFun, Id)),!.
+
+assert_syms(definition,_,definition,[],Fla1,_,Id,_,_,_):-
+	strip_univ_quant(Fla1, ( RAtom <=> _), _),
+	nonvar(RAtom),
+	RAtom =..[RPred|_],
+	atom_chars(RPred,[r|_]),
+	assert(fof_pred_def(RPred, Id)),!.
 
 assert_syms(_,Ref1,definition,[],_,_,Id,_,Sec1,[redefinition(_,_,_,Sec2)|_]):-
 	assert(fof_redefines(Sec1, Sec2, Ref1, Id)).
