@@ -89,6 +89,22 @@ make hidden.xml
 make hidden.xml1
 make hidden.htmla1
 
+make tarski_0.acc
+make tarski_0.hdr
+make tarski_0.cmt
+make tarski_0.xml
+make tarski_0.xml1
+make tarski_0.htmla1
+make tarski_0.xml2
+
+make tarski_a.acc
+make tarski_a.hdr
+make tarski_a.cmt
+make tarski_a.xml
+make tarski_a.xml1
+make tarski_a.htmla1
+make tarski_a.xml2
+
 make tarski.acc
 make tarski.hdr
 make tarski.cmt
@@ -98,6 +114,8 @@ make tarski.htmla1
 make tarski.xml2
 
 make -j $jobs alldco2
+make tarski_0.dco2
+make tarski_a.dco2
 make tarski.dco2
 
 for j in `ls *.htmla1| sed -e 's/.htmla1//'`; do mv $j.htmla1 ../html/$j.html; done
