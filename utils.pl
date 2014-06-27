@@ -4775,8 +4775,8 @@ needed_environ(Article, AddedNonMML, Articles):-
 	 Equals = [],
 	 Expands = []
 	;
-	 member(equalities(Defs),Theory),
-	 member(expansions(Defs),Theory)
+	 member(equalities(Equals),Theory),
+	 member(expansions(Expands),Theory)
 	),	 
 	union1([Constrs,Regs,Reqs,Defs,Thms,Schms,Equals,Expands],[],Articles0),
 	sort_articles_in_mml_order(Articles0, AddedNonMML, Articles).
