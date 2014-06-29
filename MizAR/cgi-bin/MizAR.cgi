@@ -578,7 +578,7 @@ unless($query_mode eq 'TEXT')
     {
 	if($generatehtml==1)
 	{
-	    print ('<div id="', ++$lnr, '" style="display:none">', $aline, '</div>');
+	    # print ('<div id="', ++$lnr, '" style="display:none">', $aline, '</div>');
 	}
 	else { print $aline; }
     }
