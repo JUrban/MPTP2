@@ -244,7 +244,7 @@ sub GetUnifications
 	}
 	return @res;
     }
-    else { return ('DOWN'); }
+    else { return ('Not an existential query!'); }
 }
 
 
