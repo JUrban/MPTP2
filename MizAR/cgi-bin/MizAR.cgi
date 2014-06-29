@@ -446,6 +446,10 @@ sub StartSNoW
 #          in one day
     system("nohup $snow -server $sport -o allboth -F $SnowMMLNet -A $SnowMMLArch > $SnowOutput 2>&1 &");
 
+# nohup /home/mml/public_html/cgi-bin/bin/snow -server 60003 -o allboth -F /home/urban/public_html/holdata/holdata.net -A /home/urban/public_html/holdata/holdata.arch > /dev/null 2>&1 &
+
+# cd /home/urban/public_html/holdata && nohup /home/urban/gr/MPTP/SCRIPT/advisor/holadvisor.pl -p60003 -w45001 holdata > /dev/null 2>&1 &
+
 #--- get unused port for advisor
     socket(SOCK1,PF_INET,SOCK_STREAM,(getprotobyname('tcp'))[2]);
     bind( SOCK1,  sockaddr_in(0, INADDR_ANY));
@@ -717,19 +721,29 @@ if(($generateatp > 0) || ($problemstosolvenr > 0) || ($gemulate_all_by == 4))
 
 	my $atpout = ($query_mode eq 'HTML')? "$ProblemFileOrig.atpoutput" : '-';
 	open(my $fhout,">$atpout");
+	open(my $fatplog,">$ProblemFileOrig.atplog");
+	print $fatplog ($outseparator, "Starting atp ", time() - $starttime, "s\n");
 	my $runwtlimit = "$Bindir/runwtlimit";
 	my $parwtlimit = "$Bindir/parwtlimit";
+	my $parwtlimit1 = "$Bindir/parwtlimit1";
 	my $vampire =     "$Bindir/vampire_rel2";
-	my $cpulimit = 15;
+	my $fofshared2 =  "$Bindir/fofshared.trms2";
+	my $cpulimit = 15; 
+	my $cpulim1 = $cpulimit - 5; 
 	my $vampire_params = " -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t $cpulimit -m 1234  -input_file ";
-
 	
 	my $vampire_params2 = " -proof tptp -output_axiom_names on --mode casc -t $cpulimit -m 1234  -input_file ";
-
-
+	my $vampire_params3 = " -proof tptp -output_axiom_names on --mode casc -t $cpulim1 -m 1234  -input_file ";
 
 	my $LocalAxs = $ProblemDir . "/" . $aname . ".ax" ;
 	my $MMLAxs = $Mizfiles . "/mptp/00allmmlax" ;
+
+	my $MMLSym0 = $Mizfiles . "/mptp/00sym0eq" ;
+	my $MMLSymd = $Mizfiles . "/mptp/00symdeq" ;
+
+	my $MMLAtpdeps15 = $Mizfiles . "/mptp/00atp15" ;
+	my $MMLMizdeps15 = $Mizfiles . "/mptp/00miz15" ;
+	my $MMLSeq = $Mizfiles . "/mptp/00seq" ;
 
 	my $EnvIncludeFile = $ProblemDir . "/" . $aname . ".envinclude";
 
@@ -743,12 +757,23 @@ if(($generateatp > 0) || ($problemstosolvenr > 0) || ($gemulate_all_by == 4))
 
 	my %fla2pos = ();
 	my %fla2name = ();
+	my %grefdeps = ();
 	open(XML2, $ProblemFileXml2);
 	while (<XML2>)
 	{
-	    if(m/^fof\(([^,]+),.*position\((\d+),(\d+)\)/) 
+	    if(m/^fof\(((.)[^,]+),.*position\((\d+),(\d+)\)/) 
 	    {
-		$fla2pos{$1}= "$2:$3";
+		$fla2pos{$1}= "$3:$4";
+
+		# so far we learn only from the toplevel thms
+		if(($2 eq 'l') || ($2 eq 't'))
+		{
+		    my $nm = $1;
+		    if(m/inference\(mizar_(proof|by|from),.*?\],\[([^\]]*)\]/)
+		    {
+			$grefdeps{$nm} = $2;
+		    }
+		}
 	    }
 	    if(($gemulate_all_by == 4) && m/mizar_by..position\((\d+),(\d+)\)/)
 	    {
@@ -774,7 +799,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0) || ($gemulate_all_by == 4))
 	{
 	    @provepositions = @provepositions[0..9]
 	}
-
+	print $fatplog ($outseparator, "Starting atp positions ", time() - $starttime, "s\n");
       POS: foreach my $pos (@provepositions)
 	{
 
@@ -810,7 +835,70 @@ if(($generateatp > 0) || ($problemstosolvenr > 0) || ($gemulate_all_by == 4))
 		`echo "include('$MMLAxs')." > $File.big`;
 		`cat $File.big0 >> $File.big`;
 
+		print $fatplog ($outseparator, "Big files written for $File ", time() - $starttime, "s\n");
+		if( -e $fofshared2)
+		{
+		    my @newaxs = ();
+		    my $newconj = "";
+		    foreach my $role ("axiom", "conjecture")
+		    {
+			open(SYM0, ">$File.sym0.$role") or die;
+			open(SYMD, ">$File.symd.$role") or die;
+			my $regexp1 = '"_' . $aname . ', *' . $role . ' *,"';
+			my $fofsh_pid = open(FSH,"grep  $regexp1 $File.big0 | sort -u | $fofshared2 |");
+#open(FSH,"grep $regexp $LocalAxs | $fofshared2 ");
+			while($_=<FSH>) 
+			{
+			    m/^terms\( *([a-z0-9A-Z_]+) *, *\[(.*)\] *\)\./ or die; 
+			    my ($ref, $trms) = ($1, $2); 
+			    my $trms1 = $trms; my $trms2=$trms;
+			    $trms=~s/X\d+/X0/g; 
+			    $trms2=~s/\bc\d+_[_a-z0-9]+/X0/g; 
+			    my %trms=(); my %trms1 = (); my %trms2 = ();
+			    @trms{split(/, /, $trms . ', ' . $trms2)}=(); 
+			    @trms1{split(/, /, $trms1 . ', ' . $trms2)}=(); 
+			    if(scalar(keys %trms)==0) {$trms{'"\$true"'}=()} 
+			    if(scalar(keys %trms1)==0) {$trms1{'"\$true"'}=()} 
+			    print SYM0 "$ref:", join(", ", sort keys %trms), "\n";
+			    print SYMD "$ref:", join(", ", sort keys %trms1), "\n";
+			    if($role eq 'axiom') { push(@newaxs,$ref) } else { $newconj = $ref }
+			}
+			close SYM0;
+			close SYMD;
+			close FSH;
+		    }
 
+# TODO: delete after processing
+
+		    `cat $MMLSym0 $File.sym0.axiom > $File.0eq`;
+		    `cat $MMLSymd $File.symd.axiom > $File.deq`;
+		    `cp $MMLAtpdeps15 $File.atp15`;
+		    `cp $MMLMizdeps15 $File.miz15`;
+		    `cp $MMLSeq $File.seq`;
+		    `grep  "conjecture," $File > $File.conjecture`; 
+		    
+		    open(FS,">>$File.seq"); print FS join("\n",@newaxs),"\n"; close(FS);
+		    open(FS2,">>$File.atp15"); 
+		    open(FS3,">>$File.miz15"); 
+		    open(FSDBG2,">$File.atpdbg15"); 
+		    foreach my $nax (@newaxs)
+		    {
+			my $lrfs = '';
+			if(exists($grefdeps{$nax}))
+			{
+			    my @mrfs = grep { m/^[ltds]/ } split(/, */, $grefdeps{$nax});
+			    $lrfs = join(' ', @mrfs);
+			}
+			print FS2 $nax,':',$lrfs,"\n";
+			print FS3 $nax,':',$lrfs,"\n";
+			print FSDBG2 $nax,':',$lrfs,"\n";
+		    }
+		    close(FS2);
+		    close(FS3);
+		    close(FSDBG2);
+		}
+
+		print $fatplog ($outseparator, "Learning files written for $File ", time() - $starttime, "s\n");
 		next POS  if ($gonly_create_problems == 2);
 
 		##DEBUG print `pos`;
@@ -818,8 +906,28 @@ if(($generateatp > 0) || ($problemstosolvenr > 0) || ($gemulate_all_by == 4))
 		##DEBUG print "$runwtlimit $cpulimit $vampire -proof tptp -ss included -sd 1 -output_axiom_names on --mode casc -t 10 -m 1234  -input_file $File | tee $File.eout1 | grep '\bfile('|";
 		# my $eproof_pid = open(EP,"$runwtlimit $cpulimit $vampire\ $vampire_params_sd 1 $vampire_params2 $File.big | tee $File.eout1 | grep '\\bfile('|") or die("bad vampire input file $File.big"); 
 
-		my $eproof_pid = open(EP,"$parwtlimit $cpulimit $vampire $File $mmlversion $vampire_params2  | tee $File.eout |") or die("bad vampire run on input filestem $File");
 
+		if( -e $fofshared2)
+		{
+
+		    system("$parwtlimit1 $cpulimit $aname $File $mmlversion $Bindir $MMLAxs  > $File.eout");
+
+		    print $fatplog ($outseparator, "parwtlimit1 done for $File ", time() - $starttime, "s\n");
+		    my $exit_code = system('grep', '-q', '\\bfile(',  "$File.eout");
+		    if(0 == $exit_code)
+		    {
+			open(EP,"cat $File.eout|");
+		    }
+		    else
+		    {
+			#my $eproof_pid = open(EP,"$parwtlimit $cpulim1 $vampire $File $mmlversion $vampire_params3  | tee $File.eout |") or die("bad vampire run on input filestem $File");
+		    }
+#		    my $eproof_pid = open(EP,"$parwtlimit1 $cpulimit $aname $File $mmlversion $Bindir $MMLAxs  | tee $File.eout |") or die("bad vampire run on input filestem $File");
+		}
+		else
+		{
+		    my $eproof_pid = open(EP,"$parwtlimit $cpulimit $vampire $File $mmlversion $vampire_params2  | tee $File.eout |") or die("bad vampire run on input filestem $File");
+		}
 ##--- read the needed axioms for proof
  		while ($_=<EP>)
  		{
@@ -833,6 +941,14 @@ if(($generateatp > 0) || ($problemstosolvenr > 0) || ($gemulate_all_by == 4))
 		    push( @simprefs, $simplemiz) if(length($simplemiz) > 0);
 		}
 		close(EP);
+
+		if(-e $fofshared2)
+		{
+		    unlink ("$File.0eq", "$File.deq", "$File.atp15", "$File.miz15", "$File.seq");
+		}
+
+		print $fatplog ($outseparator, "proving done for $File ", time() - $starttime, "s\n");
+
 		##DEBUG print ("refs: ", join(",",@refs));
 
 		# Vampire can print multiple SZS lines (for each strategy); get the last one
@@ -860,6 +976,7 @@ if(($generateatp > 0) || ($problemstosolvenr > 0) || ($gemulate_all_by == 4))
 
 	}
 	print $fhout ($outseparator, "Request took ", time() - $starttime, "s\n");
+	print $fatplog ($outseparator, "Request took  ", time() - $starttime, "s\n");
 
     }
 }
