@@ -852,8 +852,8 @@ if(($generateatp > 0) || ($problemstosolvenr > 0) || ($gemulate_all_by == 4))
 			    m/^terms\( *([a-z0-9A-Z_]+) *, *\[(.*)\] *\)\./ or die; 
 			    my ($ref, $trms) = ($1, $2); 
 			    my $trms1 = $trms; my $trms2=$trms;
-			    $trms=~s/X\d+/X0/g; 
-			    $trms2=~s/\bc\d+_[_a-z0-9]+/X0/g; 
+			    $trms=~s/X\d+/X1/g; 
+			    $trms2=~s/\bc\d+_[_a-z0-9]+/X1/g; 
 			    my %trms=(); my %trms1 = (); my %trms2 = ();
 			    @trms{split(/, /, $trms . ', ' . $trms2)}=(); 
 			    @trms1{split(/, /, $trms1 . ', ' . $trms2)}=(); 
