@@ -130,7 +130,7 @@ my $swiulimit = ($gmaster_mode==1)? 100000 : 120;
 
 my $starttime = time(); # for measuring the query processing time
 
-$ENV{"PATH"} = $ENV{"PATH"} . ":/home/mptp/bin";
+$ENV{"PATH"} = "/home/mptp/bin:" . $ENV{"PATH"};
 
 if($gwatch_cpu_load == 1)
 {
