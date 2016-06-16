@@ -1,2 +1,2 @@
-sub MyUrl () { 'http://mws.cs.ru.nl/~mptp' }
-sub GLoadLimit () { 24 }
+sub MyUrl () { 'http://grid01.ciirc.cvut.cz/~mptp' }
+sub GLoadLimit () { 64 }

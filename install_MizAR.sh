@@ -15,7 +15,7 @@ cgi=$ph/cgi-bin
 bindir=bin$2
 mycgi=$cgi/bin$2
 mymml=$ph/mml$2
-jobs=8
+jobs=64
 mmlver=`echo -n \[$2\]| sed -e 's/\./,/g'`
 
 
@@ -125,7 +125,9 @@ tar czf html_abstr.$ver.noproofs.tar.gz html
 mv miztmp/proofs html
 tar czf html_abstr.$ver.tar.gz html
 
-git clone git@github.com:JUrban/MPTP2.git
+git clone https://github.com/JUrban/MPTP2.git
+if [ $? != 0 ]; then echo "cannot clone MPTP2 repo, exiting"; exit 1; fi
+#git@github.com:JUrban/MPTP2.git
 # git branch --track MizAR1096 origin/MizAR1096
 # git checkout MizAR1096
 
