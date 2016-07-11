@@ -68,6 +68,7 @@ opt_available([opt_REM_SCH_CONSTS,	%% generalize local constants in scheme insta
 	       opt_LOAD_MIZ_ERRORS,     %% import err2 file with Mizar's errors
 	       opt_PROB_PRINT_FUNC,	%% unary functor passing a special printing func
 	       opt_SORT_TRANS_FUNC,     %% unary functor passing a special sort transformation func
+	       opt_USE_ORIG_SCHEMES,    %% use the original schemes instead of their instances in the problem
 	       opt_PRINT_PROB_PROGRESS, %% print processed problems to stdout
 	       opt_ARTICLE_AS_TPTP_AXS, %% print the whole article as tptp axioms
 	       opt_PP_SMALLER_INCLUDES, %% unary functor passing a list of possible includes,
@@ -145,9 +146,11 @@ declare_TPTP_operators:-
     op(100,fx,++),
     op(100,fx,--),
     op(100,xf,'!'),
+    op(400,fx,'^'),
     op(405,xfx,'='),
     op(405,xfx,'~='),
     op(450,fy,~),
+    op(501,yfx,'@'),
     op(502,xfy,'|'),
     op(502,xfy,'~|'),
     op(503,xfy,&),
@@ -166,11 +169,45 @@ declare_TPTP_operators:-
 %---- .. used for range in tptp2X. Needs to be stronger than :
     op(400,xfx,'..').
 
+
+% untested - for newer swi
+declare_TPTP_operators1:-
+    op(99,fx,'$'),
+    op(100,fx,++),
+    op(100,fx,--),
+    op(100,xf,'!'),
+    op(400,fx,'^'),
+    op(405,xfx,'='),
+    op(405,xfx,'~='),
+    op(450,fy,~),
+    op(501,yfx,'@'),
+    (system_mode(true),op(502,xfy,'|'),system_mode(false)),
+    op(502,xfy,'~|'),
+    op(503,xfy,&),
+    op(503,xfy,~&),
+    op(504,xfy,=>),
+    op(504,xfy,<=),
+    op(505,xfy,<=>),
+    op(505,xfy,<~>),
+%----! and ? are of higher precedence than : so !X:p(X) is :(!(X),p(X))
+%----Otherwise !X:!Y:p(X,Y) cannot be parsed.
+    op(400,fx,!),
+    op(400,fx,?),
+%----Need : stronger than + for equality and otter in tptp2X
+%----Need : weaker than quantifiers for !X : ~p
+    op(450,xfy,:),
+%---- .. used for range in tptp2X. Needs to be stronger than :
+    op(400,xfx,'..').
+
+
+
+
 :- declare_TPTP_operators.
-logic_syms([++,--,'$',~,'|','~|',true,&,~&,=>,<=,<=>,<~>,!,?,:,'..',sort,all,'.',[]]).
+logic_syms([++,--,'@','$',~,'|','~|',true,&,~&,=>,<=,<=>,<~>,!,?,:,'..',sort,all,'.',[]]).
 
 %% uncomment this for E prover versions earlier than 0.9
 % portray(A = B):- format(' equal(~p,~p) ',[A,B]).
+portray(A @ B):- format(' (~p @ ~p) ',[A,B]).
 portray(~A):- write(' ~ ('), print(A), write(') ').
 portray(A & B):- format(' (~p & ~p) ',[A,B]).
 portray(A | B):- format(' (~p | ~p) ',[A,B]).
@@ -179,6 +216,7 @@ portray(A <=> B):- format(' (~p <=> ~p) ',[A,B]).
 portray(A : B):- var(A), format(' ( ~p : ~p) ',[A,B]).
 portray(! A : B):- format(' (! ~p : ~p) ',[A,B]).
 portray(? A : B):- format(' (? ~p : ~p) ',[A,B]).
+portray('^' A : B):- format(' (^ ~p : ~p) ',[A,B]).
 
 portray(A):- atom(A), constr_name1(A,_,_,S,_), write(S).
 
@@ -393,6 +431,18 @@ mptp_attr_or_mode_sym(X):- atom_chars(X,[F|_]),member(F,[v,m,l]).
 mptp_req_name(X):- atom_chars(X,[r,q|_]).
 mptp_fraenkel_sym(X):- atom_chars(X,[a|_]).
 mptp_choice_sym(X):- atom_chars(X,[o|_]).
+mptp_sch_func_sym(X):- atom_chars(X,[f|_]).
+mptp_sch_pred_sym(X):- atom_chars(X,[p|_]).
+
+% X/_ is an MPTP object translated as tptp functor
+mptp_tptp_func_arity(X/_):- atom_chars(X,[F|_]),member(F,[k,g,u,c,f,a,o,'0','1','2','3','4','5','6','7','8','9']).
+
+% avoids "f" and "p" - left to the scheme variant below
+mptp_tptp_func_arity_thf(X/_):- atom_chars(X,[F|_]),member(F,[k,g,u,c,a,o,'0','1','2','3','4','5','6','7','8','9']).
+mptp_tptp_pred_arity_thf(X/_):- atom_chars(X,[F|_]),member(F,[r,v,m,l]).
+
+mptp_scheme_arity_thf(X/_):- atom_chars(X,[F|_]),member(F,[f,p]).
+
 %% collect ground counts into buk/3, stack failure otherwise
 %% then print and run perl -e 'while(<>) { /.([0-9]+), (.*)./; $h{$2}+=$1;} foreach $k (sort {$h{$b} <=> $h{$a}} (keys %h)) {print "$h{$k}:$k\n";}'
 %% on the result
@@ -405,6 +455,42 @@ print_ground_info:-
 	tell('00ground'),
 	findall(e,(buk(_,B,C),zip(C,B,S),findall(d,(member(X,S),print(X),nl),_)),_),
 	told.
+
+
+%% like collect_symbols, but with arity
+collect_symbols_arity_top(X,L):-
+	collect_symbols_arity(X,L1),!,
+	flatten(L1,L2),
+	sort(L2,L).
+collect_symbols_arity(X,[]):- var(X),!.
+collect_symbols_arity(X,[X/0]):- atomic(X),!.
+collect_symbols_arity(X1,T2):-
+	X1 =.. [H1|T1],
+	length(T1,A1),
+	maplist(collect_symbols_arity,T1,T3),
+	flatten(T3,T4),
+	sort([H1/A1|T4],T2).
+
+% like logic_syms, but with a fake arity - is dangerous to use and hackish
+logic_syms_arity([(=)/_,'++'/_,'--'/_,'@'/_,'$'/_,(~)/_,'|'/_,'~|'/_,true/_,(&)/_,(~&)/_,(=>)/_,(<=)/_,(<=>)/_,(<~>)/_,(!)/_,(?)/_,(:)/_,'..'/_,sort/_,the/_,all/_,'.'/_,([])/_]).
+
+%% collect funcs and preds with arity from a formula
+get_func_pred_syms(X,F,P):-
+	collect_symbols_arity_top(X,L),
+	logic_syms_arity(LA),
+	subtract(L,LA,L1),
+	sublist(mptp_tptp_func_arity,L1,F),
+	subtract(L1,F,P).
+
+%% collect funcs and preds with arity from a formula, avoid "f" and "p" - schemes
+get_func_pred_syms_thf(X,F,P):-
+	collect_symbols_arity_top(X,L),
+	logic_syms_arity(LA),
+	subtract(L,LA,L1),
+	sublist(mptp_tptp_func_arity_thf,L1,F),
+	subtract(L1,F,L2),
+	sublist(mptp_tptp_pred_arity_thf,L2,P).
+
 
 
 %% collect nonvar symbols from term
@@ -443,6 +529,37 @@ check_if_symbol(X1,S):-
 check_if_symbol_l([H|_],S):- check_if_symbol(H,S),!.
 check_if_symbol_l([_|T],S):- check_if_symbol_l(T,S),!.
 
+%%%%%%%%%%%%%%%%%%%% Propositional Abstractor %%%%%%%%%%%%%%%%%%%%
+
+% to forbid backtracking
+propabstr_transform_top(X,Y):- 	sort_transform_top(X,X1),!, propabstr_transform(X1,Y), !.
+% end of traversal
+propabstr_transform(! _ : X, Y):- !, propabstr_transform(X, Y).
+propabstr_transform(? _ : X, Y):- !, propabstr_transform(X, Y).
+propabstr_transform($true,$true):- !.
+propabstr_transform($false,$false):- !.
+
+propabstr_transform(X & Y,X1 & Y1):- !,
+	propabstr_transform_l([X,Y],[X1,Y1]).
+
+propabstr_transform(X,TermOut):-
+	X =.. [F|Args],!,
+	(
+	 memberchk(F,[&,'|',~,=>,<=,<=>]) ->
+	 propabstr_transform_l(Args,Args1),
+	 TermOut =.. [F|Args1]
+	;
+	 F == '=' ->
+	 TermOut = eq
+	;
+	 TermOut = F
+	).
+
+propabstr_transform_l([],[]).
+propabstr_transform_l([H|T],[H1|T1]):-
+	propabstr_transform(H,H1),
+	propabstr_transform_l(T,T1).
+
 %%%%%%%%%%%%%%%%%%%% Abstractor %%%%%%%%%%%%%%%%%%%%
 
 %% ##TEST: :- declare_mptp_predicates,load_mml,install_index,all_articles(AA),checklist(abstract_fraenkels_if, AA),!,member(A,[card_1]),time(mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma, sublemma] ],[opt_LOAD_MIZ_ERRORS,opt_ARTICLE_AS_TPTP_AXS,opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_LINE_COL_NMS,opt_PRINT_PROB_PROGRESS,opt_ALLOWED_REF_INFO,opt_PROVED_BY_INFO,opt_SORT_TRANS_FUNC(set_of_abstr_trm_top)])),fail.
@@ -454,7 +571,6 @@ abstr_transform(X,X,SubstIn,SubstIn):- var(X),!.
 
 abstr_transform(X & Y,X1 & Y1,SubstIn,SubstOut):-
 	abstr_transform_l([X,Y],[X1,Y1],SubstIn,SubstOut).
-
 
 
 abstr_transform(X,TermOut,SubstIn,SubstOut):-
@@ -820,6 +936,287 @@ sort_transform(X1,X2):-
 	maplist(sort_transform,T1,T2),
 	X2 =.. [H1|T2].
 
+%%%%%%%%%%%%%%%%%%%% THF translation %%%%%%%%%%%%%%%%%%%%
+
+% return the list of quantified variables and conjunction of predicates
+sort_transform_thf_qlist(S1,S1,[],[],$true).  % needed only for fraenkel
+sort_transform_thf_qlist(SubstsIn,SubstsOut,[X:S],[X : $i],S1):- !,
+	sort_transform_thf(SubstsIn,SubstsOut,sort(X,S),S1).
+sort_transform_thf_qlist(SubstsIn,SubstsOut,[(X:S)|T],[X : $i|Qvars1],SortPreds1):-
+	sort_transform_thf(SubstsIn,SubstsOut1,sort(X,S),S1),
+	sort_transform_thf_qlist(SubstsOut1,SubstsOut,T,Qvars1,Preds1), !,
+	(
+	  S1 == $true -> SortPreds1 = Preds1;
+	  (
+	    Preds1 == $true -> SortPreds1 = S1;
+	    SortPreds1 = (S1 & Preds1)
+	  )
+	).
+
+add_lambda_l(_,[],[]).
+add_lambda_l(X, [H|T], [Z | T1]) :-
+	Z = ('^' [ X : $i] : H),
+	add_lambda_l(X,T,T1).
+
+
+
+sort_transform_thf_qlist_fr(S1,S1,[],[],[]).  % needed only for fraenkel
+sort_transform_thf_qlist_fr(SubstsIn,SubstsOut,[(X:S)|T],[X : $i|Qvars1],Preds2):-
+	sort_transform_thf(SubstsIn,SubstsOut1,sort(X,S),S1),
+	sort_transform_thf_qlist_fr(SubstsOut1,SubstsOut,T,Qvars1,Preds1),
+	add_lambda_l(X,[S1|Preds1],Preds2), !.
+
+
+
+add_univ_context1([],Fla,Fla).
+add_univ_context1([[_,Var,Decl]|T], FlaIn, ( ! [Var:Decl] : ( FlaOut) )):-
+	add_univ_context1(T,FlaIn,FlaOut).
+
+apply_univ_context1([],_).
+apply_univ_context1([[Sym,Var,_]|T], FlaIn):-
+	Var = Sym,
+	apply_univ_context1(T,FlaIn).
+
+
+
+% sort_transform_thf_top(+NoGen,+X,-Y):-
+%
+% If NoGen == 1, we do not generalize the scheme symbols like "f" and
+% "p" into variables. This means that we just apply the substitutions
+% collected.
+sort_transform_thf_top(NoGen,X,Y):-
+	sort_transform_thf([],SubstsOut,X,Y1), !,
+	(
+	 NoGen == 1 -> apply_univ_context1(SubstsOut,Y1), Y = Y1
+	;
+	 add_univ_context1(SubstsOut,Y1,Y)
+	).
+
+
+% sort_transform_thf(+SubstsIn, -SubstsOut, +In , -Out)
+%
+% transform to THF and collect the substitutions (context) that may
+% later be applied in sort_transform_thf_top .
+%
+% Scheme functors and preds get replaced by a new
+% variable and a declaration is created for them; the replacements get
+% collected so we can easily undo them by instatiation later
+	
+% end of traversal
+sort_transform_thf(S1,S1,X,X):- atomic(X), not(sch_symbol(X)); var(X).
+
+% do sort relativization, and simple removal of $true
+sort_transform_thf(SubstsIn,SubstsOut,! Svars : Y, Result):-
+	sort_transform_thf_qlist(SubstsIn,SubstsOut1,Svars,Qvars,Preds),
+	sort_transform_thf(SubstsOut1,SubstsOut,Y,Y1), !,
+	(
+	  Y1 == $true -> Result = $true;
+	  Result = (! Qvars : UnivRelat),
+	  (
+	    Preds == $true -> UnivRelat = Y1;
+	    UnivRelat = (Preds => Y1)
+	  )
+	).
+sort_transform_thf(SubstsIn,SubstsOut,? Svars : Y, Result):-
+	sort_transform_thf_qlist(SubstsIn,SubstsOut1,Svars,Qvars,Preds),
+	sort_transform_thf(SubstsOut1,SubstsOut,Y,Y1), !,
+	(
+	  Preds == $true ->
+	  (
+	    Y1 == $true -> Result = $true;
+	    Result = (? Qvars : Y1)
+	  )
+	;
+	  (
+	    Y1 == $true -> Result = (? Qvars : Preds);
+	    Result = (? Qvars : (Preds & Y1))
+	  )
+	).
+
+
+%% instantiate fraenkels with their defs, create the defs
+%% {f x | x in b, p x} ... all([X:b],f(X),p(X))
+% {F x|M x,P x}
+% 	replSepC1@(M)@(^[X:$i]:p(X))@(^[X:$i]:f(X))
+%
+% 	all([B3: m1_subset_1(u1_struct_0(B1))],B3,r2_hidden(B2,k2_abcmiz_0(B1,B3))) 
+%
+% 	(replSepC1 @ (m1_subset_1 @ (u1_struct_0 @ B1))
+% 	                  @ (^[B3:$i]: r2_hidden @ B2 @ (k2_abcmiz_0 @ B1 @B3))
+% 	                  @ (^[B3:$i]: B3) )
+%
+% all([B2: ( v8_abcmiz_1(k27_abcmiz_1) & m1_abcmiz_1(k27_abcmiz_1,k13_abcmiz_1(k27_abcmiz_1)) )],k9_abcmiz_a(k27_abcmiz_1
+% ,B2),r2_hidden(B2,k41_abcmiz_1(k27_abcmiz_1,B1)) & B2 = B2)
+
+% (replSepC1 @ (^[B2:$i] ( (v8_abcmiz_1 @ k27_abcmiz_1 @ B2)
+% 		                     & ( m1_abcmiz_1 @ k27_abcmiz_1 @ ( k13_abcmiz_1 @ k27_abcmiz_1) @ B2 ) )  )
+%                  @(^[B2:$i]: ((r2_hidden @ B2 @ ( k41_abcmiz_1 @ k27_abcmiz_1 @ B1)) & (B2 = B2)))
+% 		 @(^[B2:$i]:  ( k9_abcmiz_a @ k27_abcmiz_1 @ B2) )
+% 		 )
+
+% the(( v1_relat_1 & v1_funct_1 & v5_ordinal1 & v1_ordinal2 ))
+%(eps @ (^[NewVar:$i]: ((v1_relat_1 @ NewVar) & (v1_funct_1 @ NewVar) & (v5_ordinal1 @ NewVar) & (v1_ordinal2 @ NewVar))))
+
+% the(m2_qc_lang1(B1))
+% (eps @ (^[NewVar:$i]: ((m2_qc_lang1 @ B1 @ NewVar))))
+% or
+% (eps @ (m2_qc_lang1 @ B1))
+%
+% replSepC2 is an operator corresponding to (unary) Fraenkel operators
+% replSepC2@M1@M2@P@F means {F x y|M1 x, M2 x y, P x y} when sethood@M1 and sethood@(M2@X) (for all X with M1@X) hold;
+% if sethood@M1 or sethood@M2@X for some M1@X fail, replSepC2@M1@M2@P@F is left as some unspecified subset of {F x y|M1 x,M2 x y,P x y} (which may be a class)
+% thf(replSepC2,type,(replSepC2: ($i>$o)>($i>$i>$o)>($i>$i>$o)>($i>$i>$i)>$i)).
+% thf(replSepC2E,axiom, (! [M1:$i>$o] : (! [M2:$i>$i>$o] : (! [P:$i>$i>$o] : (! [F:$i>$i>$i] : (! [Y:$i] : ((in@Y@(replSepC2@M1@M2@P@F)) => (? [X1:$i] : (? [X2:$i] : ((M1@X1) & (M2@X1@X2) & (P@X1@X2) & (Y = (F@X1@X2)))))))))))).
+% thf(replSepC2I,axiom, (! [M1:$i>$o] : (! [M2:$i>$i>$o] : (! [P:$i>$i>$o] : (! [F:$i>$i>$i] : ((sethood@M1) => ((! [X1:$i] : ((M1@X1) => (sethood@(M2@X1)))) => (! [X1:$i] : (! [X2:$i] : ((M1@X1) => ((M2@X1@X2) => ((P@X1@X2) => (in@(F@X1@X2)@(replSepC2@M1@M2@P@F)))))))))))))).
+
+% all([B3: m1_subset_1(B1),B4: m1_trees_1(k9_xtuple_0(B3))],k5_trees_2(B3,B4),~ ( r2_hidden(B4,k3_trees_1(k9_xtuple_0(B3))) & ~ r2_hidden(k1_funct_1(B3,B4),B2) ))
+
+% (replSepC2 @ (m1_subset_1 @ B1)
+%                   @  (^[B3:$i]: (m1_trees_1 @ (k9_xtuple_0 @ B3)))
+%  	          @ (^[B3,B4:$i]: ((~ ( r2_hidden @ B4 @ (k3_trees_1 @ (k9_xtuple_0 @ B3)))) & (~ ( r2_hidden @ (k1_funct_1 @ B3 @ B4) @ B2) )))
+%                   @ (^[B3,B4:$i]: ( k5_trees_2 @ B3 @ B4)))
+
+% thf(eps_ax,axiom,(! [P:$i>$o] : (! [X:$i] : ((P@X) => (P@(eps@P)))))).
+
+
+sort_transform_thf(SubstsIn,SubstsOut,all(Svars,Trm,Frm),Result):-
+	sort_transform_thf_qlist_fr(SubstsIn,SubstsOut1,Svars,Qvars,Preds),
+	sort_transform_thf(SubstsOut1,SubstsOut2,Trm,Trm1),
+	sort_transform_thf(SubstsOut2,SubstsOut,Frm,Frm1), !,
+	Trm2 = ('^' Qvars : Trm1),
+	Frm2 = ('^' Qvars : Frm1),
+	length(Qvars, Arity),
+	atom_concat(replSep, Arity, ReplSep),
+	append(Preds,[Trm2,Frm2],Args1),
+	foldl(@, ReplSep, Args1, Result).
+
+sort_transform_thf(SubstsIn,SubstsOut,the(Type),Result):-
+	sort_transform_thf(SubstsIn,SubstsOut,sort(NewVar,Type),Z1),
+	Result = (eps @ ('^' [NewVar : $i] : Z1)).
+
+
+
+
+% This clause is redundant now, sort trafo can be done only after 'all' removal
+% sort_transform_thf(SubstsIn,SubstsOut,all(Svars,Trm,Frm),all(Qvars,Trm1,RelatFrm1)):-
+% 	sort_transform_qlist(SubstsIn,SubstsOut1,Svars,Qvars,Preds),
+% 	sort_transform_thf(SubstsOut1,SubstsOut2,Trm,Trm1),
+% 	sort_transform_thf(SubstsOut2,SubstsOut,Frm,Frm1), !,
+% 	(
+% 	  Preds == $true -> RelatFrm1 = Frm1;
+% 	  RelatFrm1 = (Preds & Frm1)
+% 	).
+
+
+
+sort_transform_thf(SubstsIn,SubstsOut,sort(X,Y1 & Y2),SortPreds):-
+	sort_transform_thf(SubstsIn,SubstsOut1,sort(X,Y1),Z1),
+	sort_transform_thf(SubstsOut1,SubstsOut,sort(X,Y2),Z2), !,
+	(
+	  Z1 == $true -> SortPreds = Z2;
+	  (
+	    Z2 == $true -> SortPreds = Z1;
+	    SortPreds = (Z1 & Z2)
+	  )
+	).
+sort_transform_thf(SubstsIn,SubstsOut,sort(X,~Y),~Z):-
+	sort_transform_thf(SubstsIn,SubstsOut,sort(X,Y),Z).
+sort_transform_thf(S1,S1,sort(_,$true),$true).
+sort_transform_thf(S1,S1,sort(_,$false),$false).
+sort_transform_thf(SubstsIn,SubstsOut,sort(X,Y),Z):-
+	Y =.. [F|Args],
+	sort_transform_thf_l(SubstsIn,SubstsOut,[X|Args],Args1),
+	foldl(@, F, Args1, Z).
+
+% we should not get here
+sort_transform_thf(_SubstsIn,_SubstsOut,sort(_,_),_):- throw(sort).
+% removal of $true
+sort_transform_thf(SubstsIn,SubstsOut,(A | B), Result):-
+	sort_transform_thf_l(SubstsIn,SubstsOut,[A,B],[A1,B1]),!,
+	(
+	  (A1 == $true;B1 == $true) -> Result = $true;
+	  Result = (A1 | B1)
+	).
+sort_transform_thf(SubstsIn,SubstsOut,A & B, Result):-
+	sort_transform_thf_l(SubstsIn,SubstsOut,[A,B],[A1,B1]),!,
+	(
+	  A1== $true -> Result = B1;
+	  (
+	    B1== $true -> Result = A1;
+	    Result = (A1 & B1)
+	  )
+	).
+sort_transform_thf(SubstsIn,SubstsOut,A => B, Result):-
+	sort_transform_thf_l(SubstsIn,SubstsOut,[A,B],[A1,B1]),!,
+	(
+	  A1== $true -> Result = B1;
+	  (
+	    B1== $true -> Result = $true;
+	    Result = (A1 => B1)
+	  )
+	).
+sort_transform_thf(SubstsIn,SubstsOut,A <=> B, Result):-
+	sort_transform_thf_l(SubstsIn,SubstsOut,[A,B],[A1,B1]),!,
+	(
+	  A1== $true -> Result = B1;
+	  (
+	    B1== $true -> Result = A1;
+	    Result = (A1 <=> B1)
+	  )
+	).
+
+sort_transform_thf(S1,S1,$true,$true).
+sort_transform_thf(S1,S1,$false,$false).
+
+sort_transform_thf(SubstsIn,SubstsOut,~X1,~X2):-
+	sort_transform_thf(SubstsIn,SubstsOut,X1,X2).
+
+% functor traversal; scheme functors and preds get replaced by a new
+% variable and a declaration is created for them; the replacements get
+% collected so we can easily undo them by instatiation later
+sort_transform_thf(SubstsIn,SubstsOut,X1,X2):-
+	X1 =.. [H1|T1],
+	sort_transform_thf_l(SubstsIn,SubstsOut1,T1,T2),
+	(
+	 mptp_sch_func_sym(H1) ->
+	 (
+	  member([H1,H2|_],SubstsOut1) ->
+	  SubstsOut = SubstsOut1
+	 ;
+	  length(T1,A),
+	  A1 is A + 1,
+	  fill('$i',A1,List),
+	  concat_atom(List, ' > ', Decl),
+	  SubstsOut = [[H1,H2,Decl]|SubstsOut1]
+	 )
+	;
+	 (
+	  mptp_sch_pred_sym(H1) ->
+	  (
+	   member([H1,H2|_],SubstsOut1) ->
+	   SubstsOut = SubstsOut1
+	  ;
+	   length(T1,A),
+	   fill('$i',A,List),
+	   append(List,['$o'],List1),
+	   concat_atom(List1, ' > ', Decl),
+	   SubstsOut = [[H1,H2,Decl]|SubstsOut1]
+	 )
+	 ;
+	  H2 = H1, SubstsOut = SubstsOut1
+	 )
+	),
+	foldl(@, H2, T2, X2).
+
+sort_transform_thf_l(SubstsIn,SubstsIn,[],[]).
+sort_transform_thf_l(SubstsIn,SubstsOut,[H|T],[H1|T1]):-
+	sort_transform_thf(SubstsIn,SubstsOut1,H,H1),
+	sort_transform_thf_l(SubstsOut1,SubstsOut,T,T1).
+
+
+
+
+
 %%%%%%%%%%%%%%%%%%%% Fraenkel de-anonymization %%%%%%%%%%%%%%%%%%%%
 
 %% First we replace fraenkels by placeholder variables which we remember, and collect
@@ -853,7 +1250,7 @@ all_collect_top(In,Out,Info):- all_collect(In,Out,[],Info),!.
 %% all_collect(+InTerm,-OutTerm,+Context=[(Var:Sort1)|RestV],
 %%             -Info=[[NewVar,Context,all(Svars1,Trm1,Frm1),GroundCopy]|RestI])
 %%
-%% First we replace fraenkels by placeholder variables which we remember, and collect
+%% First we replace fraenkels by NewVarplaceholder variables which we remember, and collect
 %% the fraenkels (with their context) into a list corresponding to the variables.
 %% Then we find optimal 'skolem' definitions corresponding to the fraenkels,
 %% instantiate such functors for each frankel with its context, and
@@ -4276,6 +4673,7 @@ print_nl(X):- print(X), nl, !.
 %% Schemes containing fraenkels are saved for possible instantiations
 %% in sch_orig_copy/2 .
 %% For choice terms, only the type fla is created, there is no definition.
+abstract_fraenkels(_Article, Options, _NewFrSyms, _NewFlaNames):- member(opt_USE_ORIG_SCHEMES,Options),!.
 abstract_fraenkels(Article, Options, NewFrSyms, NewFlaNames):-
 	findall(Id,(fof_file(Article,Id),
 		    clause(fof(_,_,Fla,file(_,_),_),_,Id),
@@ -4327,6 +4725,7 @@ abstract_fraenkels_if(Article):- fraenkels_loaded(Article),!.
 abstract_fraenkels_if(Article):-
 	abstract_fraenkels(Article, [], _, _),
 	assert(fraenkels_loaded(Article)),!.
+
 
 %%%%%%%%%%%% End of Installation of fraenkel definitions %%%%%%%%%%%%%%%%%%%%%
 
@@ -4814,6 +5213,7 @@ print_env_deps(File,Articles):-
 %% ensure that fraenkels are abstracted in all prerequisities
 %% of Article (changes the fraenkels_loaded/1 predicate).
 %% calling install_index after this is a good idea
+abstract_prereq_fraenkels(Article, Options):- member(opt_USE_ORIG_SCHEMES,Options),!.
 abstract_prereq_fraenkels(Article, Options):-
 	(member(opt_ADDED_NON_MML(AddedNonMML),Options) ->
 	    Added = AddedNonMML
@@ -4882,7 +5282,7 @@ load_proper_article(Article,Options,PostLoadFiles):-
 	install_index,
 	once(assert_sch_instances(Article,Options)),
 	install_index,
-	abstract_fraenkels(Article, [], _, _),
+	abstract_fraenkels(Article, Options, _, _),
 	abstract_prereq_fraenkels(Article, Options),
 	install_index,
 	(
@@ -5168,6 +5568,7 @@ mk_problem_data(P,F,Prefix,[InferenceKinds,PropositionKinds|Rest],Options,
 	;
 	  true
 	),
+	
 
 	%% Compute references into AllRefs.
 	%% This gets a bit tricky for cluster registrations - we need the original
@@ -5295,6 +5696,24 @@ get_transformed_fla(Q,Fla):-
 	sort_transform_top(Q2,Fla),
 	numbervars([Fla,Q3,Q4],0,_).
 
+get_transformed_fla_thf(Q,Fla):-
+	get_ref_fof(Q, fof(Q,_Q1,Q2,Q3,Q4)),
+	sort_transform_thf_top(Q2,Fla),
+	numbervars([Fla,Q3,Q4],0,_).
+
+%% fold(+BinConstr, +Top, +List , -Term)
+%%
+%% Replace cons and nil with BinConstr and Top (initially the top functor), creating Term.
+foldl(_BinConstr, Top, [], Top).
+foldl(BinConstr, Top, [H|T],Res):-
+	Tmp =.. [BinConstr, Top, H],
+	foldl(BinConstr, Tmp, T, Res).
+
+
+fill(_,0,[]):- !.
+fill(X,N,[X|L1]):- !, N1 is N - 1, fill(X,N1,L1).
+
+
 %% list2constr(+BinConstr, +Nil, +List , -Term)
 %%
 %% Replace cons and nil with BinConstr and Nil, creating Term.
@@ -5333,6 +5752,165 @@ print_refs_as_one_fla(Conjecture, AllRefs, _Options):-
 	print(fof(Q,conjecture,(AxiomsConjunction => SR2),Q3)),
 	write('.'),
 	nl.
+
+
+%%%%%%%%%%%%%%%%%%%% THF translation %%%%%%%%%%%%%%%%%%%%
+
+% print_func_decl_thf(+X/A):-
+%
+% declare function types as $i > ... > $i
+% numbers get the "n" prefix
+print_func_decl_thf(X/A):-
+	(number(X) -> concat_atom([n,X],X1); X1 = X),
+	concat_atom([X1,'_type'],Name),
+	A1 is A + 1,
+	fill('$i',A1,List),
+	concat_atom(List, ' > ', Decl),
+	print(thf(Name,type,( X : Decl))),
+	write('.'),
+	nl.
+
+% print_pred_decl_thf(+X/A):-
+%
+% declare predicate types as $i > ... > $i > $o
+% attributes and modes get one more arg
+% we do not print r2_hidden because it's included and declared in our THF axioms
+print_pred_decl_thf(r2_hidden/_):- !.
+print_pred_decl_thf(X/A):-
+	concat_atom([X,'_type'],Name),
+	(mptp_attr_or_mode_sym(X) -> A1 is A + 1; A1 = A),
+	fill('$i',A1,List),
+	append(List,['$o'],List1),
+	concat_atom(List1, ' > ', Decl),
+	print(thf(Name,type,( X : Decl))),
+	write('.'),
+	nl.
+
+
+
+
+%% ##TEST: declare_mptp_predicates,load_mml,install_index,all_articles(AA),checklist(abstract_fraenkels_if, AA),!,member(A,[xboole_0]),time(mk_article_problems(A,[[mizar_by,mizar_from,mizar_proof],[theorem, top_level_lemma, sublemma] ],[opt_REM_SCH_CONSTS,opt_TPTP_SHORT,opt_LINE_COL_NMS,opt_PROB_PRINT_FUNC(print_refs_in_thf)])),fail.
+
+%% top level function for printing problems in thf - still needs to split the axioms and conjecture
+print_refs_in_thf(Conjecture, AllRefs, _Options):-
+	delete(AllRefs, Conjecture, ProperRefs01),
+	replace_sch_instances(ProperRefs01,SchRefs0,ProperRefs1),
+	sort(SchRefs0, SchRefs),
+%	sort([s13_fraenkel,s24_fraenkel|SchRefs0], SchRefs),
+	maplist(get_ref_fla, SchRefs, SchFofs),
+	maplist(get_ref_fla, [Conjecture|ProperRefs1], [ConjFof|ProperFofs]),
+
+%	maplist(get_ref_fla, AllRefs, AllFofs),
+%	get_func_pred_syms_thf(AllFofs,F,P),
+
+	%% avoids "f" and "p" in scheme refs
+	get_func_pred_syms_thf(SchFofs,F0,P0),
+	%% does not avoid "f" and "p" in conjectures - here it is skolemized
+	get_func_pred_syms([ConjFof|ProperFofs],F1,P1),
+	union(F0,F1,F),
+	union(P0,P1,P),
+	print_include_directive('SET010^0'),
+	checklist(print_func_decl_thf,F),
+	checklist(print_pred_decl_thf,P),
+	maplist(print_ref_in_thf(1,axiom),ProperRefs1),
+	%% the schemes are printed with quantification over "f" and "p"
+	maplist(print_ref_in_thf(0,axiom),SchRefs),
+	print_ref_in_thf(1,conjecture,Conjecture).
+
+
+%% probably old and unused
+%% top level function for printing problems in thf - still needs to split the axioms and conjecture
+print_refs_in_thf_old(Conjecture, AllRefs, _Options):-
+	delete(AllRefs, Conjecture, ProperRefs1),
+	maplist(get_ref_fla, AllRefs, AllFofs),
+	get_func_pred_syms(AllFofs,F,P),
+	checklist(print_func_decl_thf,F),
+	checklist(print_pred_decl_thf,P),
+	maplist(get_transformed_fla_thf, ProperRefs1, ProperRefs2),
+	list2constr(&, $true, ProperRefs2, AxiomsConjunction),
+	Q = Conjecture,
+	get_ref_fof(Q, fof(Q,_Q1,Q2,Q3,Q4)),
+	sort_transform_thf_top(0,Q2,SR2),
+	numbervars([SR2,Q3,Q4],0,_),
+	print(thf(Q,conjecture,(AxiomsConjunction => SR2),Q3)),
+	write('.'),
+	nl.
+
+% scheme_instance_parent(+SchInstName,-SchName)
+%
+% return the parent scheme of a scheme instance
+scheme_instance_parent(SchInstName,SchName):-
+	atom_chars(SchInstName,C),
+	once(append([[s],Num,['_'|_]],C)),
+	name(N,Num),
+	number(N),
+	once(append(C1,['_','_'|_],C)),
+	atom_chars(SchName,C1).
+ 
+replace_sch_instances([],[]).
+replace_sch_instances([H|T],[H1|T1]):- scheme_instance_parent(H,H1),!,replace_sch_instances(T,T1).
+replace_sch_instances([H|T],[H|T1]):- replace_sch_instances(T,T1).
+
+
+% replace_sch_instances(+OrigNames,-ReplacedNames,-Kept).
+replace_sch_instances([],[],[]).
+replace_sch_instances([H|T],[H1|T1],T2):- scheme_instance_parent(H,H1),!,replace_sch_instances(T,T1,T2).
+replace_sch_instances([H|T],T1,[H|T2]):- replace_sch_instances(T,T1,T2).
+
+
+
+	
+% probably unused now
+print_refs_in_as_one_fla_thf(Conjecture, AllRefs, _Options):-
+	delete(AllRefs, Conjecture, ProperRefs1),
+%	replace_sch_instances(ProperRefs01,ProperRefs1),
+	maplist(get_ref_fla, AllRefs, AllFofs),
+	get_func_pred_syms_thf(AllFofs,F,P),
+	checklist(print_func_decl_thf,F),
+	checklist(print_pred_decl_thf,P),
+	maplist(get_transformed_fla_thf, ProperRefs1, ProperRefs2),
+	list2constr(&, $true, ProperRefs2, AxiomsConjunction),
+	Q = Conjecture,
+	get_ref_fof(Q, fof(Q,_Q1,Q2,Q3,Q4)),
+	sort_transform_thf_top(0,Q2,SR2),
+	numbervars([SR2,Q3,Q4],0,_),
+	print(thf(Q,conjecture,(AxiomsConjunction => SR2),Q3)),
+	write('.'),
+	nl.
+
+
+add_sch_sorts_antecedents(SchRef,SchFla,SortedNewFla):-
+	get_ref_syms(SchRef,Syms),
+	sublist(mptp_sch_func_sym,Syms,FSyms),
+	findall(SortFla, (member(Sec1,FSyms), fof_section(Sec1,Id),
+			  clause(fof(_,_,SortFla,file(_,Sec1), _),_,Id)), SortFlas),
+	( SortFlas = [] -> SortedNewFla = SchFla
+	;
+	  list2constr(&,$true,SortFlas,Antecedent),
+	  SortedNewFla = (Antecedent => SchFla)
+	).
+
+
+% print_ref_in_thf(+NoGen,+Role,+Q)
+%
+% NoGen is 0 or 1. 0 is used for printing scheme refs.
+print_ref_in_thf(NoGen,Role,Q):-
+	get_ref_fof(Q, fof(Q,_Q1,Q2,Q3,Q4)),
+	(NoGen == 0 ->
+	 add_sch_sorts_antecedents(Q,Q2,NewQ2)
+	;
+	 NewQ2 = Q2
+	),
+	sort_transform_thf_top(NoGen,NewQ2,SR2),
+	numbervars([SR2,Q3,Q4],0,_),
+	print(thf(Q,Role,SR2,Q3)),
+	write('.'),
+	nl.
+	
+
+
+%%%%%%%%%%%%%%%%%%%% End of THF translation %%%%%%%%%%%%%%%%%%%%
+
 
 %% get_include_refs(+Refs, -IncludeRefs, -NonIncludeRefs, -IncludeFiles)
 %%
