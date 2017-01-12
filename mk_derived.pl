@@ -22,7 +22,7 @@ open(LEM, ">$Lem"); open(DCO, ">$Dco"); open(XML, $Xml);
 while($_=<XML>)
 {
     if(m/^fof.[dt][0-9]/) { print THE $_; }
-    elsif(m/^fof.dt_[klmgu]/) { print DCO $_; }
+    elsif(m/^fof.dt_[fklmgu]/) { print DCO $_; }
     elsif(m/^fof.(([fcr]c)|(ie)|(rd))[0-9]/) { print DCL $_; }
     elsif(m/^fof.[s][0-9]/) { print SCH $_; }
     elsif(m/^fof.[l][0-9]/) { print LEM $_; }
