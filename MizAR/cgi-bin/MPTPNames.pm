@@ -13,6 +13,7 @@ sub HTMLizeRef
 #    print '<a href="foo">goo</a>'; $MizHtml="hj";
     if(($ref=~m/^([dtl][0-9]+)_(.*)$/) 
        || ($ref=~m/^(s[0-9]+)_(.*?)__.*$/) 
+       || ($ref=~m/^(s)([0-9]+)_(.*)$/) 
        || ($ref=~m/^([fcr]c[0-9]+)_(.*)$/) 
        || ($ref=~m/^dt_([klmugrv][0-9]+)_(.*)$/))
     {
@@ -127,19 +128,21 @@ sub MizarizeRef
 
     if(($ref=~m/^([dtl])([0-9]+)_(.*)$/) 
        || ($ref=~m/^(s)([0-9]+)_(.*?)__.*$/) 
+       || ($ref=~m/^(s)([0-9]+)_(.*)$/) 
        || ($ref=~m/^([fcr]c)([0-9]+)_(.*)$/) 
        || ($ref=~m/^dt_([klmugrv])([0-9]+)_(.*)$/))
     {
 	my ($kind,$nr,$ar) = ($1,$2,$3);
 
+	my $aruc = uc($ar);
 	if(($ref=~m/^l.*/) && ($kind =~ m/^l/)) { $kind = 'e'; }
 
 	my $mizkind = $kind2miz{$kind};
-	my $here = ($ar eq $input_article) ? 1 : 0;
+	my $here = ($aruc eq $input_article) ? 1 : 0;
 
 	if($here==0)
 	{
-	    $res = uc($ar) . ':' . $mizkind . ((length($mizkind)>0) ? ' ' : '') . $nr;
+	    $res = $aruc . ':' . $mizkind . ((length($mizkind)>0) ? ' ' : '') . $nr;
 	}
 	elsif(defined($fla2name) && exists($fla2name->{$ref}))
 	{
